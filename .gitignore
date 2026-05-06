@@ -1,0 +1,9 @@
+node_modules/
+.temp/
+*.zip
+.env
+scratch_funcs.js
+update_*.js
+clear_turmas.js
+insert_turmas.js
+.gemini/
