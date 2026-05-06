@@ -801,92 +801,101 @@ function importarAlunos(){
         const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
         const ws=wb.Sheets[wb.SheetNames[0]];
         const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-        
+
+        if(rows.length === 0){ showToast('Planilha vazia!','evasao'); return; }
+
+        // Debug: mostra as colunas encontradas
+        const colunas = Object.keys(rows[0]);
+        console.log('[importarAlunos] Colunas encontradas:', colunas);
+        console.log('[importarAlunos] Primeira linha:', rows[0]);
+
+        // Função auxiliar: encontra a primeira chave que bata com o padrão
+        const col = (r, ...patterns) => {
+          const key = Object.keys(r).find(k => patterns.some(p => p.test(k)));
+          return key ? r[key].toString().trim() : '';
+        };
+
         // --- 1. Descobrir e criar Turmas Ausentes ---
         const turmasNoExcel = new Set();
         rows.forEach(r => {
-           const t = (r['Turma']||'').toString().trim();
-           if(t) turmasNoExcel.add(t);
+           const t = col(r, /^turma$/i, /turma/i);
+           if(t) turmasNoExcel.add(t.toUpperCase());
         });
-        
+
         const novasTurmasDB = [];
         turmasNoExcel.forEach(tName => {
-           if(!TURMAS_DATA.find(t => t.code === tName)) {
-               novasTurmasDB.push({
-                   code: tName,
-                   serie: tName,
-                   turno: 'Manhã', // default
-                   professor: 'A Definir'
-               });
+           if(tName && !TURMAS_DATA.find(t => t.code === tName)) {
+               novasTurmasDB.push({ code: tName, serie: tName, turno: 'Manhã', professor: 'A Definir' });
            }
         });
-        
+
         if (novasTurmasDB.length > 0) {
-            showToast('Criando turmas novas no sistema... aguarde', 'sucesso');
-            const {error} = await supabaseClient.from('turmas').insert(novasTurmasDB);
-            if(error) console.error("Erro criando turmas: ", error);
-            await carregarDados(); // reload TURMAS_DATA with the new IDs
+            showToast('Criando '+novasTurmasDB.length+' turma(s) nova(s)... aguarde', 'sucesso');
+            const {error: eTurma} = await supabaseClient.from('turmas').upsert(novasTurmasDB, {onConflict:'code'});
+            if(eTurma) console.error("Erro criando turmas:", eTurma);
+            await carregarDados();
         }
 
         // --- 2. Preparar Alunos ---
-        let count=0,erros=0;
+        let count=0, erros=0;
         const novosAlunosDB = [];
-        
+
         rows.forEach(r=>{
-          const nome=(r['Nome Completo']||'').toString().trim();
-          const cpf=(r['CPF']||'').toString().trim();
-          const turma=(r['Turma']||'').toString().trim();
-          const turno=(r['Turno']||'').toString().trim();
-          const resp=(r['Responsável']||'').toString().trim();
-          const contato=(r['Contato']||'').toString().trim();
-          const rota=(r['Rota']||'Sem transporte').toString().trim();
-          const email=(r['Email Institucional']||'').toString().trim();
-          const nascStr=(r['Data de Nascimento']||'').toString().trim();
-          
-          if(!nome||!cpf||!turma){erros++;return;}
-          if(ALUNOS_DATA.find(a=>a.cpf===cpf)){erros++;return;}
-          
+          const nome    = col(r, /nome.compl/i, /nome/i, /aluno/i);
+          const cpf     = col(r, /^cpf$/i, /matr/i, /registro/i, /cpf/i);
+          const turma   = col(r, /^turma$/i, /turma/i).toUpperCase();
+          const resp    = col(r, /respons/i, /pai|mae/i);
+          const contato = col(r, /contato|fone|tel|cel|whats/i);
+          const rota    = col(r, /rota/i) || 'Sem transporte';
+          const email   = col(r, /email|e-mail/i);
+          const nascStr = col(r, /nasc/i, /data.nasc/i);
+
+          if(!nome || !cpf || !turma){
+            console.log('[importarAlunos] Linha ignorada:', {nome, cpf, turma});
+            erros++; return;
+          }
+          if(ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf)){erros++; return;}
+
           let turmaId = null;
           const tObj = TURMAS_DATA.find(t => t.code === turma);
           if (tObj) turmaId = tObj.id;
-          
+
           let dataNasc = null;
           if (nascStr && nascStr.includes('/')) {
-             const [d,m,y] = nascStr.split('/');
-             if(d&&m&&y) dataNasc = `${y}-${m}-${d}`;
+             const parts = nascStr.split('/');
+             if(parts.length === 3) dataNasc = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
           }
-          
+
           novosAlunosDB.push({
-             matricula: cpf,
-             nome: nome,
-             turma_id: turmaId,
-             rota: rota,
-             responsavel: resp,
-             contato: contato,
-             instagram: email,
-             data_nascimento: dataNasc,
-             status: 'ativo'
+             matricula: cpf, nome, turma_id: turmaId,
+             rota, responsavel: resp, contato, instagram: email,
+             data_nascimento: dataNasc || null, status: 'ativo'
           });
         });
-        
-        if (novosAlunosDB.length > 0) {
-           const { data, error } = await supabaseClient.from('alunos').upsert(novosAlunosDB, { onConflict: 'matricula' }).select();
-           if (error) {
-               console.error("Erro Supabase:", error);
-               showToast('Erro ao gravar no banco de dados', 'evasao');
-               return;
-           }
-           
-           await carregarDados();
-           count = novosAlunosDB.length;
+
+        console.log('[importarAlunos] Para inserir:', novosAlunosDB.length, '| Ignorados:', erros);
+
+        if (novosAlunosDB.length === 0) {
+           showToast('Nenhum aluno válido encontrado! ('+erros+' ignorados) — Verifique as colunas da planilha.', 'evasao');
+           return;
         }
 
-        showToast(count+' aluno(s) importado(s)!'+(erros?' ('+erros+' ignorados)':''),count>0?'sucesso':'alerta');
+        const { data, error } = await supabaseClient.from('alunos').upsert(novosAlunosDB, { onConflict: 'matricula' }).select();
+        if (error) {
+            console.error("[importarAlunos] Erro Supabase:", error);
+            showToast('Erro banco: ' + error.message, 'evasao');
+            return;
+        }
+
+        console.log('[importarAlunos] Sucesso:', data?.length, 'alunos.');
+        await carregarDados();
+        count = novosAlunosDB.length;
+        showToast(count+' aluno(s) importado(s)!'+(erros?' ('+erros+' ignorados)':''),'sucesso');
         renderAlunos(); renderMetricasDash(); renderTurmasTable(); renderTurmaGrid();
         input.value='';
-      }catch(err){ 
-        console.error(err);
-        showToast('Erro ao ler arquivo. Use o modelo fornecido.','evasao'); 
+      }catch(err){
+        console.error('[importarAlunos] Erro geral:', err);
+        showToast('Erro ao ler arquivo: '+err.message,'evasao');
       }
     };
     reader.readAsArrayBuffer(file);
