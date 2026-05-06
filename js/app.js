@@ -895,14 +895,15 @@ function importarAlunos(){
 
 function downloadModeloTurmas(){
   carregarSheetJS(()=>{
-    const ws = XLSX.utils.json_to_sheet([{
-      'Código (Ex: 101)': '',
-      'Série/Ano': '',
-      'Turno (Manhã/Tarde/Noite)': ''
-    }]);
+    // Modelo simples com colunas diretas
+    const ws = XLSX.utils.json_to_sheet([
+      { 'Codigo': 'EM-1A', 'Serie': '1º Ano - Ensino Médio', 'Turno': 'Manhã' },
+      { 'Codigo': 'EM-2A', 'Serie': '2º Ano - Ensino Médio', 'Turno': 'Manhã' },
+      { 'Codigo': 'EJA-1', 'Serie': 'EJA - 1ª Etapa', 'Turno': 'Noite' },
+    ]);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ModeloTurmas");
-    XLSX.writeFile(wb, "RVS_Modelo_Importacao_Turmas.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Turmas");
+    XLSX.writeFile(wb, "RVS_Modelo_Turmas.xlsx");
   });
 }
 
@@ -918,17 +919,32 @@ function importarTurmas(){
         const ws=wb.Sheets[wb.SheetNames[0]];
         const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
         
-        let count=0,erros=0;
+        if(rows.length === 0){
+           showToast('Planilha vazia ou sem dados!', 'evasao'); return;
+        }
+
+        // Debug: loga as colunas encontradas na planilha
+        const colunas = Object.keys(rows[0]);
+        console.log('[importarTurmas] Colunas encontradas:', colunas);
+        console.log('[importarTurmas] Primeira linha:', rows[0]);
+
+        let count=0, erros=0;
         const novasTurmasDB = [];
-        
+
         rows.forEach(r=>{
-          const code=(r['Código (Ex: 101)']||r['Código']||'').toString().trim().toUpperCase();
-          const serie=(r['Série/Ano']||r['Série']||'').toString().trim();
-          const turno=(r['Turno (Manhã/Tarde/Noite)']||r['Turno']||'').toString().trim();
-          
-          if(!code) return; // Ignora linha vazia
-          if(TURMAS_DATA.find(t=>t.code===code)){erros++;return;}
-          
+          // Busca flexivel: procura qualquer coluna que contenha "cod" ou "turma" (case-insensitive)
+          const codKey = Object.keys(r).find(k => /cod|code|turma/i.test(k));
+          const serKey = Object.keys(r).find(k => /ser|ano|descri/i.test(k));
+          const turKey = Object.keys(r).find(k => /turn/i.test(k));
+
+          const code = (codKey ? r[codKey] : '').toString().trim().toUpperCase();
+          const serie = (serKey ? r[serKey] : '').toString().trim();
+          const turno = (turKey ? r[turKey] : '').toString().trim();
+
+          if(!code){ erros++; return; }
+          if(TURMAS_DATA.find(t=>t.code===code)){ erros++; return; }
+          if(novasTurmasDB.find(t=>t.code===code)){ erros++; return; }
+
           novasTurmasDB.push({
              code: code,
              serie: serie || code,
@@ -937,23 +953,29 @@ function importarTurmas(){
           });
           count++;
         });
-        
-        if (novasTurmasDB.length > 0) {
-            const {error} = await supabaseClient.from('turmas').insert(novasTurmasDB);
-            if(error) {
-               console.error(error);
-               showToast('Erro ao inserir turmas no banco.', 'evasao');
-               return;
-            }
-            await carregarDados(); // atualiza a tela
+
+        console.log('[importarTurmas] Para inserir:', novasTurmasDB);
+
+        if(novasTurmasDB.length === 0){
+           showToast('Nenhuma turma nova encontrada. ('+erros+' já existiam ou inválidas)', 'alerta');
+           return;
         }
-        
-        showToast(count+' turma(s) importada(s)!'+(erros?' ('+erros+' ignoradas)':''),count>0?'sucesso':'alerta');
+
+        const {data, error} = await supabaseClient.from('turmas').insert(novasTurmasDB).select();
+        if(error){
+           console.error('[importarTurmas] Erro Supabase:', error);
+           showToast('Erro no banco: ' + error.message, 'evasao');
+           return;
+        }
+
+        console.log('[importarTurmas] Inserido com sucesso:', data);
+        await carregarDados();
+        showToast(count+' turma(s) importada(s) com sucesso!', 'sucesso');
         atualizarSelectTurmas(); renderTurmaGrid(); renderTurmasTable(); renderMetricasDash();
         input.value='';
-      }catch(err){ 
-         console.error(err);
-         showToast('Erro ao ler arquivo. Use o modelo fornecido.','evasao'); 
+      }catch(err){
+         console.error('[importarTurmas] Erro geral:', err);
+         showToast('Erro ao ler arquivo: ' + err.message, 'evasao');
       }
     };
     reader.readAsArrayBuffer(file);
