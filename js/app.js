@@ -54,8 +54,8 @@ const PERMS = [
   {func:'Permissões — Editar',coord:true,sec:false,prof:false},
 ];
 
-const TIPO_LETIVO_FLAG = {letivo:true,prova:true,evento:true,bimestre:true,feriado:false};
-const TIPO_LABEL = {letivo:'Dia Letivo',feriado:'Feriado',prova:'Prova',evento:'Evento',bimestre:'Início de Bimestre'};
+const TIPO_LETIVO_FLAG = {letivo:true,prova:true,evento:true,bimestre:true,feriado:false,ferias:false};
+const TIPO_LABEL = {letivo:'Dia Letivo',feriado:'Feriado',prova:'Prova',evento:'Evento',bimestre:'Início de Bimestre',ferias:'Férias Escolares'};
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // ─── PERSISTÊNCIA ─────────────────────────────────────────────────────────────
@@ -1081,7 +1081,7 @@ function toggleBimestreSelect(){
   const tipo=document.getElementById('input-cal-tipo')?.value;
   document.getElementById('row-bimestre')?.classList.toggle('hidden',tipo!=='bimestre');
   document.getElementById('row-evento-label')?.classList.toggle('hidden',tipo!=='evento');
-  document.getElementById('row-horario')?.classList.toggle('hidden',tipo==='letivo'||tipo==='feriado');
+  document.getElementById('row-horario')?.classList.toggle('hidden',tipo==='letivo'||tipo==='feriado'||tipo==='ferias');
 }
 
 function renderEventosMes(){

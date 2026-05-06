@@ -123,6 +123,7 @@ tr:hover td{background:var(--gray2)}
 .cal-day.tipo-prova{background:var(--blue-light);color:var(--blue-dark)}
 .cal-day.tipo-evento{background:var(--orange-light);color:var(--orange-dark)}
 .cal-day.tipo-bimestre{background:var(--gray2);color:var(--gray6)}
+.cal-day.tipo-ferias{background:#fff3cd;color:#856404}
 .cal-sidebar{background:white;border-radius:var(--radius2);box-shadow:var(--shadow);border:1px solid var(--gray3);padding:18px;overflow-y:auto;max-height:520px}
 .event-item{padding:11px 14px;border-radius:10px;margin-bottom:9px;border-left:3px solid}
 .event-letivo{background:var(--green-light);border-color:var(--green)}
