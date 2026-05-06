@@ -873,19 +873,27 @@ function importarAlunos(){
           });
         });
 
-        console.log('[importarAlunos] Para inserir:', novosAlunosDB.length, '| Ignorados:', erros);
+        // --- Deduplicar por matricula (evita "ON CONFLICT row a second time") ---
+        const seen = new Set();
+        const alunosFinal = novosAlunosDB.filter(a => {
+           if(seen.has(a.matricula)){ erros++; return false; }
+           seen.add(a.matricula); return true;
+        });
 
-        if (novosAlunosDB.length === 0) {
+        console.log('[importarAlunos] Após deduplicação:', alunosFinal.length, '| Ignorados total:', erros);
+
+        if (alunosFinal.length === 0) {
            showToast('Nenhum aluno válido encontrado! ('+erros+' ignorados) — Verifique as colunas da planilha.', 'evasao');
            return;
         }
 
-        const { data, error } = await supabaseClient.from('alunos').upsert(novosAlunosDB, { onConflict: 'matricula' }).select();
+        const { data, error } = await supabaseClient.from('alunos').upsert(alunosFinal, { onConflict: 'matricula' }).select();
         if (error) {
             console.error("[importarAlunos] Erro Supabase:", error);
             showToast('Erro banco: ' + error.message, 'evasao');
             return;
         }
+
 
         console.log('[importarAlunos] Sucesso:', data?.length, 'alunos.');
         await carregarDados();
