@@ -123,6 +123,7 @@ tr:hover td{background:var(--gray2)}
 .cal-day.tipo-prova{background:var(--blue-light);color:var(--blue-dark)}
 .cal-day.tipo-evento{background:var(--orange-light);color:var(--orange-dark)}
 .cal-day.tipo-bimestre{background:var(--gray2);color:var(--gray6)}
+.cal-day.tipo-fim_bimestre{background:#e8d5f5;color:#6a1b9a}
 .cal-day.tipo-ferias{background:#fff3cd;color:#856404}
 .cal-sidebar{background:white;border-radius:var(--radius2);box-shadow:var(--shadow);border:1px solid var(--gray3);padding:18px;overflow-y:auto;max-height:520px}
 .event-item{padding:11px 14px;border-radius:10px;margin-bottom:9px;border-left:3px solid}
@@ -131,6 +132,7 @@ tr:hover td{background:var(--gray2)}
 .event-prova{background:var(--blue-light);border-color:var(--blue)}
 .event-evento{background:var(--orange-light);border-color:var(--orange)}
 .event-bimestre{background:var(--gray2);border-color:var(--gray4)}
+.event-fim_bimestre{background:#e8d5f5;border-color:#6a1b9a}
 .event-title{font-size:12.5px;font-weight:700}.event-desc{font-size:11.5px;color:var(--gray5);margin-top:2px}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:all}

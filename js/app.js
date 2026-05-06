@@ -54,8 +54,8 @@ const PERMS = [
   {func:'Permissões — Editar',coord:true,sec:false,prof:false},
 ];
 
-const TIPO_LETIVO_FLAG = {letivo:true,prova:true,evento:true,bimestre:true,feriado:false,ferias:false};
-const TIPO_LABEL = {letivo:'Dia Letivo',feriado:'Feriado',prova:'Prova',evento:'Evento',bimestre:'Início de Bimestre',ferias:'Férias Escolares'};
+const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
+const TIPO_LABEL = {letivo:'Dia Letivo', feriado:'Feriado', prova:'Prova', evento:'Evento', bimestre:'Início de Bimestre', fim_bimestre:'Fim de Bimestre', ferias:'Férias Escolares'};
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 // ─── PERSISTÊNCIA ─────────────────────────────────────────────────────────────
@@ -1035,15 +1035,32 @@ function renderCalendar(){
   renderEventosMes();
 }
 
-function calClick(key){
+async function calClick(key){
   if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendário','evasao'); return; }
+
   if(CALENDARIO[key]?.tipo==='letivo'){
-    delete CALENDARIO[key]; showToast('Dia desmarcado','alerta');
+    // Desmarcar: deletar do Supabase se tiver ID
+    if(CALENDARIO[key].id){
+      await supabaseClient.from('eventos').delete().eq('id', CALENDARIO[key].id);
+    }
+    delete CALENDARIO[key];
+    showToast('Dia desmarcado','alerta');
   } else if(!CALENDARIO[key]){
-    CALENDARIO[key]={tipo:'letivo',label:'Dia Letivo',turno:'Geral'};
+    // Marcar como Letivo: inserir no Supabase
+    const [y,m,d] = key.split('-').map(Number);
+    const dataISO = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const {data, error} = await supabaseClient.from('eventos').insert({
+      titulo: 'Dia Letivo',
+      tipo: 'letivo',
+      data: dataISO,
+      turno: 'Geral',
+      responsavel: 'Dhenison Carlos'
+    }).select().single();
+    if(error){ console.error(error); showToast('Erro ao salvar no banco','evasao'); return; }
+    CALENDARIO[key] = {id: data.id, tipo:'letivo', label:'Dia Letivo', turno:'Geral'};
     showToast('Dia marcado como Letivo ✅','sucesso');
   }
-  renderCalendar(); renderFiltrosDiaFreq(); salvarDados();
+  renderCalendar(); renderFiltrosDiaFreq();
 }
 
 function calDblClick(key){
@@ -1062,7 +1079,7 @@ function calDblClick(key){
   openModal('modal-cal-tipo');
 }
 
-function salvarTipoCal(){
+async function salvarTipoCal(){
   const key=document.getElementById('modal-cal-key').value;
   const tipo=document.getElementById('input-cal-tipo').value;
   const turno=document.getElementById('input-cal-turno').value;
@@ -1070,18 +1087,46 @@ function salvarTipoCal(){
   const bimestre=document.getElementById('input-cal-bimestre').value;
   const hIni=document.getElementById('input-cal-hini').value;
   const hFim=document.getElementById('input-cal-hfim').value;
-  const labelFinal=tipo==='bimestre'?bimestre:tipo==='evento'?label:TIPO_LABEL[tipo];
-  CALENDARIO[key]={tipo,turno,label:labelFinal,bimestre,hIni,hFim,responsavel:'Dhenison Carlos'};
+  const labelFinal = tipo==='bimestre'||tipo==='fim_bimestre' ? bimestre : tipo==='evento' ? label : TIPO_LABEL[tipo];
+
+  const [y,m,d] = key.split('-').map(Number);
+  const dataISO = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+  const payload = {
+    titulo: labelFinal,
+    tipo: tipo,
+    data: dataISO,
+    turno: turno,
+    hora_inicio: hIni || null,
+    hora_fim: hFim || null,
+    responsavel: 'Dhenison Carlos'
+  };
+
+  let savedId = CALENDARIO[key]?.id || null;
+
+  if(savedId){
+    // Atualizar evento existente
+    const {error} = await supabaseClient.from('eventos').update(payload).eq('id', savedId);
+    if(error){ console.error(error); showToast('Erro ao atualizar: '+error.message,'evasao'); return; }
+  } else {
+    // Criar novo evento
+    const {data, error} = await supabaseClient.from('eventos').insert(payload).select().single();
+    if(error){ console.error(error); showToast('Erro ao salvar: '+error.message,'evasao'); return; }
+    savedId = data.id;
+  }
+
+  CALENDARIO[key] = {id: savedId, tipo, turno, label: labelFinal, bimestre, hIni, hFim, responsavel:'Dhenison Carlos'};
   closeModal('modal-cal-tipo');
-  renderCalendar(); renderFiltrosDiaFreq(); salvarDados();
-  showToast('Calendário atualizado!','sucesso');
+  renderCalendar(); renderFiltrosDiaFreq();
+  showToast('Calendário atualizado e salvo no banco!','sucesso');
 }
 
 function toggleBimestreSelect(){
   const tipo=document.getElementById('input-cal-tipo')?.value;
-  document.getElementById('row-bimestre')?.classList.toggle('hidden',tipo!=='bimestre');
+  // Mostrar o select de bimestre para Início E Fim de Bimestre
+  document.getElementById('row-bimestre')?.classList.toggle('hidden', tipo!=='bimestre' && tipo!=='fim_bimestre');
   document.getElementById('row-evento-label')?.classList.toggle('hidden',tipo!=='evento');
-  document.getElementById('row-horario')?.classList.toggle('hidden',tipo==='letivo'||tipo==='feriado'||tipo==='ferias');
+  document.getElementById('row-horario')?.classList.toggle('hidden',tipo==='letivo'||tipo==='feriado'||tipo==='ferias'||tipo==='bimestre'||tipo==='fim_bimestre');
 }
 
 function renderEventosMes(){
