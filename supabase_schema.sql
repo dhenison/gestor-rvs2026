@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS eventos (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   titulo       TEXT NOT NULL,
   data         DATE NOT NULL,
-  tipo         TEXT NOT NULL CHECK (tipo IN ('letivo','feriado','bimestre','evento','prova')),
+  tipo         TEXT NOT NULL CHECK (tipo IN ('letivo','feriado','bimestre','fim_bimestre','evento','prova','ferias')),
   turno        TEXT DEFAULT 'Geral',
   responsavel  TEXT,
   observacoes  TEXT,

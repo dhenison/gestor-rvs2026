@@ -187,16 +187,20 @@ async function carregarDados(){
     if (eventos) {
       CALENDARIO = {};
       eventos.forEach(ev => {
-         // Data is expected as YYYY-MM-DD
          let dKey = '';
          if (ev.data) {
              const [y, m, d] = ev.data.split('-');
              if (y && m && d) dKey = `${y}-${parseInt(m)}-${parseInt(d)}`;
          }
          if (dKey) {
+             // Restaurar subtipo real a partir de observacoes (ex: 'subtipo:fim_bimestre')
+             let tipoReal = ev.tipo;
+             if (ev.observacoes && ev.observacoes.startsWith('subtipo:')) {
+                 tipoReal = ev.observacoes.replace('subtipo:', '').split('|')[0];
+             }
              CALENDARIO[dKey] = {
                  id: ev.id,
-                 tipo: ev.tipo,
+                 tipo: tipoReal,
                  label: ev.titulo,
                  responsavel: ev.responsavel,
                  desc: ev.observacoes || ''
@@ -1092,13 +1096,20 @@ async function salvarTipoCal(){
   const [y,m,d] = key.split('-').map(Number);
   const dataISO = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
+  // Mapear tipos que não existem no constraint do banco
+  // fim_bimestre → bimestre | ferias → feriado
+  // O tipo real é guardado em observacoes com prefixo 'subtipo:'
+  const tipoMap = { fim_bimestre: 'bimestre', ferias: 'feriado' };
+  const tipoDB = tipoMap[tipo] || tipo;
+  const obsReal = (tipoMap[tipo] ? `subtipo:${tipo}` : null);
+
   const payload = {
     titulo: labelFinal,
-    tipo: tipo,
+    tipo: tipoDB,
     data: dataISO,
     turno: turno,
     responsavel: 'Dhenison Carlos',
-    observacoes: (hIni && hFim) ? `${hIni} - ${hFim}` : (hIni ? `Início: ${hIni}` : null)
+    observacoes: obsReal
   };
 
   let savedId = CALENDARIO[key]?.id || null;
