@@ -912,27 +912,49 @@ function importarTurmas(){
   if(!file){ showToast('Selecione um arquivo .xlsx','alerta'); return; }
   carregarSheetJS(()=>{
     const reader=new FileReader();
-    reader.onload=e=>{
+    reader.onload= async (e)=>{
       try{
         const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
         const ws=wb.Sheets[wb.SheetNames[0]];
         const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+        
         let count=0,erros=0;
+        const novasTurmasDB = [];
+        
         rows.forEach(r=>{
           const code=(r['Código (Ex: 101)']||r['Código']||'').toString().trim().toUpperCase();
           const serie=(r['Série/Ano']||r['Série']||'').toString().trim();
           const turno=(r['Turno (Manhã/Tarde/Noite)']||r['Turno']||'').toString().trim();
           
           if(!code) return; // Ignora linha vazia
-          
           if(TURMAS_DATA.find(t=>t.code===code)){erros++;return;}
-          TURMAS_DATA.push({code,serie,turno,presentes:0});
+          
+          novasTurmasDB.push({
+             code: code,
+             serie: serie || code,
+             turno: turno || 'Manhã',
+             professor: 'A Definir'
+          });
           count++;
         });
+        
+        if (novasTurmasDB.length > 0) {
+            const {error} = await supabaseClient.from('turmas').insert(novasTurmasDB);
+            if(error) {
+               console.error(error);
+               showToast('Erro ao inserir turmas no banco.', 'evasao');
+               return;
+            }
+            await carregarDados(); // atualiza a tela
+        }
+        
         showToast(count+' turma(s) importada(s)!'+(erros?' ('+erros+' ignoradas)':''),count>0?'sucesso':'alerta');
         atualizarSelectTurmas(); renderTurmaGrid(); renderTurmasTable(); renderMetricasDash();
-        salvarDados(); input.value='';
-      }catch(err){ showToast('Erro ao ler arquivo. Use o modelo fornecido.','evasao'); }
+        input.value='';
+      }catch(err){ 
+         console.error(err);
+         showToast('Erro ao ler arquivo. Use o modelo fornecido.','evasao'); 
+      }
     };
     reader.readAsArrayBuffer(file);
   });
@@ -2081,4 +2103,27 @@ function abrirLink(chave){
   const url=saved||inp?.value.trim();
   if(!url){showToast('Nenhum link cadastrado ainda','alerta');return;}
   window.open(url,'_blank');
+}
+// --- WIPE SYSTEM ---
+async function zerarSistema() {
+  confirmarSenhaAdmin(async () => {
+      const confirmacao = confirm("CUIDADO: Você está prestes a DELETAR permanentemente TODOS os Alunos, Turmas, Frequências e Ocorrências. O sistema ficará totalmente vazio. Tem certeza?");
+      if(!confirmacao) return;
+      
+      showToast('Deletando banco de dados... Por favor, aguarde.', 'sucesso');
+      
+      try {
+          await supabaseClient.from('ocorrencias').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          await supabaseClient.from('frequencia').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          await supabaseClient.from('eventos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          await supabaseClient.from('alunos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          await supabaseClient.from('turmas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+          
+          alert("Sistema zerado com sucesso! A página será recarregada.");
+          window.location.reload();
+      } catch (err) {
+          console.error(err);
+          showToast('Erro crítico ao zerar o banco', 'evasao');
+      }
+  });
 }
