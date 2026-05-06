@@ -1097,9 +1097,8 @@ async function salvarTipoCal(){
     tipo: tipo,
     data: dataISO,
     turno: turno,
-    hora_inicio: hIni || null,
-    hora_fim: hFim || null,
-    responsavel: 'Dhenison Carlos'
+    responsavel: 'Dhenison Carlos',
+    observacoes: (hIni && hFim) ? `${hIni} - ${hFim}` : (hIni ? `Início: ${hIni}` : null)
   };
 
   let savedId = CALENDARIO[key]?.id || null;
