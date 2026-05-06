@@ -505,33 +505,50 @@ function renderTurmaGrid(){
   }).join('');
 }
 
-function saveTurma(){
+async function saveTurma(){
   const code  = document.getElementById('input-turma-code')?.value.trim().toUpperCase();
   const turno = document.getElementById('input-turma-turno')?.value;
   const serie = document.getElementById('input-turma-serie')?.value;
   if(!code){ showToast('Informe o código da turma!','alerta'); return; }
   if(TURMAS_DATA.find(t=>t.code===code)){ showToast('Turma '+code+' já existe!','alerta'); return; }
-  TURMAS_DATA.push({code,serie,turno,presentes:0});
+  
+  const {error} = await supabaseClient.from('turmas').insert({
+      code: code,
+      serie: serie || code,
+      turno: turno || 'Manhã',
+      professor: 'A Definir'
+  });
+  
+  if (error) {
+     console.error(error); showToast('Erro no banco de dados', 'evasao'); return;
+  }
+  
   closeModal('modal-turma');
   showToast('Turma '+code+' criada!','sucesso');
+  await carregarDados();
   atualizarSelectTurmas();
   renderTurmaGrid(); renderTurmasTable(); renderMetricasDash();
-  salvarDados();
 }
 
 function abrirExcluirTurma(){
   confirmarSenhaAdmin(()=>{ atualizarSelectTurmas(); openModal('modal-excluir-turma'); });
 }
-function excluirTurma(){
+async function excluirTurma(){
   const code=document.getElementById('select-excluir-turma')?.value;
   if(!code){ showToast('Selecione uma turma','alerta'); return; }
   if(ALUNOS_DATA.filter(a=>a.turma===code).length>0){ showToast('Mova os alunos antes de excluir!','evasao'); return; }
-  TURMAS_DATA=TURMAS_DATA.filter(t=>t.code!==code);
+  
+  const tObj = TURMAS_DATA.find(t=>t.code===code);
+  if(tObj && tObj.id) {
+     const {error} = await supabaseClient.from('turmas').delete().eq('id', tObj.id);
+     if(error) { console.error(error); showToast('Erro ao excluir no banco', 'evasao'); return; }
+  }
+  
   closeModal('modal-excluir-turma');
   showToast('Turma '+code+' excluída.','sucesso');
+  await carregarDados();
   atualizarSelectTurmas();
   renderTurmaGrid(); renderTurmasTable(); renderMetricasDash();
-  salvarDados();
 }
 
 // ─── ALUNOS ───────────────────────────────────────────────────────────────────
@@ -644,20 +661,26 @@ function renderTimeline(a){
 function abrirMudancaTurma(){
   confirmarSenhaAdmin(()=>{ atualizarSelectTurmas(); openModal('modal-mudar-turma'); });
 }
-function salvarMudancaTurma(){
+async function salvarMudancaTurma(){
   const cpf=document.getElementById('modal-ficha').dataset.cpf;
   const novaTurma=document.getElementById('select-nova-turma')?.value;
   if(!novaTurma){ showToast('Selecione a nova turma','alerta'); return; }
+  
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
-  const turmaAnt=a.turma;
-  a.turma=novaTurma;
-  a.turno=TURMAS_DATA.find(t=>t.code===novaTurma)?.turno||a.turno;
-  (a.historico=a.historico||[]).push({tipo:'mudanca',titulo:'Mudança de Turma',
-    desc:`Transferido de ${turmaAnt} para ${novaTurma}`,data:new Date().toLocaleDateString('pt-BR')});
+  const tObj = TURMAS_DATA.find(t=>t.code===novaTurma);
+  if(!tObj) return;
+  
+  if (a.id) {
+     const {error} = await supabaseClient.from('alunos').update({
+        turma_id: tObj.id
+     }).eq('id', a.id);
+     if(error) console.error("Erro mudando turma:", error);
+  }
+  
   closeModal('modal-mudar-turma');
   showToast('Aluno movido para '+novaTurma,'sucesso');
+  await carregarDados();
   verFicha(cpf); renderAlunos(); renderTurmasTable(); renderTurmaGrid();
-  salvarDados();
 }
 
 function abrirOcorrDaFicha(){
@@ -778,8 +801,35 @@ function importarAlunos(){
         const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
         const ws=wb.Sheets[wb.SheetNames[0]];
         const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-        let count=0,erros=0;
         
+        // --- 1. Descobrir e criar Turmas Ausentes ---
+        const turmasNoExcel = new Set();
+        rows.forEach(r => {
+           const t = (r['Turma']||'').toString().trim();
+           if(t) turmasNoExcel.add(t);
+        });
+        
+        const novasTurmasDB = [];
+        turmasNoExcel.forEach(tName => {
+           if(!TURMAS_DATA.find(t => t.code === tName)) {
+               novasTurmasDB.push({
+                   code: tName,
+                   serie: tName,
+                   turno: 'Manhã', // default
+                   professor: 'A Definir'
+               });
+           }
+        });
+        
+        if (novasTurmasDB.length > 0) {
+            showToast('Criando turmas novas no sistema... aguarde', 'sucesso');
+            const {error} = await supabaseClient.from('turmas').insert(novasTurmasDB);
+            if(error) console.error("Erro criando turmas: ", error);
+            await carregarDados(); // reload TURMAS_DATA with the new IDs
+        }
+
+        // --- 2. Preparar Alunos ---
+        let count=0,erros=0;
         const novosAlunosDB = [];
         
         rows.forEach(r=>{
@@ -827,7 +877,6 @@ function importarAlunos(){
                return;
            }
            
-           // Reload all data to sync state
            await carregarDados();
            count = novosAlunosDB.length;
         }
