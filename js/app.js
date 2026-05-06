@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
-const ADMIN_SENHA = 'RVSgestor2026@';
+const ADMIN_SENHA = 'M@gnatha2026';
 let PERFIL_ATUAL  = 'admin';
 
 let TURMAS_DATA  = [];
@@ -228,7 +228,7 @@ async function carregarDados(){
 function doLogin(){
   const email = document.getElementById('email-input').value;
   const pass  = document.getElementById('pass-input').value;
-  if(!email.endsWith('@escola.seduc.pa.gov.br') || pass !== '123456'){
+  if(email !== 'dhenison@escola.seduc.pa.gov.br' || pass !== 'M@gnatha2026'){
     document.getElementById('login-error').style.display='block'; return;
   }
   const ls = document.getElementById('login-screen');
