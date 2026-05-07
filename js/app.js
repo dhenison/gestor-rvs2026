@@ -2759,7 +2759,8 @@ async function salvarUsuario(){
   }
 
   const payload = { nome, email, perfil, turno, cargo, turma_responsavel: turma, avatar_url: avatar||null };
-  if(senha) payload.senha = senha; // Store only when provided
+  // NOTA: senha NÃO entra no payload principal — é atualizada em chamada separada
+  //       para evitar o erro de schema cache do Supabase/PostgREST.
 
   let error;
   if(id){
@@ -2768,7 +2769,31 @@ async function salvarUsuario(){
     ({error} = await supabaseClient.from('usuarios').insert(payload));
   }
 
-  if(error){ showToast('Erro: '+error.message,'evasao'); return; }
+  if(error){ showToast('Erro ao salvar: '+error.message,'evasao'); return; }
+
+  // ── PASSO 2: Atualiza senha em chamada separada (tolerante a cache do Supabase) ──
+  if(senha){
+    let targetId = id;
+    if(!targetId){
+      // Novo usuário: busca o id recém-gerado
+      const { data: novo } = await supabaseClient
+        .from('usuarios').select('id').eq('email', email).maybeSingle();
+      targetId = novo?.id || null;
+    }
+    if(targetId){
+      const { error: sErr } = await supabaseClient
+        .from('usuarios').update({ senha }).eq('id', targetId);
+      if(sErr){
+        console.warn('[senha]', sErr.message);
+        if(sErr.message.includes('schema cache') || sErr.message.includes('column')){
+          showToast('Dados salvos! Para ativar a senha, recarregue o cache do banco.','alerta');
+        } else {
+          showToast('Dados salvos, mas erro na senha: '+sErr.message,'alerta');
+        }
+      }
+    }
+  }
+
   closeModal('modal-usuario');
   showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
   await carregarUsuarios();
