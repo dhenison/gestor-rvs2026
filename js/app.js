@@ -1729,13 +1729,17 @@ async function saveRota(){
   const veiculo=document.getElementById('input-rota-veiculo')?.value.trim();
   const monitora=document.getElementById('input-rota-monitora')?.value.trim();
   const emailMon=document.getElementById('input-rota-email-monitora')?.value.trim();
+  const capacidade=parseInt(document.getElementById('input-rota-capacidade')?.value||'0',10);
   if(!nome){showToast('Informe o nome da rota','alerta');return;}
   const {data, error} = await supabaseClient.from('rotas').insert({
-    nome, motorista, veiculo, capacidade: 0
+    nome, motorista, veiculo, capacidade, monitora, email_monitora: emailMon
   }).select().single();
   if(error){ showToast('Erro ao salvar rota: '+error.message,'evasao'); return; }
-  ROTAS_DATA.push({id: data.id, nome, motorista, veiculo, monitora, emailMon});
+  ROTAS_DATA.push({id: data.id, nome, motorista, veiculo, monitora, emailMon, cap: capacidade});
   closeModal('modal-rota');
+  // limpar campos
+  ['input-rota-nome','input-rota-motorista','input-rota-veiculo','input-rota-monitora','input-rota-email-monitora','input-rota-capacidade']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   showToast('Rota '+nome+' criada!','sucesso');
   atualizarSelectTurmas();
   renderTransporte();
@@ -1944,8 +1948,10 @@ function getDiasLetivos(periodo, prefixo){
 
 function toggleCustomDatas(tipo){
   const periodo=document.getElementById('rel-'+tipo+'-periodo')?.value;
-  const div=document.getElementById('rel-'+tipo+'-custom');
-  if(div) div.style.display=periodo==='custom'?'flex':'none';
+  const divCustom=document.getElementById('rel-'+tipo+'-custom');
+  const divData=document.getElementById('rel-'+tipo+'-data-unica');
+  if(divCustom) divCustom.style.display=periodo==='custom'?'flex':'none';
+  if(divData)   divData.style.display=periodo==='data'?'flex':'none';
 }
 
 function gerarRelFreq(){
@@ -2160,30 +2166,33 @@ async function salvarAtividade(){
   const data=document.getElementById('ativ-data')?.value; // YYYY-MM-DD
   const hIni=document.getElementById('ativ-hini')?.value;
   const hFim=document.getElementById('ativ-hfim')?.value;
-  const desc=document.getElementById('ativ-desc')?.value.trim();
+  const desc=(document.getElementById('ativ-desc')?.value||'').trim();
   const selT=document.getElementById('ativ-turmas');
   const turmas=selT?Array.from(selT.selectedOptions).map(o=>o.value):[];
   if(!tipo||!data){showToast('Informe o tipo e a data','alerta');return;}
-  
+
+  const tipoLabel = {evento:'Evento Especial',prova:'Prova / Avaliação',letivo:'Dia Letivo Especial',
+    feriado:'Feriado / Recesso',bimestre:'Início de Bimestre',fim_bimestre:'Fim de Bimestre'};
   const obsData = JSON.stringify({ hIni, hFim, turmas, desc });
-  
+
   const {error} = await supabaseClient.from('eventos').insert({
-     titulo: tipo === 'letivo' ? 'Dia Letivo' : 'Evento Especial',
+     titulo: tipoLabel[tipo] || tipo,
      data: data,
      tipo: tipo,
-     turno: 'Geral',
+     turno: turmas.length===1 ? turmas[0] : 'Geral',
      responsavel: 'Coordenação',
      observacoes: obsData
   });
-  
+
   if(error) {
      console.error(error);
-     showToast('Erro ao salvar evento', 'alerta');
+     showToast('Erro ao salvar: '+error.message, 'alerta');
   } else {
      closeModal('modal-nova-atividade');
-     showToast('Atividade incluída no Supabase!','sucesso');
-     await carregarDados(); // reload events
+     showToast('Atividade incluída na agenda!','sucesso');
+     await carregarDados();
      renderCalendar();
+     renderAgendaMural();
   }
 }
 
@@ -2644,11 +2653,12 @@ async function salvarUsuario(){
   const perfil = document.getElementById('usr-perfil')?.value || 'professor';
   const turno  = document.getElementById('usr-turno')?.value || '';
   const turma  = document.getElementById('usr-turma')?.value || '';
+  const cargo  = (document.getElementById('usr-cargo')?.value||'').trim();
   const avatar = document.getElementById('usr-avatar-data')?.value || '';
 
   if(!nome || !email){ showToast('Preencha Nome e E-mail!','alerta'); return; }
 
-  const payload = { nome, email, perfil, turno, turma_responsavel: turma, avatar_url: avatar };
+  const payload = { nome, email, perfil, turno, cargo, turma_responsavel: turma, avatar_url: avatar||null };
 
   let error;
   if(id){
@@ -2678,9 +2688,11 @@ function abrirModalUsuario(id){
   document.getElementById('usr-email').value = '';
   document.getElementById('usr-perfil').value = 'professor';
   document.getElementById('usr-turno').value = '';
-  document.getElementById('usr-turma').value = '';
+  const cargoEl = document.getElementById('usr-cargo');
+  if(cargoEl) cargoEl.value = '';
   document.getElementById('usr-avatar-data').value = '';
-  document.getElementById('usr-avatar-preview').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="%234f46e5"/><text x="50" y="64" text-anchor="middle" font-size="40" fill="white">?</text></svg>';
+  const prev = document.getElementById('usr-avatar-preview');
+  if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
   document.getElementById('modal-usuario-title').textContent = '+ Novo Usuário';
   popularTurmasUsuario();
 
@@ -2692,13 +2704,14 @@ function abrirModalUsuario(id){
     document.getElementById('usr-email').value   = u.email||'';
     document.getElementById('usr-perfil').value  = u.perfil||'professor';
     document.getElementById('usr-turno').value   = u.turno||'';
+    if(cargoEl) cargoEl.value = u.cargo||'';
+    popularTurmasUsuario();
     document.getElementById('usr-turma').value   = u.turma_responsavel||'';
     document.getElementById('modal-usuario-title').textContent = '✏️ Editar Usuário';
     if(u.avatar_url){
       document.getElementById('usr-avatar-data').value = u.avatar_url;
-      document.getElementById('usr-avatar-preview').src = u.avatar_url;
+      if(prev) prev.src = u.avatar_url;
     }
-    popularTurmasUsuario();
   }
   openModal('modal-usuario');
 }

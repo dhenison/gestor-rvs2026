@@ -562,12 +562,16 @@
               </select>
             </div>
             <div><label class="form-label">Período</label>
-              <select class="form-input form-select" id="rel-freq-periodo" style="width:160px" onchange="toggleCustomDatas('freq')">
+              <select class="form-input form-select" id="rel-freq-periodo" style="width:180px" onchange="toggleCustomDatas('freq')">
                 <option value="semanal">Semanal (últimos 7 dias)</option>
                 <option value="mensal">Mensal (mês atual)</option>
                 <option value="bimestral">Bimestral (últimos 2 meses)</option>
-                <option value="custom">📅 Período Personalizado</option>
+                <option value="data">📅 Data Específica</option>
+                <option value="custom">📆 Período Personalizado</option>
               </select>
+            </div>
+            <div id="rel-freq-data-unica" style="display:none">
+              <div><label class="form-label">Data</label><input type="date" class="form-input" id="rel-freq-data-especifica" style="width:160px"></div>
             </div>
             <div id="rel-freq-custom" style="display:none;gap:8px">
               <div><label class="form-label">De</label><input type="date" class="form-input" id="rel-freq-data-ini" style="width:150px"></div>
@@ -596,12 +600,16 @@
               </select>
             </div>
             <div><label class="form-label">Período</label>
-              <select class="form-input form-select" id="rel-transp-periodo" style="width:160px" onchange="toggleCustomDatas('transp')">
+              <select class="form-input form-select" id="rel-transp-periodo" style="width:180px" onchange="toggleCustomDatas('transp')">
                 <option value="semanal">Semanal</option>
                 <option value="mensal">Mensal</option>
                 <option value="bimestral">Bimestral</option>
-                <option value="custom">Personalizado</option>
+                <option value="data">📅 Data Específica</option>
+                <option value="custom">📆 Período Personalizado</option>
               </select>
+            </div>
+            <div id="rel-transp-data-unica" style="display:none">
+              <div><label class="form-label">Data</label><input type="date" class="form-input" id="rel-transp-data-especifica" style="width:160px"></div>
             </div>
             <div id="rel-transp-custom" style="display:none;gap:8px">
               <div><label class="form-label">De</label><input type="date" class="form-input" id="rel-transp-data-ini" style="width:150px"></div>
@@ -625,12 +633,16 @@
               </select>
             </div>
             <div><label class="form-label">Período</label>
-              <select class="form-input form-select" id="rel-ocorr-periodo" style="width:160px" onchange="toggleCustomDatas('ocorr')">
+              <select class="form-input form-select" id="rel-ocorr-periodo" style="width:180px" onchange="toggleCustomDatas('ocorr')">
                 <option value="semanal">Semanal</option>
                 <option value="mensal">Mensal</option>
                 <option value="bimestral">Bimestral</option>
-                <option value="custom">Personalizado</option>
+                <option value="data">📅 Data Específica</option>
+                <option value="custom">📆 Período Personalizado</option>
               </select>
+            </div>
+            <div id="rel-ocorr-data-unica" style="display:none">
+              <div><label class="form-label">Data</label><input type="date" class="form-input" id="rel-ocorr-data-especifica" style="width:160px"></div>
             </div>
             <div id="rel-ocorr-custom" style="display:none;gap:8px">
               <div><label class="form-label">De</label><input type="date" class="form-input" id="rel-ocorr-data-ini" style="width:150px"></div>
@@ -1114,7 +1126,7 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Veículo / Placa</label><input class="form-input" id="input-rota-veiculo" placeholder="Ex: Van — PQR-0000"></div>
-      <div class="form-group"><label class="form-label">Capacidade</label><input class="form-input" type="number" placeholder="Nº de vagas"></div>
+      <div class="form-group"><label class="form-label">Capacidade</label><input class="form-input" type="number" id="input-rota-capacidade" placeholder="Nº de vagas" min="0"></div>
     </div>
     <div style="padding-top:12px;border-top:1px solid var(--gray3);margin-bottom:14px">
       <div style="font-size:13px;font-weight:700;color:var(--gray6);margin-bottom:12px">Monitora</div>
@@ -1427,10 +1439,12 @@
       <div class="form-group">
         <label class="form-label">Tipo de Atividade</label>
         <select class="form-input form-select" id="ativ-tipo">
-          <option value="Teste">✏️ Teste</option>
-          <option value="Atividade">📝 Atividade</option>
-          <option value="Olimpiada">🏅 Olimpíada</option>
-          <option value="Jogos">⚽ Jogos</option>
+          <option value="evento">🟠 Evento Especial</option>
+          <option value="prova">🔵 Prova / Avaliação</option>
+          <option value="letivo">🟢 Dia Letivo Especial</option>
+          <option value="feriado">🔴 Feriado / Recesso</option>
+          <option value="bimestre">⚫ Início de Bimestre</option>
+          <option value="fim_bimestre">🟣 Fim de Bimestre</option>
         </select>
       </div>
       <div class="form-group">
@@ -1467,6 +1481,86 @@
 
 
 <!-- Modal: Usuário -->
+<div class="modal-overlay" id="modal-usuario" onclick="if(event.target===this)closeModal('modal-usuario')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-usuario-title">+ Novo Usuário</span>
+      <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
+    </div>
+    <input type="hidden" id="usr-edit-id">
+    <!-- Avatar -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:var(--gray2);border-radius:var(--radius2)">
+      <div style="position:relative">
+        <img id="usr-avatar-preview"
+          src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E"
+          style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--blue)">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--gray6)">Foto do Usuário</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+            🖼️ Da Galeria
+            <input type="file" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)">
+          </label>
+          <button class="btn btn-outline btn-sm" onclick="abrirCameraUsuario()">📷 Câmera</button>
+        </div>
+        <div style="font-size:11px;color:var(--gray4)">Máx. 2MB — JPG, PNG, WEBP</div>
+      </div>
+      <input type="hidden" id="usr-avatar-data">
+    </div>
+    <!-- Campos principais -->
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nome Completo *</label>
+        <input class="form-input" id="usr-nome" placeholder="Ex: Maria da Silva">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail *</label>
+        <input class="form-input" type="email" id="usr-email" placeholder="usuario@escola.seduc.pa.gov.br">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Perfil de Acesso *</label>
+        <select class="form-input form-select" id="usr-perfil">
+          <option value="admin">👑 Administrador</option>
+          <option value="coordenador">🎓 Coordenador</option>
+          <option value="secretaria">📋 Secretaria</option>
+          <option value="professor">📚 Professor</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Turno</label>
+        <select class="form-input form-select" id="usr-turno">
+          <option value="">Geral (todos os turnos)</option>
+          <option value="Manhã">Manhã</option>
+          <option value="Tarde">Tarde</option>
+          <option value="Noite">Noite</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Turma Responsável</label>
+        <select class="form-input form-select" id="usr-turma">
+          <option value="">Nenhuma (geral)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cargo / Função</label>
+        <input class="form-input" id="usr-cargo" placeholder="Ex: Professora de Matemática">
+      </div>
+    </div>
+    <div style="padding:10px 12px;background:#fffbeb;border-radius:8px;font-size:12px;color:#92400e;margin-bottom:4px">
+      ⚠️ As permissões de acesso são definidas na aba <strong>Permissões</strong> conforme o perfil selecionado.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar Usuário</button>
+    </div>
+  </div>
+</div>
+
 
 </div><!-- fim do #app -->
 
