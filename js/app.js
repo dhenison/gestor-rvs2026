@@ -2741,10 +2741,25 @@ async function salvarUsuario(){
   const turma  = document.getElementById('usr-turma')?.value || '';
   const cargo  = (document.getElementById('usr-cargo')?.value||'').trim();
   const avatar = document.getElementById('usr-avatar-data')?.value || '';
+  const senha        = (document.getElementById('usr-senha')?.value||'');
+  const senhaConfirm = (document.getElementById('usr-senha-confirm')?.value||'');
 
   if(!nome || !email){ showToast('Preencha Nome e E-mail!','alerta'); return; }
 
+  // Password validation
+  if(!id){
+    // New user — password is required
+    if(!senha){ showToast('Defina uma senha para o novo usuário!','alerta'); return; }
+    if(senha.length < 6){ showToast('A senha deve ter ao menos 6 caracteres.','alerta'); return; }
+    if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
+  } else if(senha){
+    // Editing — only validate if a new password was typed
+    if(senha.length < 6){ showToast('A nova senha deve ter ao menos 6 caracteres.','alerta'); return; }
+    if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
+  }
+
   const payload = { nome, email, perfil, turno, cargo, turma_responsavel: turma, avatar_url: avatar||null };
+  if(senha) payload.senha = senha; // Store only when provided
 
   let error;
   if(id){
@@ -2777,9 +2792,16 @@ function abrirModalUsuario(id){
   const cargoEl = document.getElementById('usr-cargo');
   if(cargoEl) cargoEl.value = '';
   document.getElementById('usr-avatar-data').value = '';
+  // Clear password fields
+  const senhaEl = document.getElementById('usr-senha');
+  const senhaConfirmEl = document.getElementById('usr-senha-confirm');
+  const senhaInfoEl = document.getElementById('usr-senha-info');
+  if(senhaEl) senhaEl.value = '';
+  if(senhaConfirmEl) senhaConfirmEl.value = '';
   const prev = document.getElementById('usr-avatar-preview');
   if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
   document.getElementById('modal-usuario-title').textContent = '+ Novo Usuário';
+  if(senhaInfoEl) senhaInfoEl.style.display = 'none'; // Hide hint for new users
   popularTurmasUsuario();
 
   if(id){
@@ -2794,6 +2816,7 @@ function abrirModalUsuario(id){
     popularTurmasUsuario();
     document.getElementById('usr-turma').value   = u.turma_responsavel||'';
     document.getElementById('modal-usuario-title').textContent = '✏️ Editar Usuário';
+    if(senhaInfoEl) senhaInfoEl.style.display = 'block'; // Show 'leave blank' hint when editing
     if(u.avatar_url){
       document.getElementById('usr-avatar-data').value = u.avatar_url;
       if(prev) prev.src = u.avatar_url;
