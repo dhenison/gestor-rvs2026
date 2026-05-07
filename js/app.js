@@ -455,29 +455,54 @@ function renderMetricasDash(){
   if(el('dash-faltas'))   el('dash-faltas').textContent   = ocorrs.filter(o=>o.tipo==='evasao'&&!o.tratada).length;
   if(el('dash-turmas'))   el('dash-turmas').textContent   = turmas.length;
 }
-function renderTurmasTable(){
+async function renderTurmasTable(){
   const b=document.getElementById('turmas-table-body'); if(!b)return;
   const {turno} = getDashFiltros();
   let turmas = turno ? TURMAS_DATA.filter(t=>t.turno===turno) : TURMAS_DATA;
   if(!turmas.length){b.innerHTML=emptyTr('🏷️','Nenhuma turma encontrada','Cadastre turmas ou altere o filtro',8);return;}
+
+  // Busca frequência de hoje do Supabase
+  const hoje = new Date().toISOString().split('T')[0];
+  let freqHoje = {}; // aluno_id → {entrada, saida}
+  try{
+    const {data:fq} = await supabaseClient.from('frequencia').select('aluno_id,tipo,status').eq('data',hoje);
+    if(fq) fq.forEach(f=>{
+      if(!freqHoje[f.aluno_id]) freqHoje[f.aluno_id]={};
+      freqHoje[f.aluno_id][f.tipo]=f.status;
+    });
+  }catch(e){console.warn('freq hoje:',e);}
+
   b.innerHTML=turmas.map(t=>{
-    const total=ALUNOS_DATA.filter(a=>a.turma===t.code).length;
-    const entQtd=t.entradaQtd||0;
-    const saiQtd=t.saidaQtd||0;
-    const faltas=total-(t.presentes||0);
-    const entPct=total>0?Math.round(entQtd/total*100):0;
-    const saiPct=total>0?Math.round(saiQtd/total*100):0;
-    const stEnt=t.entradaConsolidada?'<span class="metric-badge badge-green">✓ Feita</span>':'<span class="metric-badge badge-yellow">Pendente</span>';
-    const stSai=t.saidaConsolidada?'<span class="metric-badge badge-green">✓ Feita</span>':'<span class="metric-badge badge-yellow">Pendente</span>';
+    const alunosTurma=ALUNOS_DATA.filter(a=>a.turma===t.code);
+    const total=alunosTurma.length;
+    // Conta por freq real
+    let entP=0,saiP=0,evasoes=0;
+    alunosTurma.forEach(a=>{
+      const fq=freqHoje[a.id]||{};
+      if(fq.entrada==='P') entP++;
+      if(fq.saida==='P') saiP++;
+      if(fq.entrada==='P'&&fq.saida==='F') evasoes++;
+    });
+    // Fallback: usa chamada em memória se não há dados no Supabase
+    if(total>0&&entP===0&&saiP===0){
+      entP=t.entradaQtd||0;
+      saiP=t.saidaQtd||0;
+    }
+    const faltas=total-entP;
+    const entPct=total>0?Math.round(entP/total*100):0;
+    const saiPct=total>0?Math.round(saiP/total*100):0;
+    const stEnt=t.entradaConsolidada||entP>0?`<span class="metric-badge badge-green">${entPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
+    const stSai=t.saidaConsolidada||saiP>0?`<span class="metric-badge badge-green">${saiPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
+    const evasBadge=evasoes>0?`<span class="metric-badge badge-red">⚠ ${evasoes}</span>`:'';
     return`<tr>
-      <td><strong>${t.code}</strong></td>
+      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar">${t.code} ✏️</strong></td>
       <td>${t.turno}</td>
       <td>${total}</td>
       <td><span class="metric-badge badge-blue">${entPct}%</span></td>
       <td>${stEnt}</td>
       <td><span class="metric-badge badge-blue">${saiPct}%</span></td>
       <td>${stSai}</td>
-      <td><span class="metric-badge ${faltas>4?'badge-red':'badge-green'}">${faltas}</span></td>
+      <td><span class="metric-badge ${faltas>4?'badge-red':'badge-green'}">${faltas}</span> ${evasBadge}</td>
     </tr>`;
   }).join('');
 }
@@ -499,7 +524,7 @@ function renderTurmaGrid(){
     const total=ALUNOS_DATA.filter(a=>a.turma===t.code).length;
     const pres=t.presentes||0, pct=total>0?Math.round(pres/total*100):0;
     const color=pct>=90?'var(--green)':pct>=75?'var(--yellow)':'var(--red)';
-    return`<div class="turma-card">
+    return`<div class="turma-card" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar a turma" style="cursor:pointer;transition:box-shadow 0.2s" onmouseenter="this.style.boxShadow='0 4px 18px rgba(0,0,0,0.13)'" onmouseleave="this.style.boxShadow=''">
       <div class="turma-code">${t.code}</div>
       <div class="turma-info">${t.serie} — ${t.turno}</div>
       <div class="turma-progress"><div class="turma-progress-bar" style="width:${pct}%;background:${color}"></div></div>
@@ -508,8 +533,40 @@ function renderTurmaGrid(){
         <span style="color:var(--green-dark)">✓ ${pres}</span>
         <span style="color:var(--red)">✗ ${total-pres}</span>
       </div>
+      <div style="font-size:10px;color:var(--gray4);text-align:center;margin-top:4px">✏️ clique para editar</div>
     </div>`;
   }).join('');
+}
+
+function abrirEditarTurma(id){
+  const t=TURMAS_DATA.find(x=>x.id===id); if(!t)return;
+  document.getElementById('edit-turma-id').value=t.id;
+  document.getElementById('edit-turma-code').value=t.code;
+  document.getElementById('edit-turma-turno').value=t.turno||'Manhã';
+  // Tenta setar a série corretamente
+  const serieEl=document.getElementById('edit-turma-serie');
+  if(serieEl){
+    const opts=Array.from(serieEl.options).map(o=>o.value);
+    serieEl.value=opts.find(o=>o===t.serie)||opts[0];
+  }
+  document.getElementById('edit-turma-professor').value=t.professor||'';
+  openModal('modal-editar-turma');
+}
+
+async function salvarEdicaoTurma(){
+  const id=document.getElementById('edit-turma-id')?.value;
+  const code=(document.getElementById('edit-turma-code')?.value||'').trim().toUpperCase();
+  const turno=document.getElementById('edit-turma-turno')?.value||'Manhã';
+  const serie=document.getElementById('edit-turma-serie')?.value||'';
+  const professor=(document.getElementById('edit-turma-professor')?.value||'').trim();
+  if(!id||!code){showToast('Preencha o código da turma','alerta');return;}
+  const {error}=await supabaseClient.from('turmas').update({code,turno,serie,professor}).eq('id',id);
+  if(error){showToast('Erro ao salvar: '+error.message,'evasao');return;}
+  closeModal('modal-editar-turma');
+  showToast('Turma atualizada com sucesso!','sucesso');
+  await carregarDados();
+  atualizarSelectTurmas();
+  renderTurmaGrid(); renderTurmasTable(); renderMetricasDash();
 }
 
 async function saveTurma(){
@@ -1407,12 +1464,39 @@ async function markFreq(tipo,idx,val,btn){
 
   if(evasao){
     showToast('⚠️ Evasão: '+(aluno?.nome||'Aluno'),'evasao');
+    const agora = new Date();
+    const novaOcorr = {
+      id: Date.now(),
+      tipo: 'evasao',
+      icon: '🚨',
+      aluno: aluno?.nome||'—',
+      cpf: aluno?.cpf||'',
+      turma: aluno?.turma||'',
+      desc: 'Presente na entrada, ausente na saída — gerado automaticamente pela frequência',
+      hora: agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+      data: agora.toLocaleDateString('pt-BR'),
+      tratada: false,
+      aguardandoPais: false,
+      origem: 'frequencia',
+      auto_gerada: true
+    };
+    OCORR_DATA.push(novaOcorr);
+    // Adiciona ao histórico do aluno em memória
+    if(aluno){
+      (aluno.historico=aluno.historico||[]).unshift({
+        tipo:'ocorrencia',
+        titulo:'⚠️ Evasão detectada',
+        desc:'Presente na entrada, ausente na saída — '+agora.toLocaleDateString('pt-BR'),
+        data:agora.toLocaleDateString('pt-BR')
+      });
+    }
+    // Persiste no Supabase
     if (aluno && aluno.id) {
       supabaseClient.from('ocorrencias').insert({
           tipo: 'evasao',
           aluno_id: aluno.id,
           turma_id: aluno.turma_id,
-          descricao: 'Presente na entrada, ausente na saída — gerado automaticamente',
+          descricao: novaOcorr.desc,
           auto_gerada: true
       }).then(({error}) => { if(error) console.error(error); });
     }
@@ -1470,17 +1554,19 @@ function updateConsolidado(){
 function ocorrItemHTML(o){
   const cls=o.tratada?'tratada':o.aguardandoPais?'aguardando-pais':'nao-tratada';
   const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso'}[o.tipo]||o.tipo;
-  return`<div class="ocorr-item ${cls}">
+  const clicavel=o.cpf?`onclick="verFicha('${o.cpf}')" style="cursor:pointer" title="Ver ficha de ${o.aluno}"`:
+                 `onclick="showPage('ocorrencias',null)" style="cursor:pointer" title="Ver todas as ocorrências"`;
+  return`<div class="ocorr-item ${cls}" ${clicavel}>
     <div class="ocorr-icon ocorr-${o.tipo}">${o.icon||'⚠️'}</div>
     <div class="ocorr-content">
-      <h4>${label} — ${o.aluno} (${o.turma})</h4>
+      <h4>${label} — ${o.aluno}${o.turma?' ('+o.turma+')':''}</h4>
       <p>${o.desc}</p>
       ${o.aguardandoPais?'<span class="metric-badge badge-yellow" style="margin-top:4px">Aguardando pais</span>':''}
       ${o.origem==='frequencia'?'<span class="metric-badge badge-red" style="margin-top:4px">Originada na Frequência</span>':''}
     </div>
     <div class="ocorr-time">
       <div>${o.hora}</div><div style="margin-top:4px">${o.data||''}</div>
-      ${!o.tratada?`<button class="btn btn-xs btn-outline" style="margin-top:6px" onclick="abrirTratarOcorr(${o.id})">Tratar</button>`
+      ${!o.tratada?`<button class="btn btn-xs btn-outline" style="margin-top:6px" onclick="event.stopPropagation();abrirTratarOcorr('${o.id}')">Tratar</button>`
         :'<span style="color:var(--green-dark);font-size:11px;font-weight:600">✓ Tratada</span>'}
     </div>
   </div>`;
