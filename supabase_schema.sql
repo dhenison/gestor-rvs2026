@@ -2,7 +2,7 @@
 --  RVS ESCOLAR — Schema Completo v2.0
 --  Escola Estadual Dr. Romildo Veloso e Silva — SEDUC/PA
 --  Execute no Supabase: SQL Editor → Cole tudo → Run
---  Última atualização: Mai/2026
+--  Última atualização: Mai/2026  (v2.1 — coluna senha adicionada)
 -- ============================================================
 
 -- ── EXTENSÃO UUID ───────────────────────────────────────────
@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   turno              TEXT,
   turma_responsavel  TEXT,
   avatar_url         TEXT,
+  senha              TEXT,  -- senha de acesso do usuário (plain ou hash)
   perfil             TEXT DEFAULT 'professor'
                        CHECK (perfil IN ('admin','coordenador','secretaria','professor')),
   created_at         TIMESTAMPTZ DEFAULT NOW()
@@ -240,7 +241,8 @@ ALTER TABLE eventos DROP CONSTRAINT IF EXISTS eventos_tipo_check;
 ALTER TABLE eventos ADD CONSTRAINT eventos_tipo_check
   CHECK (tipo IN ('letivo','feriado','bimestre','fim_bimestre','evento','prova','ferias'));
 
--- Adiciona colunas que podem estar faltando na tabela usuarios (versões antigas)
+-- ── MIGRAÇÕES SEGURAS (colunas opcionais — executar mesmo em bancos existentes) ──
+-- Estas instruções são idempotentes: não causam erro se a coluna já existir.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cargo              TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS formacao           TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS bio                TEXT;
@@ -251,6 +253,7 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS turno              TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS turma_responsavel  TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS avatar_url         TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS perfil             TEXT DEFAULT 'professor';
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS senha              TEXT;  -- senha de acesso
 
 -- ============================================================
 --  DADOS INICIAIS (SEED)
