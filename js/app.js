@@ -2832,6 +2832,81 @@ function popularTurmasUsuario(){
     TURMAS_DATA.map(t => '<option value="'+t.code+'">'+t.code+' — '+t.turno+'</option>').join('');
 }
 
+function baixarModeloUsuarios(){
+  // UTF-8 BOM so Excel opens correctly
+  const BOM = '\uFEFF';
+  const header = 'Nome,Email,Perfil,Turno,Turma,Senha';
+  const ex1   = 'Jo\u00e3o Silva,joao@escola.pa.gov.br,professor,Manh\u00e3,9A,senha123';
+  const ex2   = 'Maria Souza,maria@escola.pa.gov.br,coordenador,Geral,,senha456';
+  const ex3   = 'Carlos Lima,carlos@escola.pa.gov.br,secretaria,Tarde,,senha789';
+  const note  = '# Perfis v\u00e1lidos: admin | coordenador | secretaria | professor';
+  const note2 = '# Turnos v\u00e1lidos: Manh\u00e3 | Tarde | Noite | Geral';
+  const note3 = '# Senha \u00e9 obrigat\u00f3ria para novos usu\u00e1rios (m\u00edn. 6 caracteres)';
+  const csv = BOM + [header, ex1, ex2, ex3, note, note2, note3].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'modelo_usuarios_rvs.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Modelo CSV baixado! Preencha e importe.','sucesso');
+}
+
+function importarPlanilhaUsuarios(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  // Reset the input so the same file can be re-selected
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    let text = e.target.result;
+    // Strip BOM if present
+    if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    // Support both comma and semicolon delimiters (Brazilian Excel uses ;)
+    const delimiter = text.includes(';') ? ';' : ',';
+    const lines = text
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => l && !l.startsWith('#')); // skip blanks and comment lines
+    if(lines.length < 2){
+      showToast('Planilha vazia ou sem dados!','alerta');
+      return;
+    }
+    // First line = header (skip it)
+    const dataLines = lines.slice(1);
+    let count = 0, erros = 0, senhaFaltando = 0;
+    for(const line of dataLines){
+      const cols  = line.split(delimiter).map(s => s.trim().replace(/^"|"$/g,''));
+      const [nome, email, perfil, turno, turma, senha] = cols;
+      if(!nome || !email) continue;
+      if(!senha || senha.length < 6){
+        senhaFaltando++;
+        continue; // skip rows without a valid password
+      }
+      const payload = {
+        nome,
+        email,
+        perfil:           (perfil||'professor').toLowerCase(),
+        turno:            turno||'',
+        turma_responsavel: turma||'',
+        senha
+      };
+      const {error} = await supabaseClient
+        .from('usuarios')
+        .upsert(payload, {onConflict:'email'});
+      if(error){ console.warn('Erro importando', email, error.message); erros++; }
+      else count++;
+    }
+    let msg = count + ' usu\u00e1rio(s) importado(s).';
+    if(senhaFaltando) msg += ' ' + senhaFaltando + ' linha(s) ignorada(s) por falta de senha.';
+    if(erros)         msg += ' ' + erros + ' erro(s).';
+    showToast(msg, erros || senhaFaltando ? 'alerta' : 'sucesso');
+    await carregarUsuarios();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
 function handleAvatarUpload(input){
   const file = input.files[0];
   if(!file) return;
