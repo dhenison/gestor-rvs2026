@@ -2478,10 +2478,13 @@ async function salvarOlimpiada(){
   const linkEdital= (document.getElementById('ol-link-edital')?.value||'').trim();
   const inscrita  = document.getElementById('ol-inscrita')?.value||'nao';
 
+  const flyerData = (document.getElementById('ol-flyer-data')?.value||'').trim();
+
   if(!nome || !area || !diaProva){ showToast('Preencha Nome, Área e Dia da Prova!','alerta'); return; }
 
   const payload = { nome, area, insc_inicio: inscIni, insc_fim: inscFim, dia_prova: diaProva,
-                    qtd_alunos: qtdAlunos, link_edital: linkEdital, inscrita };
+                    qtd_alunos: qtdAlunos, link_edital: linkEdital, inscrita,
+                    flyer_url: flyerData || null };
 
   const editId = document.getElementById('ol-edit-id')?.value||'';
   let error;
@@ -2497,6 +2500,20 @@ async function salvarOlimpiada(){
   closeModal('modal-olimpiada');
   showToast('Olimpíada salva com sucesso!','sucesso');
   renderTopoSaber();
+}
+
+function handleFlyerUpload(input){
+  const file = input.files[0]; if(!file) return;
+  if(file.size > 2*1024*1024){ showToast('Imagem muito grande (máx 2MB)','alerta'); return; }
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const b64 = e.target.result;
+    document.getElementById('ol-flyer-data').value = b64;
+    const prev = document.getElementById('ol-flyer-preview');
+    prev.src = b64; prev.style.display = 'block';
+    document.getElementById('ol-flyer-nome').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
 }
 
 async function excluirOlimpiada(id){
