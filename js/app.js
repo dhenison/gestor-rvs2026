@@ -2293,8 +2293,8 @@ function renderSolicitacoes(){
     var badgeLabel = s.status === 'aceita' ? '✅ Aceita' : s.status === 'recusada' ? '🔴 Recusada' : '🟡 Pendente';
     var acoes = '';
     if(s.status === 'pendente'){
-      acoes = '<button class="btn btn-green btn-xs" onclick="atualizarStatusSolicit(' + s.id + ', 'aceita')">✅ Aceitar</button>' +
-              '<button class="btn btn-red btn-xs"   onclick="atualizarStatusSolicit(' + s.id + ', 'recusada')">❌ Recusar</button>';
+      acoes = '<button class="btn btn-green btn-xs" onclick="atualizarStatusSolicit(' + s.id + ', &quot;aceita&quot;)">&#9989; Aceitar</button>' +
+              '<button class="btn btn-red btn-xs"   onclick="atualizarStatusSolicit(' + s.id + ', &quot;recusada&quot;)">&#10060; Recusar</button>';
     }
     html += '<div class="table-card" style="padding:16px;margin-bottom:12px;border-left:4px solid ' + borderColor + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
@@ -2474,8 +2474,8 @@ function renderTopoSaber(){
             '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px">' +
-            '<button class="btn btn-outline btn-xs" onclick="abrirModalOlimpiada(''+ol.id+'')">✏️</button>' +
-            '<button class="btn btn-red btn-xs" onclick="excluirOlimpiada(''+ol.id+'')">🗑</button>' +
+            '<button class="btn btn-outline btn-xs" onclick="abrirModalOlimpiada(\'' + ol.id + '\')">✏️</button>' +
+            '<button class="btn btn-red btn-xs" onclick="excluirOlimpiada(\'' + ol.id + '\')">🗑</button>' +
           '</div>' +
         '</div>' +
       '</div>' +
