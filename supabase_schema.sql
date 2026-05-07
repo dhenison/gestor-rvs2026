@@ -310,6 +310,53 @@ INSERT INTO permissoes (funcionalidade, coordenador, secretaria, professor) VALU
 ON CONFLICT (funcionalidade) DO NOTHING;
 
 -- Usuário administrador padrão
-INSERT INTO usuarios (email, nome, cargo, perfil, turno) VALUES
-  ('dhenison@escola.seduc.pa.gov.br', 'Dhenison Carlos', 'Administrador do Sistema', 'admin', 'Geral')
+INSERT INTO usuarios (email, nome, cargo, perfil, turno, senha) VALUES
+  ('dhenison@escola.seduc.pa.gov.br', 'Dhenison Carlos', 'Administrador do Sistema', 'admin', 'Geral', 'admin123')
 ON CONFLICT (email) DO NOTHING;
+
+-- ============================================================
+--  FUNÇÕES RPC (bypass do schema cache do PostgREST)
+-- ============================================================
+
+-- salvar_usuario: Cria ou edita um usuário incluindo a senha
+-- Chamada via supabaseClient.rpc('salvar_usuario', {...})
+CREATE OR REPLACE FUNCTION salvar_usuario(
+  p_id     UUID,
+  p_nome   TEXT,
+  p_email  TEXT,
+  p_perfil TEXT,
+  p_turno  TEXT,
+  p_cargo  TEXT,
+  p_turma  TEXT,
+  p_avatar TEXT,
+  p_senha  TEXT
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_id UUID;
+BEGIN
+  IF p_id IS NOT NULL THEN
+    -- Editar usuário existente
+    UPDATE usuarios SET
+      nome              = p_nome,
+      email             = p_email,
+      perfil            = p_perfil,
+      turno             = p_turno,
+      cargo             = p_cargo,
+      turma_responsavel = p_turma,
+      avatar_url        = NULLIF(p_avatar, ''),
+      senha             = CASE WHEN p_senha <> '' THEN p_senha ELSE senha END
+    WHERE id = p_id;
+    v_id := p_id;
+  ELSE
+    -- Novo usuário
+    INSERT INTO usuarios (nome, email, perfil, turno, cargo, turma_responsavel, avatar_url, senha)
+    VALUES (p_nome, p_email, p_perfil, p_turno, p_cargo, p_turma, NULLIF(p_avatar,''), p_senha)
+    RETURNING id INTO v_id;
+  END IF;
+  RETURN v_id;
+END;
+$$;
