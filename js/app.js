@@ -2746,21 +2746,41 @@ async function salvarUsuario(){
 
   if(!nome || !email){ showToast('Preencha Nome e E-mail!','alerta'); return; }
 
-  // Password validation
+  // Validação de senha
   if(!id){
-    // New user — password is required
     if(!senha){ showToast('Defina uma senha para o novo usuário!','alerta'); return; }
     if(senha.length < 6){ showToast('A senha deve ter ao menos 6 caracteres.','alerta'); return; }
     if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
   } else if(senha){
-    // Editing — only validate if a new password was typed
     if(senha.length < 6){ showToast('A nova senha deve ter ao menos 6 caracteres.','alerta'); return; }
     if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
   }
 
+  // ── Tenta usar RPC (ignora schema cache, salva senha diretamente) ──────────
+  const { data: rpcId, error: rpcErr } = await supabaseClient.rpc('salvar_usuario', {
+    p_id:     id     ? id    : null,
+    p_nome:   nome,
+    p_email:  email,
+    p_perfil: perfil,
+    p_turno:  turno,
+    p_cargo:  cargo,
+    p_turma:  turma,
+    p_avatar: avatar,
+    p_senha:  senha
+  });
+
+  if(!rpcErr){
+    // RPC funcionou — tudo salvo incluindo senha
+    closeModal('modal-usuario');
+    showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
+    await carregarUsuarios();
+    return;
+  }
+
+  // ── Fallback: RPC ainda não existe → salva dados sem senha ─────────────────
+  console.warn('[salvarUsuario] RPC indisponível, usando fallback:', rpcErr.message);
+
   const payload = { nome, email, perfil, turno, cargo, turma_responsavel: turma, avatar_url: avatar||null };
-  // NOTA: senha NÃO entra no payload principal — é atualizada em chamada separada
-  //       para evitar o erro de schema cache do Supabase/PostgREST.
 
   let error;
   if(id){
@@ -2771,31 +2791,12 @@ async function salvarUsuario(){
 
   if(error){ showToast('Erro ao salvar: '+error.message,'evasao'); return; }
 
-  // ── PASSO 2: Atualiza senha em chamada separada (tolerante a cache do Supabase) ──
-  if(senha){
-    let targetId = id;
-    if(!targetId){
-      // Novo usuário: busca o id recém-gerado
-      const { data: novo } = await supabaseClient
-        .from('usuarios').select('id').eq('email', email).maybeSingle();
-      targetId = novo?.id || null;
-    }
-    if(targetId){
-      const { error: sErr } = await supabaseClient
-        .from('usuarios').update({ senha }).eq('id', targetId);
-      if(sErr){
-        console.warn('[senha]', sErr.message);
-        if(sErr.message.includes('schema cache') || sErr.message.includes('column')){
-          showToast('Dados salvos! Para ativar a senha, recarregue o cache do banco.','alerta');
-        } else {
-          showToast('Dados salvos, mas erro na senha: '+sErr.message,'alerta');
-        }
-      }
-    }
-  }
-
   closeModal('modal-usuario');
-  showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
+  if(senha){
+    showToast('Dados salvos! A senha será ativada após a função SQL ser criada no banco.','alerta');
+  } else {
+    showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
+  }
   await carregarUsuarios();
 }
 
