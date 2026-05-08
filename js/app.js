@@ -2775,37 +2775,10 @@ async function salvarUsuario(){
     showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
     await carregarUsuarios();
     return;
-  }
-
-  // ── Fallback: RPC falhou — mostra erro real e salva dados sem senha ────────
-  console.error('[salvarUsuario] Erro no RPC:', rpcErr.code, rpcErr.message, rpcErr.details);
-
-  // Se for erro de permissão ou função não encontrada, mostra mensagem clara
-  const isPermErr  = rpcErr.code === 'PGRST202' || rpcErr.message?.includes('Could not find');
-  const isGrantErr = rpcErr.code === '42501'    || rpcErr.message?.includes('permission denied');
-  if(isPermErr || isGrantErr){
-    showToast('Erro de permissão no banco. Execute o GRANT no Supabase SQL Editor.','evasao');
-    return;
-  }
-
-  const payload = { nome, email, perfil, turno, cargo, turma_responsavel: turma, avatar_url: avatar||null };
-
-  let error;
-  if(id){
-    ({error} = await supabaseClient.from('usuarios').update(payload).eq('id', id));
-  } else {
-    ({error} = await supabaseClient.from('usuarios').insert(payload));
-  }
-
-  if(error){ showToast('Erro ao salvar: '+error.message,'evasao'); return; }
-
-  closeModal('modal-usuario');
-  if(senha){
-    showToast('Dados salvos! A senha será ativada após a função SQL ser criada no banco.','alerta');
-  } else {
-    showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
-  }
-  await carregarUsuarios();
+  }\n
+  // ── Fallback: RPC falhou — exibe o erro real ──────────────────────────────
+  console.error('[RPC salvar_usuario]', rpcErr.code, rpcErr.message);
+  showToast('Erro ao salvar: ' + (rpcErr.message || 'Verifique o console.'), 'evasao');
 }
 
 async function excluirUsuario(id, nome){
