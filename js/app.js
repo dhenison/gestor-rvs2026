@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    RVS ESCOLAR — app.js — versão definitiva
    ============================================================ */
 
@@ -2775,7 +2775,7 @@ async function salvarUsuario(){
     showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
     await carregarUsuarios();
     return;
-  }\n
+  }
   // ── Fallback: RPC falhou — exibe o erro real ──────────────────────────────
   console.error('[RPC salvar_usuario]', rpcErr.code, rpcErr.message);
   showToast('Erro ao salvar: ' + (rpcErr.message || 'Verifique o console.'), 'evasao');
