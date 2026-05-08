@@ -2758,7 +2758,7 @@ async function salvarUsuario(){
 
   // ── Tenta usar RPC (ignora schema cache, salva senha diretamente) ──────────
   const { data: rpcId, error: rpcErr } = await supabaseClient.rpc('salvar_usuario', {
-    p_id:     id     ? id    : null,
+    p_id:     id ? id : null,
     p_nome:   nome,
     p_email:  email,
     p_perfil: perfil,
@@ -2777,8 +2777,16 @@ async function salvarUsuario(){
     return;
   }
 
-  // ── Fallback: RPC ainda não existe → salva dados sem senha ─────────────────
-  console.warn('[salvarUsuario] RPC indisponível, usando fallback:', rpcErr.message);
+  // ── Fallback: RPC falhou — mostra erro real e salva dados sem senha ────────
+  console.error('[salvarUsuario] Erro no RPC:', rpcErr.code, rpcErr.message, rpcErr.details);
+
+  // Se for erro de permissão ou função não encontrada, mostra mensagem clara
+  const isPermErr  = rpcErr.code === 'PGRST202' || rpcErr.message?.includes('Could not find');
+  const isGrantErr = rpcErr.code === '42501'    || rpcErr.message?.includes('permission denied');
+  if(isPermErr || isGrantErr){
+    showToast('Erro de permissão no banco. Execute o GRANT no Supabase SQL Editor.','evasao');
+    return;
+  }
 
   const payload = { nome, email, perfil, turno, cargo, turma_responsavel: turma, avatar_url: avatar||null };
 

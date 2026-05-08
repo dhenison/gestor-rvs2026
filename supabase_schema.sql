@@ -360,3 +360,6 @@ BEGIN
   RETURN v_id;
 END;
 $$;
+
+-- Permissão de execução para o app (anon = não autenticado, authenticated = logado)
+GRANT EXECUTE ON FUNCTION salvar_usuario TO anon, authenticated;
