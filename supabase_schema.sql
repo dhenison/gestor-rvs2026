@@ -319,8 +319,8 @@ ON CONFLICT (email) DO NOTHING;
 -- ============================================================
 
 -- salvar_usuario: Cria ou edita um usuário incluindo a senha
--- Chamada via supabaseClient.rpc('salvar_usuario', {...})
-CREATE OR REPLACE FUNCTION salvar_usuario(
+-- Chamada via: supabaseClient.rpc('salvar_usuario', { p_id, p_nome, ... })
+CREATE OR REPLACE FUNCTION public.salvar_usuario(
   p_id     UUID,
   p_nome   TEXT,
   p_email  TEXT,
@@ -334,6 +334,7 @@ CREATE OR REPLACE FUNCTION salvar_usuario(
 RETURNS UUID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_id UUID;
@@ -361,5 +362,5 @@ BEGIN
 END;
 $$;
 
--- Permissão de execução para o app (anon = não autenticado, authenticated = logado)
-GRANT EXECUTE ON FUNCTION salvar_usuario TO anon, authenticated;
+-- Permissão para o app chamar a função (anon = app, authenticated = logado)
+GRANT EXECUTE ON FUNCTION public.salvar_usuario TO anon, authenticated;
