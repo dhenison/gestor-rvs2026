@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    RVS ESCOLAR — app.js — versão definitiva
    ============================================================ */
 
@@ -230,25 +230,70 @@ async function carregarDados(){
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
-function doLogin(){
-  const email = document.getElementById('email-input').value;
-  const pass  = document.getElementById('pass-input').value;
-  if(email !== 'dhenison@escola.seduc.pa.gov.br' || pass !== 'M@gnatha2026'){
-    document.getElementById('login-error').style.display='block'; return;
+async function doLogin(){
+  const email = (document.getElementById('email-input').value||'').trim();
+  const pass  = (document.getElementById('pass-input').value||'');
+  const errEl = document.getElementById('login-error');
+  const btn   = document.querySelector('#login-screen button');
+
+  if(!email || !pass){ errEl.style.display='block'; return; }
+  errEl.style.display='none';
+
+  // Loading state
+  if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
+
+  // ── 1. Fallback fixo para o administrador master ───────────────────────────
+  if(email === 'dhenison@escola.seduc.pa.gov.br' && pass === 'M@gnatha2026'){
+    _entrarNoSistema({ nome:'Dhenison Carlos', perfil:'admin', email });
+    if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
+    return;
   }
+
+  // ── 2. Consulta na tabela usuarios do Supabase ─────────────────────────────
+  try {
+    const { data, error } = await supabaseClient
+      .from('usuarios')
+      .select('id, nome, perfil, email, senha, turno, cargo')
+      .eq('email', email)
+      .maybeSingle();
+
+    if(error) throw error;
+
+    if(!data || !data.senha || data.senha !== pass){
+      errEl.style.display='block';
+      if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
+      return;
+    }
+
+    _entrarNoSistema(data);
+  } catch(err){
+    console.error('[login]', err);
+    errEl.style.display='block';
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+  }
+
+  if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
+}
+
+function _entrarNoSistema(usuario){
+  // Guarda usuário logado na sessão
+  try { sessionStorage.setItem('rvs_user', JSON.stringify(usuario)); } catch(_){}
   const ls = document.getElementById('login-screen');
   ls.classList.add('hidden');
-  setTimeout(()=>ls.style.display='none',500);
+  setTimeout(()=>ls.style.display='none', 500);
   document.getElementById('app').classList.add('visible');
   initApp();
 }
+
 function doLogout(){
   salvarDados();
+  try { sessionStorage.removeItem('rvs_user'); } catch(_){}
   const ls = document.getElementById('login-screen');
   ls.style.display='flex';
   setTimeout(()=>ls.classList.remove('hidden'),10);
   document.getElementById('app').classList.remove('visible');
 }
+
 document.addEventListener('DOMContentLoaded',()=>{
   ['pass-input','email-input'].forEach(id=>{
     document.getElementById(id)?.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
