@@ -44,14 +44,23 @@ const LIVROS = [
   {nome:'Prepara Língua Portuguesa',icon:'📝',entregues:0,total:0},
 ];
 
-const PERMS = [
-  {func:'Dashboard',coord:true,sec:true,prof:false},
-  {func:'Frequência — Editar',coord:true,sec:false,prof:true},
-  {func:'Alunos — Cadastrar',coord:true,sec:true,prof:false},
-  {func:'Ocorrências — Registrar',coord:true,sec:false,prof:true},
-  {func:'Livros — Editar',coord:true,sec:true,prof:false},
-  {func:'Chat — Acessar',coord:true,sec:true,prof:true},
-  {func:'Permissões — Editar',coord:true,sec:false,prof:false},
+let PERMS = [
+  {func:'Dashboard', id:'page-dashboard', coord:true,sec:true,prof:false},
+  {func:'Agenda Pedagógica', id:'page-agenda', coord:true,sec:true,prof:true},
+  {func:'Turmas', id:'page-turmas', coord:true,sec:true,prof:true},
+  {func:'Alunos', id:'page-alunos', coord:true,sec:true,prof:false},
+  {func:'Frequência', id:'page-frequencia', coord:true,sec:false,prof:true},
+  {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true,sec:true,prof:true},
+  {func:'RVS Agenda', id:'page-rvs-agenda', coord:true,sec:true,prof:true},
+  {func:'Horário de Aula', id:'page-horarios', coord:true,sec:true,prof:true},
+  {func:'Topo do Saber', id:'page-topo-saber', coord:true,sec:true,prof:true},
+  {func:'Transporte', id:'page-transporte', coord:true,sec:true,prof:false},
+  {func:'Ocorrências', id:'page-ocorrencias', coord:true,sec:false,prof:true},
+  {func:'Livros Didáticos', id:'page-livros', coord:true,sec:true,prof:false},
+  {func:'Relatórios', id:'page-relatorios', coord:true,sec:true,prof:false},
+  {func:'Chat RVS', id:'page-chat', coord:true,sec:true,prof:true},
+  {func:'Permissões', id:'page-permissoes', coord:true,sec:false,prof:false},
+  {func:'Usuários', id:'page-usuarios', coord:true,sec:false,prof:false}
 ];
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
@@ -129,13 +138,18 @@ function salvarDados(){
 
 async function carregarDados(){
   try {
-    const [{data: turmas}, {data: alunos}, {data: ocorrencias}, {data: eventos}, {data: rotas}] = await Promise.all([
+    const [{data: turmas}, {data: alunos}, {data: ocorrencias}, {data: eventos}, {data: rotas}, {data: configData}] = await Promise.all([
       supabaseClient.from('turmas').select('*'),
       supabaseClient.from('alunos').select('*'),
       supabaseClient.from('ocorrencias').select('*'),
       supabaseClient.from('eventos').select('*'),
-      supabaseClient.from('rotas').select('*')
+      supabaseClient.from('rotas').select('*'),
+      supabaseClient.from('configuracoes').select('*').eq('chave', 'permissoes').maybeSingle().catch(()=>({data:null}))
     ]);
+
+    if (configData && configData.valor) {
+      PERMS = configData.valor;
+    }
 
     if (turmas) {
       TURMAS_DATA = turmas.map(t => ({
@@ -298,6 +312,7 @@ function _entrarNoSistema(usuario){
   document.getElementById('app').classList.add('visible');
   
   updateSidebarProfile();
+  aplicarPermissoesUI();
   initApp();
 }
 
@@ -2088,10 +2103,71 @@ function sendChatMsg(){
 // ─── PERMISSÕES ───────────────────────────────────────────────────────────────
 function renderPermissoes(){
   const b=document.getElementById('perm-tbody'); if(!b)return;
-  b.innerHTML=PERMS.map(p=>`<tr><td><strong>${p.func}</strong></td>
+  b.innerHTML=PERMS.map((p, i)=>`<tr><td><strong>${p.func}</strong></td>
     ${['coord','sec','prof'].map(r=>`<td><label class="perm-toggle">
-      <input type="checkbox" ${p[r]?'checked':''}><span class="perm-toggle-track"></span><span class="perm-toggle-thumb"></span>
+      <input type="checkbox" onchange="togglePermissao(${i}, '${r}')" ${p[r]?'checked':''}><span class="perm-toggle-track"></span><span class="perm-toggle-thumb"></span>
     </label></td>`).join('')}</tr>`).join('');
+}
+
+async function togglePermissao(index, role) {
+  PERMS[index][role] = !PERMS[index][role];
+  renderPermissoes();
+  aplicarPermissoesUI();
+  
+  const { error } = await supabaseClient.from('configuracoes').upsert({
+    chave: 'permissoes',
+    valor: PERMS
+  });
+  if (error) {
+    console.error('Erro ao salvar permissões no banco', error);
+    showToast('Erro ao salvar no banco. A tabela "configuracoes" existe?', 'alerta');
+  } else {
+    showToast('Permissões atualizadas para todos!', 'sucesso');
+  }
+}
+
+function aplicarPermissoesUI() {
+  const user = getCurrentUser();
+  const role = user ? user.perfil : PERFIL_ATUAL;
+  const rKey = role === 'coordenador' ? 'coord' : role === 'secretaria' ? 'sec' : role === 'professor' ? 'prof' : 'admin';
+  
+  const navItems = document.querySelectorAll('.nav-item[onclick^="showPage("]');
+  let firstAllowedNav = null;
+  let activeNavIsAllowed = false;
+  
+  navItems.forEach(nav => {
+    const match = nav.getAttribute('onclick').match(/showPage\(['"]([^'"]+)['"]/);
+    if (!match) return;
+    const pID = match[1];
+    if (pID === 'perfil') {
+      nav.style.display = 'flex';
+      return;
+    }
+    
+    const pageIdFull = 'page-' + pID;
+    const permConfig = PERMS.find(p => p.id === pageIdFull);
+    
+    let isAllowed = false;
+    if (role === 'admin') {
+      isAllowed = true;
+    } else if (permConfig) {
+      isAllowed = !!permConfig[rKey];
+    }
+    
+    nav.style.display = isAllowed ? 'flex' : 'none';
+    
+    if (isAllowed && !firstAllowedNav && pID !== 'chat' && pID !== 'permissoes') {
+      firstAllowedNav = nav;
+    }
+    if (isAllowed && nav.classList.contains('active')) {
+      activeNavIsAllowed = true;
+    }
+  });
+
+  // Se a página atualmente ativa não for permitida, navega para a primeira permitida
+  if (!activeNavIsAllowed && firstAllowedNav) {
+    firstAllowedNav.click();
+  }
 }
 
 

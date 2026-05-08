@@ -364,3 +364,12 @@ $$;
 
 -- Permiss√£o para o app chamar a fun√ß√£o (anon = app, authenticated = logado)
 GRANT EXECUTE ON FUNCTION public.salvar_usuario TO anon, authenticated;
+
+ - -    % %  C O N F I G U R A « ’ E S   G L O B A I S    % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+ C R E A T E   T A B L E   I F   N O T   E X I S T S   c o n f i g u r a c o e s   ( 
+     c h a v e   T E X T   P R I M A R Y   K E Y , 
+     v a l o r   J S O N B   N O T   N U L L , 
+     u p d a t e d _ a t   T I M E S T A M P T Z   D E F A U L T   N O W ( ) 
+ ) ; 
+  
+ 
