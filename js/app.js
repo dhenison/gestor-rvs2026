@@ -9,7 +9,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
 const ADMIN_SENHA = 'M@gnatha2026';
-let PERFIL_ATUAL  = 'admin';
+let PERFIL_ATUAL  = 'professor';
 
 let TURMAS_DATA  = [];
 let ALUNOS_DATA  = [];
@@ -276,8 +276,12 @@ async function doLogin(){
 }
 
 function _entrarNoSistema(usuario){
+  // Atualiza variável global de perfil
+  PERFIL_ATUAL = usuario.perfil || 'professor';
+  
   // Guarda usuário logado na sessão
   try { sessionStorage.setItem('rvs_user', JSON.stringify(usuario)); } catch(_){}
+  
   const ls = document.getElementById('login-screen');
   ls.classList.add('hidden');
   setTimeout(()=>ls.style.display='none', 500);
@@ -295,6 +299,15 @@ function doLogout(){
 }
 
 document.addEventListener('DOMContentLoaded',()=>{
+  // Verifica se o usuário já estava logado na sessão atual
+  try {
+    const savedUser = sessionStorage.getItem('rvs_user');
+    if (savedUser) {
+      const usuario = JSON.parse(savedUser);
+      _entrarNoSistema(usuario);
+    }
+  } catch(e) {}
+
   ['pass-input','email-input'].forEach(id=>{
     document.getElementById(id)?.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
   });
