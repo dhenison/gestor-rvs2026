@@ -198,12 +198,22 @@ async function carregarDados(){
              if (ev.observacoes && ev.observacoes.startsWith('subtipo:')) {
                  tipoReal = ev.observacoes.replace('subtipo:', '').split('|')[0];
              }
+             let parsedObs = ev.observacoes || '';
+             let extra = {};
+             if (parsedObs.startsWith('{')) {
+               try {
+                 const obj = JSON.parse(parsedObs);
+                 parsedObs = obj.desc || '';
+                 extra = obj;
+               } catch(e){}
+             }
              CALENDARIO[dKey] = {
                  id: ev.id,
                  tipo: tipoReal,
                  label: ev.titulo,
                  responsavel: ev.responsavel,
-                 desc: ev.observacoes || ''
+                 desc: parsedObs,
+                 ...extra
              };
          }
       });
@@ -286,7 +296,36 @@ function _entrarNoSistema(usuario){
   ls.classList.add('hidden');
   setTimeout(()=>ls.style.display='none', 500);
   document.getElementById('app').classList.add('visible');
+  
+  updateSidebarProfile();
   initApp();
+}
+
+function getCurrentUser() {
+  try {
+    const raw = sessionStorage.getItem('rvs_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function updateSidebarProfile() {
+  const user = getCurrentUser();
+  if(!user) return;
+  const nameEl = document.getElementById('sidebar-user-name');
+  const roleEl = document.getElementById('sidebar-user-role');
+  const avatarEl = document.getElementById('sidebar-user-avatar');
+  
+  if(nameEl) nameEl.textContent = user.nome || 'Usuário';
+  if(roleEl) {
+    const pLabel = {admin:'Administrador',coordenador:'Coordenador',secretaria:'Secretaria',professor:'Professor'};
+    roleEl.textContent = pLabel[user.perfil] || 'Membro';
+  }
+  if(avatarEl && user.nome) {
+    const parts = user.nome.split(' ');
+    let init = parts[0].charAt(0);
+    if(parts.length > 1) init += parts[parts.length-1].charAt(0);
+    avatarEl.textContent = init.toUpperCase();
+  }
 }
 
 function doLogout(){
@@ -1243,7 +1282,7 @@ async function salvarTipoCal(){
     savedId = data.id;
   }
 
-  CALENDARIO[key] = {id: savedId, tipo, turno, label: labelFinal, bimestre, hIni, hFim, responsavel:'Dhenison Carlos'};
+  CALENDARIO[key] = {id: savedId, tipo, turno, label: labelFinal, bimestre, hIni, hFim, responsavel: getCurrentUser()?.nome || 'Gestão'};
   closeModal('modal-cal-tipo');
   renderCalendar(); renderFiltrosDiaFreq();
   showToast('Calendário atualizado e salvo no banco!','sucesso');
@@ -1294,7 +1333,7 @@ function salvarAgendamento(){
   if(!CALENDARIO[key]||!TIPO_LETIVO_FLAG[CALENDARIO[key].tipo]){
     showToast('Só é possível agendar em dias letivos já cadastrados','evasao'); return;
   }
-  CALENDARIO[key].agendamento={titulo,tipo,turno,hIni,hFim,obs,responsavel:'Dhenison Carlos'};
+  CALENDARIO[key].agendamento={titulo,tipo,turno,hIni,hFim,obs,responsavel: getCurrentUser()?.nome || 'Gestão'};
   closeModal('modal-event');
   showToast('Agendamento registrado! — '+titulo,'sucesso');
   renderCalendar(); salvarDados();
@@ -1651,17 +1690,35 @@ function saveOcorrencia(){
   const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰'};
   const alunoSel=document.getElementById('sel-aluno-principal')?.value;
   const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
+  
+  const oData = new Date().toLocaleDateString('pt-BR');
   OCORR_DATA.push({
     id:Date.now(),tipo,icon:icons[tipo]||'⚠️',aluno:nomes||'—',turma,desc,
     hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
-    data:new Date().toLocaleDateString('pt-BR'),
+    data: oData,
     tratada:false,aguardandoPais:comunicarPais,origem:'manual'
   });
+  
+  // Salva no histórico de todos os envolvidos imediatamente
+  const arrayNomes = [alunoSel, ...envolvidos.map(e=>e.nome)].filter(Boolean);
+  arrayNomes.forEach(n => {
+    const al = ALUNOS_DATA.find(a => a.nome === n);
+    if(al) {
+      al.historico = al.historico || [];
+      al.historico.push({
+        tipo: 'ocorrencia',
+        titulo: 'Ocorrência: ' + tipo,
+        desc: desc || 'Registro disciplinar gerado.',
+        data: oData
+      });
+    }
+  });
+
   envolvidos=[];
   const el=document.getElementById('envolvidos-list-ocorr');
   if(el) el.innerHTML='';
   closeModal('modal-ocorr');
-  showToast('Ocorrência registrada!','sucesso');
+  showToast('Ocorrência registrada e salva na ficha do aluno!','sucesso');
   renderOcorrencias(); renderDashOcorr(); salvarDados();
 }
 
@@ -1693,7 +1750,7 @@ function atualizarAlunosPorTurmaOcorr(){
   const turma=document.getElementById('input-ocorr-turma')?.value;
   const sel=document.getElementById('sel-aluno-principal');
   if(!sel)return;
-  const alunos=turma?ALUNOS_DATA.filter(a=>a.turma===turma):[];
+  const alunos=turma ? ALUNOS_DATA.filter(a=> (a.turma||'').trim() === turma.trim()) : [];
   sel.innerHTML=['<option value="">Selecione o aluno principal</option>',...alunos.map(a=>`<option value="${a.nome}">${a.nome}</option>`)].join('');
 }
 
@@ -2526,14 +2583,15 @@ async function salvarSolicitacao(){
   const hIni = document.getElementById('solicit-hora-ini')?.value;
   const hFim = document.getElementById('solicit-hora-fim')?.value;
   const obs = (document.getElementById('solicit-obs')?.value || '').trim();
+  const linkDrive = (document.getElementById('solicit-link-drive')?.value || '').trim();
   const turmaSel = document.getElementById('solicit-turmas');
   const turmas = turmaSel ? Array.from(turmaSel.selectedOptions).map(o => o.value).join(', ') : '';
   if(!tipo || !turno || !data){ showToast('Preencha Tipo, Turno e Data!','alerta'); return; }
   const nova = {
-    id: Date.now(), tipo, turno, turmas, data, hIni, hFim, obs,
+    id: Date.now(), tipo, turno, turmas, data, hIni, hFim, obs, linkDrive,
     status: 'pendente',
     criadoEm: new Date().toLocaleDateString('pt-BR'),
-    responsavel: 'Dhenison Carlos'
+    responsavel: getCurrentUser()?.nome || 'Usuário'
   };
   SOLICIT_DATA.unshift(nova);
   salvarDados();
@@ -2575,6 +2633,7 @@ function renderSolicitacoes(){
       acoes = '<button class="btn btn-green btn-xs" onclick="atualizarStatusSolicit(' + s.id + ', &quot;aceita&quot;)">&#9989; Aceitar</button>' +
               '<button class="btn btn-red btn-xs"   onclick="atualizarStatusSolicit(' + s.id + ', &quot;recusada&quot;)">&#10060; Recusar</button>';
     }
+    var linkBtn = s.linkDrive ? '<a href="' + s.linkDrive + '" target="_blank" class="btn btn-primary btn-xs" style="text-decoration:none">📂 Abrir Drive</a>' : '';
     html += '<div class="table-card" style="padding:16px;margin-bottom:12px;border-left:4px solid ' + borderColor + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
       '<div>' +
@@ -2584,6 +2643,7 @@ function renderSolicitacoes(){
         '<div style="font-size:11px;color:#9ca3af;margin-top:4px">Por: ' + s.responsavel + ' · ' + s.criadoEm + '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
+        linkBtn +
         '<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:' + badgeBg + ';color:' + badgeTxt + '">' + badgeLabel + '</span>' +
         acoes +
         '<button class="btn btn-gray btn-xs" onclick="excluirSolicit(' + s.id + ')">🗑</button>' +
