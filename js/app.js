@@ -593,38 +593,52 @@ async function renderTurmasTable(){
   let turmas = turno ? TURMAS_DATA.filter(t=>t.turno===turno) : TURMAS_DATA;
   if(!turmas.length){b.innerHTML=emptyTr('🏷️','Nenhuma turma encontrada','Cadastre turmas ou altere o filtro',8);return;}
 
-  // Busca frequência de hoje do Supabase
+  // Busca frequência do Supabase respeitando o filtro de data (ou hoje)
+  const {dia} = getDashFiltros();
   const hoje = new Date().toISOString().split('T')[0];
-  let freqHoje = {}; // aluno_id → {entrada, saida}
+  const targetDate = dia || hoje;
+  
+  let freqData = {}; // aluno_id → {entrada, saida}
   try{
-    const {data:fq} = await supabaseClient.from('frequencia').select('aluno_id,tipo,status').eq('data',hoje);
+    const {data:fq} = await supabaseClient.from('frequencia').select('aluno_id,tipo,status').eq('data',targetDate);
     if(fq) fq.forEach(f=>{
-      if(!freqHoje[f.aluno_id]) freqHoje[f.aluno_id]={};
-      freqHoje[f.aluno_id][f.tipo]=f.status;
+      if(!freqData[f.aluno_id]) freqData[f.aluno_id]={};
+      freqData[f.aluno_id][f.tipo]=f.status;
     });
-  }catch(e){console.warn('freq hoje:',e);}
+  }catch(e){console.warn('freq fetch:',e);}
 
   b.innerHTML=turmas.map(t=>{
     const alunosTurma=ALUNOS_DATA.filter(a=>a.turma===t.code);
     const total=alunosTurma.length;
+    
     // Conta por freq real
     let entP=0,saiP=0,evasoes=0;
+    let entTotal=0, saiTotal=0; // Total de registros para saber se já foi lançada
+    
     alunosTurma.forEach(a=>{
-      const fq=freqHoje[a.id]||{};
+      const fq=freqData[a.id]||{};
+      if(fq.entrada) entTotal++;
+      if(fq.saida) saiTotal++;
+      
       if(fq.entrada==='P') entP++;
       if(fq.saida==='P') saiP++;
       if(fq.entrada==='P'&&fq.saida==='F') evasoes++;
     });
-    // Fallback: usa chamada em memória se não há dados no Supabase
-    if(total>0&&entP===0&&saiP===0){
+    
+    // Fallback: usa chamada em memória se não há dados no Supabase e a data é hoje
+    if(total>0 && entTotal===0 && saiTotal===0 && targetDate === hoje){
       entP=t.entradaQtd||0;
       saiP=t.saidaQtd||0;
+      entTotal = t.entradaConsolidada ? total : 0;
+      saiTotal = t.saidaConsolidada ? total : 0;
     }
+    
     const faltas=total-entP;
     const entPct=total>0?Math.round(entP/total*100):0;
     const saiPct=total>0?Math.round(saiP/total*100):0;
-    const stEnt=t.entradaConsolidada||entP>0?`<span class="metric-badge badge-green">${entPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
-    const stSai=t.saidaConsolidada||saiP>0?`<span class="metric-badge badge-green">${saiPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
+    
+    const stEnt=entTotal>0?`<span class="metric-badge badge-green">${entPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
+    const stSai=saiTotal>0?`<span class="metric-badge badge-green">${saiPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
     const evasBadge=evasoes>0?`<span class="metric-badge badge-red">⚠ ${evasoes}</span>`:'';
     return`<tr>
       <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar">${t.code} ✏️</strong></td>
