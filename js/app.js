@@ -2185,24 +2185,52 @@ function toggleAlertaFiltros(){
   if(filtros) filtros.style.display = tipo === 'fora-sala' ? 'block' : 'none';
 }
 
-function popularAlunosAlerta(){
-  const turma = document.getElementById('alerta-turma')?.value;
+async function popularAlunosAlerta(){
+  const turmaCode = document.getElementById('alerta-turma')?.value;
   const sel = document.getElementById('alerta-aluno');
   if(!sel)return;
   
-  if (!ALUNOS_DATA || ALUNOS_DATA.length === 0) {
-    showToast('Nenhum aluno cadastrado no sistema!', 'alerta');
+  if (!turmaCode) {
+    sel.innerHTML = '<option value="">Selecione o aluno principal</option>';
     return;
   }
   
-  const alunos = turma ? ALUNOS_DATA.filter(a => (a.turma||'').trim() === turma.trim()) : [];
+  sel.innerHTML = '<option value="">Carregando alunos do banco...</option>';
   
-  if (turma && alunos.length === 0) {
-    showToast('Nenhum aluno encontrado para a turma selecionada.', 'info');
+  // Buscar a turma selecionada no banco para pegar o ID exato
+  const { data: turmaData, error: errTurma } = await supabaseClient
+    .from('turmas')
+    .select('id')
+    .eq('code', turmaCode.trim())
+    .maybeSingle();
+    
+  if(errTurma || !turmaData) {
+    showToast('Erro ao consultar turma no banco de dados.', 'alerta');
+    sel.innerHTML = '<option value="">Selecione o aluno principal</option>';
+    return;
+  }
+  
+  // Buscar todos os alunos que tem o ID da turma
+  const { data: alunosData, error: errAlunos } = await supabaseClient
+    .from('alunos')
+    .select('nome')
+    .eq('turma_id', turmaData.id)
+    .order('nome', {ascending: true});
+  
+  if (errAlunos) {
+    console.error('Erro alunos:', errAlunos);
+    showToast('Erro ao puxar alunos do banco.', 'alerta');
+    return;
+  }
+  
+  if (!alunosData || alunosData.length === 0) {
+    showToast('O banco de dados não tem alunos vinculados a esta turma.', 'alerta');
+    sel.innerHTML = '<option value="">Nenhum aluno (Verifique a aba Alunos)</option>';
+    return;
   }
   
   sel.innerHTML = '<option value="">Selecione o aluno principal</option>' + 
-    alunos.map(a => `<option value="${a.nome}">${a.nome}</option>`).join('');
+    alunosData.map(a => `<option value="${a.nome}">${a.nome}</option>`).join('');
 }
 
 async function enviarAlertaChat(){
