@@ -373,3 +373,26 @@ GRANT EXECUTE ON FUNCTION public.salvar_usuario TO anon, authenticated;
  ) ; 
   
  
+ - -    % %  C H A T   M E N S A G E N S    % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+ C R E A T E   T A B L E   I F   N O T   E X I S T S   c h a t _ m e n s a g e n s   ( 
+     i d   U U I D   P R I M A R Y   K E Y   D E F A U L T   u u i d _ g e n e r a t e _ v 4 ( ) , 
+     s e g m e n t o   T E X T   N O T   N U L L   C H E C K   ( s e g m e n t o   I N   ( ' c o o r d ' ,   ' s e c ' ,   ' p r o f ' ,   ' g e r a l ' ) ) , 
+     r e m e t e n t e   T E X T   N O T   N U L L , 
+     p e r f i l _ r e m e t e n t e   T E X T   N O T   N U L L , 
+     m e n s a g e m   T E X T   N O T   N U L L , 
+     t i p o   T E X T   D E F A U L T   ' t e x t '   C H E C K   ( t i p o   I N   ( ' t e x t ' ,   ' a l e r t ' ,   ' i m a g e ' ) ) , 
+     c r e a t e d _ a t   T I M E S T A M P T Z   D E F A U L T   N O W ( ) 
+ ) ; 
+ 
+ - -   H a b i l i t a r   r e p l i c a ç ã o   e m   t e m p o   r e a l   p a r a   o   C h a t 
+ A L T E R   P U B L I C A T I O N   s u p a b a s e _ r e a l t i m e   A D D   T A B L E   c h a t _ m e n s a g e n s ; 
+ 
+ - -   F u n ç ã o   p a r a   l i m p a r   m e n s a g e n s   c o m   m a i s   d e   4 8   h o r a s 
+ C R E A T E   O R   R E P L A C E   F U N C T I O N   l i m p a r _ c h a t _ a n t i g o ( ) 
+ R E T U R N S   v o i d   A S   \ $ \ $ 
+ B E G I N 
+     D E L E T E   F R O M   c h a t _ m e n s a g e n s   W H E R E   c r e a t e d _ a t   <   N O W ( )   -   I N T E R V A L   ' 4 8   h o u r s ' ; 
+ E N D ; 
+ \ $ \ $   L A N G U A G E   p l p g s q l ; 
+  
+ 

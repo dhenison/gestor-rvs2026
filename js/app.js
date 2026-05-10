@@ -138,6 +138,11 @@ function salvarDados(){
 
 async function carregarDados(){
   try {
+    // 1. Acionar rotina de limpeza de mensagens antigas
+    supabaseClient.rpc('limpar_chat_antigo').then(({error}) => {
+       if(error) console.warn('Erro ao limpar chat antigo:', error);
+    });
+
     const [{data: turmas}, {data: alunos}, {data: ocorrencias}, {data: eventos}, {data: rotas}, {data: configData}] = await Promise.all([
       supabaseClient.from('turmas').select('*'),
       supabaseClient.from('alunos').select('*'),
@@ -314,6 +319,7 @@ function _entrarNoSistema(usuario){
   updateSidebarProfile();
   aplicarPermissoesUI();
   initApp();
+  initChatRealtime();
 }
 
 function getCurrentUser() {
@@ -2062,42 +2068,189 @@ function fecharLivroAlunos(){
   livroAtualIdx=-1;
 }
 
-// ─── CHAT ─────────────────────────────────────────────────────────────────────
-function renderChat(seg){
-  chatSegment=seg; chatContact=0;
-  const el=document.getElementById('chat-contacts'); if(!el)return;
-  const data=CHAT_DATA[seg];
-  el.innerHTML=data.length
-    ?data.map((c,i)=>`<div class="chat-contact ${i===0?'active':''}" onclick="selectContact(${i},this)">
-        <div class="chat-contact-avatar" style="background:${c.color}">${c.name[0]}</div>
-        <div class="chat-contact-info"><h4>${c.name}</h4><p>${c.role}</p></div>
-      </div>`).join('')
-    :'<div style="padding:20px;text-align:center;color:var(--gray4);font-size:13px">Nenhum contato</div>';
-  renderChatMsgs(0);
+// ─── CHAT RVS (Sincronizado Supabase Realtime) ───────────────────────────────
+let chatSubscription = null;
+let currentChatMessages = [];
+
+function initChatRealtime() {
+  if (chatSubscription) return;
+  chatSubscription = supabaseClient
+    .channel('public:chat_mensagens')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensagens' }, payload => {
+      const novaMsg = payload.new;
+      if (novaMsg.segmento === chatSegment) {
+        currentChatMessages.push(novaMsg);
+        renderChatMsgsUI();
+      }
+    })
+    .subscribe();
 }
+
+async function carregarMensagensSegmento() {
+  const m = document.getElementById('chat-messages');
+  if(m) m.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray4);font-size:13px">Carregando mensagens...</div>';
+  const { data, error } = await supabaseClient
+    .from('chat_mensagens')
+    .select('*')
+    .eq('segmento', chatSegment)
+    .order('created_at', { ascending: true });
+  
+  if (error) {
+    console.error('Erro ao carregar chat:', error);
+    if(m) m.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red);font-size:13px">Erro ao carregar mensagens</div>';
+    return;
+  }
+  currentChatMessages = data || [];
+  renderChatMsgsUI();
+}
+
+function renderChat(seg){
+  chatSegment=seg; 
+  const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
+  document.getElementById('chat-current-name').textContent = 'Grupo ' + titles[seg];
+  
+  // Limpar os contatos fakes antigos
+  const el=document.getElementById('chat-contacts');
+  if(el) el.innerHTML = `<div class="chat-contact active">
+        <div class="chat-contact-avatar" style="background:var(--primary)">👥</div>
+        <div class="chat-contact-info"><h4>Grupo ${titles[seg]}</h4><p>Chat Coletivo</p></div>
+      </div>`;
+  
+  carregarMensagensSegmento();
+}
+
 function setChatSegment(seg,tab){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#page-chat .tab').forEach(t=>t.classList.remove('active'));
   tab.classList.add('active'); renderChat(seg);
 }
-function selectContact(i,el){
-  document.querySelectorAll('.chat-contact').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active'); chatContact=i; renderChatMsgs(i);
-  const d=CHAT_DATA[chatSegment][i];
-  document.getElementById('chat-current-name').textContent=d.name+' — '+d.role;
-}
-function renderChatMsgs(i){
+
+function renderChatMsgsUI(){
   const m=document.getElementById('chat-messages'); if(!m)return;
-  const data=CHAT_DATA[chatSegment][i];
-  if(!data){m.innerHTML=emptyState('💬','Selecione um contato','');return;}
-  m.innerHTML=data.msgs.map(msg=>`<div class="msg ${msg.t}">${msg.m}<div class="msg-time">${msg.h}</div></div>`).join('');
+  const myName = getCurrentUser()?.nome || 'Dhenison Carlos';
+  
+  if(!currentChatMessages.length){
+    m.innerHTML=emptyState('💬','Nenhuma mensagem nas últimas 48h','Comece a conversar!');
+    return;
+  }
+  
+  m.innerHTML = currentChatMessages.map(msg => {
+    const isMe = msg.remetente === myName;
+    const tClass = isMe ? 'sent' : 'received';
+    const timeStr = new Date(msg.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    let content = msg.mensagem;
+    
+    // Formatação especial se for alerta
+    if(msg.tipo === 'alert') {
+      content = `<strong style="color:var(--orange)">🚨 ALERTA:</strong><br/>${msg.mensagem}`;
+    }
+    
+    return `<div class="msg ${tClass}">
+      ${!isMe ? `<div style="font-size:10px;font-weight:bold;margin-bottom:4px;color:var(--primary)">${msg.remetente}</div>` : ''}
+      ${content}
+      <div class="msg-time">${timeStr}</div>
+    </div>`;
+  }).join('');
   m.scrollTop=m.scrollHeight;
 }
-function sendChatMsg(){
+
+async function sendChatMsg(){
   const inp=document.getElementById('chat-input-field');
   const val=inp?.value.trim(); if(!val)return;
-  const d=CHAT_DATA[chatSegment][chatContact]; if(!d)return;
-  d.msgs.push({t:'sent',m:val,h:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
-  renderChatMsgs(chatContact); inp.value=''; salvarDados();
+  const user = getCurrentUser() || {nome: 'Admin', perfil: 'admin'};
+  
+  inp.value='';
+  const novaMsg = {
+    segmento: chatSegment,
+    remetente: user.nome,
+    perfil_remetente: user.perfil,
+    mensagem: val,
+    tipo: 'text'
+  };
+  
+  // Exibição otimista
+  currentChatMessages.push({...novaMsg, created_at: new Date().toISOString()});
+  renderChatMsgsUI();
+  
+  const { error } = await supabaseClient.from('chat_mensagens').insert([novaMsg]);
+  if(error) console.error('Erro ao enviar mensagem:', error);
+}
+
+// ─── ALERTAS DO CHAT ──────────────────────────────────────────────────────────
+function toggleAlertaFiltros(){
+  const tipo = document.getElementById('alerta-tipo')?.value;
+  const filtros = document.getElementById('alerta-fora-sala-filtros');
+  if(filtros) filtros.style.display = tipo === 'fora-sala' ? 'block' : 'none';
+}
+
+function popularAlunosAlerta(){
+  const turma = document.getElementById('alerta-turma')?.value;
+  const sel = document.getElementById('alerta-aluno');
+  if(!sel)return;
+  const alunos = turma ? ALUNOS_DATA.filter(a => (a.turma||'').trim() === turma.trim()) : [];
+  sel.innerHTML = '<option value="">Selecione o aluno principal</option>' + 
+    alunos.map(a => `<option value="${a.nome}">${a.nome}</option>`).join('');
+}
+
+async function enviarAlertaChat(){
+  const tipo = document.getElementById('alerta-tipo')?.value;
+  const destino = document.getElementById('alerta-destino')?.value;
+  const msgExtra = document.getElementById('alerta-msg-extra')?.value.trim();
+  const turma = document.getElementById('alerta-turma')?.value;
+  const aluno = document.getElementById('alerta-aluno')?.value;
+  
+  if(tipo === 'fora-sala' && (!turma || !aluno)) {
+    showToast('Selecione a turma e o aluno!', 'alerta');
+    return;
+  }
+  
+  let msgFinal = '';
+  if(tipo === 'fora-sala') msgFinal = `Aluno(a) ${aluno} (Turma ${turma}) está fora de sala sem permissão. `;
+  if(tipo === 'emergencia') msgFinal = `EMERGÊNCIA solicitada! `;
+  if(tipo === 'aviso') msgFinal = `AVISO GERAL: `;
+  
+  if(msgExtra) msgFinal += msgExtra;
+  
+  const user = getCurrentUser() || {nome: 'Admin', perfil: 'admin'};
+  
+  // 1. Enviar mensagem pro Chat
+  const novaMsg = {
+    segmento: destino,
+    remetente: user.nome,
+    perfil_remetente: user.perfil,
+    mensagem: msgFinal,
+    tipo: 'alert'
+  };
+  await supabaseClient.from('chat_mensagens').insert([novaMsg]);
+  
+  // 2. Se for fora de sala, registrar nas ocorrências do aluno para ficar salvo após as 48h do chat
+  if(tipo === 'fora-sala' && aluno) {
+    const oData = new Date().toLocaleDateString('pt-BR');
+    const al = ALUNOS_DATA.find(a => a.nome === aluno);
+    if(al) {
+      al.historico = al.historico || [];
+      al.historico.push({
+        tipo: 'ocorrencia',
+        titulo: 'Alerta Rápido: Fora de Sala',
+        desc: msgExtra || 'Aluno avistado fora de sala sem permissão.',
+        data: oData
+      });
+      // Salvar na tabela global também
+      OCORR_DATA.push({
+        id: Date.now(), tipo: 'evasao', icon: '🚨', aluno: aluno, turma: turma,
+        desc: msgFinal,
+        hora: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+        data: oData,
+        tratada: false, aguardandoPais: false, origem: 'manual'
+      });
+      salvarDados();
+    }
+  }
+  
+  closeModal('modal-alerta-chat');
+  showToast('Alerta enviado e registrado!', 'sucesso');
+  if(document.getElementById('page-chat')?.classList.contains('active')) {
+    setChatSegment(destino, document.querySelector(`.tab[onclick*="${destino}"]`));
+  }
 }
 
 // ─── PERMISSÕES ───────────────────────────────────────────────────────────────
