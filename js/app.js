@@ -3566,11 +3566,13 @@ function renderObafogSelecionados(){
 
 async function salvarEquipeObafog(){
   const nome = document.getElementById('obafog-equipe-nome').value.trim();
+  const numero = document.getElementById('obafog-equipe-numero')?.value.trim() || '';
   if(!nome){ showToast('Digite o nome da equipe!', 'alerta'); return; }
   if(obafogAlunosSelecionados.length < 1){ showToast('Selecione pelo menos 1 aluno!', 'alerta'); return; }
   
   const equipe = {
     nome: nome,
+    numero: numero,
     alunos: obafogAlunosSelecionados,
     lancamento1: 0,
     lancamento2: 0
@@ -3587,6 +3589,7 @@ async function salvarEquipeObafog(){
   
   showToast('Equipe cadastrada!', 'sucesso');
   document.getElementById('obafog-equipe-nome').value = '';
+  if(document.getElementById('obafog-equipe-numero')) document.getElementById('obafog-equipe-numero').value = '';
   obafogAlunosSelecionados = [];
   renderObafogSelecionados();
   renderObafog();
@@ -3606,9 +3609,10 @@ function renderObafog(){
     const l1 = parseFloat(eq.lancamento1||0).toFixed(2);
     const l2 = parseFloat(eq.lancamento2||0).toFixed(2);
     const best = Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2);
+    const numTag = eq.numero ? ` Eq. ${eq.numero} - ` : ' ';
     return `
     <div onclick="abrirMetragemObafog('${eq.id}')" style="cursor:pointer; background:var(--white); border:1px solid #fca5a5; border-radius:8px; padding:15px; box-shadow:0 2px 5px rgba(220,38,38,0.1); transition:transform 0.2s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-      <div style="font-weight:700; color:var(--red); font-size:15px; margin-bottom:10px">🚀 ${eq.nome}</div>
+      <div style="font-weight:700; color:var(--red); font-size:15px; margin-bottom:10px">🚀${numTag}${eq.nome}</div>
       <div style="font-size:12px; color:var(--gray6); margin-bottom:12px">
         ${(eq.alunos||[]).map(a => `<div>• ${a.nome.split(' ')[0]} (${a.turma})</div>`).join('')}
       </div>
@@ -3641,11 +3645,12 @@ function renderRankingObafog(){
   rankingDiv.innerHTML = rankeado.map((eq, i) => {
     const best = Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2);
     let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'º';
+    const numTag = eq.numero ? ` (Eq. ${eq.numero})` : '';
     return `
     <div style="display:flex; justify-content:space-between; align-items:center; background:var(--white); padding:10px 15px; border-radius:6px; border:1px solid #fde68a">
       <div style="font-weight:700; font-size:14px; width:30px; text-align:center">${medal}</div>
       <div style="flex:1; margin-left:10px">
-        <div style="font-weight:700; font-size:14px; color:var(--gray8)">${eq.nome}</div>
+        <div style="font-weight:700; font-size:14px; color:var(--gray8)">${eq.nome}${numTag}</div>
         <div style="font-size:11px; color:var(--gray5)">${(eq.alunos||[]).map(a=>a.nome.split(' ')[0]).join(', ')}</div>
       </div>
       <div style="font-weight:900; color:#b45309; font-size:16px">${best}m</div>
