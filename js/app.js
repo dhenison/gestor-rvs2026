@@ -410,6 +410,11 @@ function showPage(p,el){
     livros:'Livros Didáticos',chat:'Chat RVS',permissoes:'Permissões',usuarios:'Usuários do Sistema',perfil:'Meu Perfil'};
   document.getElementById('page-title').textContent=titles[p]||p;
   if(el) el.classList.add('active');
+  
+  // Close mobile menu if open
+  document.querySelector('.sidebar').classList.remove('sidebar-open');
+  const overlay = document.getElementById('sidebar-overlay');
+  if(overlay) overlay.classList.remove('show');
   if(p==='solicitacoes') renderSolicitacoes();
   if(p==='topo-saber'){ carregarOlimpiadas().then(()=>renderTopoSaber()); }
   if(p==='usuarios'){ carregarUsuarios(); }
@@ -3694,4 +3699,10 @@ async function salvarMetragemObafog(){
   showToast('Metragens atualizadas!', 'sucesso');
   closeModal('modal-obafog-metragem');
   renderObafog();
+}
+
+// Mobile Menu Toggle
+function toggleMobileMenu() {
+  document.querySelector('.sidebar').classList.toggle('sidebar-open');
+  document.getElementById('sidebar-overlay').classList.toggle('show');
 }
