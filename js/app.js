@@ -2172,7 +2172,10 @@ async function sendChatMsg(){
   renderChatMsgsUI();
   
   const { error } = await supabaseClient.from('chat_mensagens').insert([novaMsg]);
-  if(error) console.error('Erro ao enviar mensagem:', error);
+  if(error) {
+    console.error('Erro ao enviar mensagem:', error);
+    showToast('Erro ao enviar! O banco de dados foi configurado?', 'alerta');
+  }
 }
 
 // ─── ALERTAS DO CHAT ──────────────────────────────────────────────────────────
@@ -2186,7 +2189,18 @@ function popularAlunosAlerta(){
   const turma = document.getElementById('alerta-turma')?.value;
   const sel = document.getElementById('alerta-aluno');
   if(!sel)return;
+  
+  if (!ALUNOS_DATA || ALUNOS_DATA.length === 0) {
+    showToast('Nenhum aluno cadastrado no sistema!', 'alerta');
+    return;
+  }
+  
   const alunos = turma ? ALUNOS_DATA.filter(a => (a.turma||'').trim() === turma.trim()) : [];
+  
+  if (turma && alunos.length === 0) {
+    showToast('Nenhum aluno encontrado para a turma selecionada.', 'info');
+  }
+  
   sel.innerHTML = '<option value="">Selecione o aluno principal</option>' + 
     alunos.map(a => `<option value="${a.nome}">${a.nome}</option>`).join('');
 }
@@ -2220,7 +2234,12 @@ async function enviarAlertaChat(){
     mensagem: msgFinal,
     tipo: 'alert'
   };
-  await supabaseClient.from('chat_mensagens').insert([novaMsg]);
+  const { error } = await supabaseClient.from('chat_mensagens').insert([novaMsg]);
+  if(error) {
+    console.error('Erro ao enviar alerta para o chat:', error);
+    showToast('Erro no banco de dados do Chat!', 'alerta');
+    return;
+  }
   
   // 2. Se for fora de sala, registrar nas ocorrências do aluno para ficar salvo após as 48h do chat
   if(tipo === 'fora-sala' && aluno) {
