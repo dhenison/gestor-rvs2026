@@ -848,6 +848,28 @@
      MODAIS
 ════════════════════════════════════════════ -->
 
+<!-- Modal: OBAFOG Metragem -->
+<div class="modal-overlay" id="modal-obafog-metragem" onclick="if(event.target===this)closeModal('modal-obafog-metragem')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🚀 Lançamentos - <span id="obafog-modal-equipe"></span></span>
+      <button class="modal-close" onclick="closeModal('modal-obafog-metragem')">✕</button>
+    </div>
+    <input type="hidden" id="obafog-modal-id">
+    <div class="form-group" style="margin-top:10px">
+      <label class="form-label">Metragem Lançamento 1 (metros)</label>
+      <input type="number" step="0.01" class="form-input" id="obafog-modal-lanc1" placeholder="Ex: 120.50">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Metragem Lançamento 2 (metros)</label>
+      <input type="number" step="0.01" class="form-input" id="obafog-modal-lanc2" placeholder="Ex: 145.20">
+    </div>
+    <div class="modal-footer" style="margin-top:15px">
+      <button class="btn btn-outline" onclick="closeModal('modal-obafog-metragem')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarMetragemObafog()">Salvar Metragens</button>
+    </div>
+  </div>
+</div>
 <!-- Modal: Tipo de Dia no Calendário -->
 <div class="modal-overlay" id="modal-cal-tipo" onclick="if(event.target===this)closeModal('modal-cal-tipo')">
   <div class="modal">
