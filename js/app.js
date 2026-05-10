@@ -149,7 +149,7 @@ async function carregarDados(){
       supabaseClient.from('ocorrencias').select('*'),
       supabaseClient.from('eventos').select('*'),
       supabaseClient.from('rotas').select('*'),
-      supabaseClient.from('configuracoes').select('*').eq('chave', 'permissoes').maybeSingle().catch(()=>({data:null}))
+      supabaseClient.from('configuracoes').select('*').eq('chave', 'permissoes').maybeSingle()
     ]);
 
     if (configData && configData.valor) {
