@@ -17,6 +17,7 @@ let OCORR_DATA   = [];
 let ROTAS_DATA   = [];
 let CALENDARIO   = {};
 let HORARIOS_LINKS = {};
+let OBAFOG_DATA = [];
 
 const CHAT_DATA = { coord:[], sec:[], prof:[] };
 const freq = { entrada:{}, saida:{} };
@@ -56,6 +57,7 @@ let PERMS = [
   {func:'Horário de Aula', id:'page-horarios', coord:true,sec:true,prof:true},
   {func:'Topo do Saber', id:'page-topo-saber', coord:true,sec:true,prof:true},
   {func:'Transporte', id:'page-transporte', coord:true,sec:true,prof:false},
+  {func:'OBAFOG RVS', id:'page-obafog', coord:true,sec:true,prof:true},
   {func:'Ocorrências', id:'page-ocorrencias', coord:true,sec:false,prof:true},
   {func:'Livros Didáticos', id:'page-livros', coord:true,sec:true,prof:false},
   {func:'Relatórios', id:'page-relatorios', coord:true,sec:true,prof:false},
@@ -144,13 +146,14 @@ async function carregarDados(){
        if(error) console.warn('Erro ao limpar chat antigo:', error);
     });
 
-    const [{data: turmas}, {data: alunos}, {data: ocorrencias}, {data: eventos}, {data: rotas}, {data: configData}] = await Promise.all([
+    const [{data: turmas}, {data: alunos}, {data: ocorrencias}, {data: eventos}, {data: rotas}, {data: configData}, {data: obafogEq}] = await Promise.all([
       supabaseClient.from('turmas').select('*'),
       supabaseClient.from('alunos').select('*'),
       supabaseClient.from('ocorrencias').select('*'),
       supabaseClient.from('eventos').select('*'),
       supabaseClient.from('rotas').select('*'),
-      supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios'])
+      supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios']),
+      supabaseClient.from('obafog_equipes').select('*').order('created_at', {ascending:false})
     ]);
 
     if (configData && Array.isArray(configData)) {
@@ -412,6 +415,7 @@ function showPage(p,el){
   if(p==='usuarios'){ carregarUsuarios(); }
   if(p==='rvs-agenda'){ popularDatasAtividade(); popularTurmasAtividade(); renderAgendaMural(); }
   if(p==='horarios') carregarLinksHorario();
+  if(p==='obafog') renderObafog();
   if(p==='frequencia'){
     // Sempre mostra etapa1 se não houver chamada em andamento
     if(!turmaChamadaAtual){
@@ -3489,4 +3493,200 @@ function importarPlanilhaUsuarios(input){
     await carregarUsuarios();
   };
   reader.readAsText(file);
+}
+
+
+/* ============================================================
+   OBAFOG RVS
+   ============================================================ */
+let obafogAlunosSelecionados = [];
+
+function buscarAlunoObafog(term){
+  const res = document.getElementById('obafog-busca-resultados');
+  term = term.trim().toLowerCase();
+  
+  if(!term || term.length < 2) {
+    res.style.display = 'none';
+    return;
+  }
+  
+  const filtrados = ALUNOS_DATA.filter(a => a.nome.toLowerCase().includes(term)).slice(0, 5);
+  
+  if(filtrados.length === 0) {
+    res.innerHTML = '<div style="padding:10px; font-size:12px; color:var(--gray5)">Nenhum aluno encontrado</div>';
+  } else {
+    res.innerHTML = filtrados.map(a => `
+      <div style="padding:10px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--gray2); display:flex; justify-content:space-between; align-items:center;" onclick="addAlunoObafog('${a.id}', '${a.nome.replace(/'/g, "\'")}', '${a.turma||''}')">
+        <span>${a.nome}</span>
+        <span class="badge">${a.turma}</span>
+      </div>
+    `).join('');
+  }
+  res.style.display = 'block';
+}
+
+function addAlunoObafog(id, nome, turma){
+  if(obafogAlunosSelecionados.length >= 3) {
+    showToast('Máximo de 3 alunos por equipe!', 'alerta');
+    return;
+  }
+  if(obafogAlunosSelecionados.some(a => a.id === id)){
+    showToast('Aluno já adicionado na equipe!', 'alerta');
+    return;
+  }
+  
+  obafogAlunosSelecionados.push({ id, nome, turma });
+  renderObafogSelecionados();
+  document.getElementById('obafog-busca-aluno').value = '';
+  document.getElementById('obafog-busca-resultados').style.display = 'none';
+}
+
+function removeAlunoObafog(id){
+  obafogAlunosSelecionados = obafogAlunosSelecionados.filter(a => a.id !== id);
+  renderObafogSelecionados();
+}
+
+function renderObafogSelecionados(){
+  const div = document.getElementById('obafog-alunos-selecionados');
+  const count = document.getElementById('obafog-count');
+  count.textContent = obafogAlunosSelecionados.length;
+  
+  if(obafogAlunosSelecionados.length === 0){
+    div.innerHTML = '<div style="color:var(--gray4); font-size:12px; text-align:center">Nenhum aluno selecionado</div>';
+    return;
+  }
+  
+  div.innerHTML = obafogAlunosSelecionados.map(a => `
+    <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px 10px; border-radius:4px; border:1px solid var(--gray3)">
+      <div style="font-size:13px"><b>${a.nome}</b> <span class="badge">${a.turma}</span></div>
+      <button class="btn btn-sm" style="color:var(--red); padding:2px 6px" onclick="removeAlunoObafog('${a.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+async function salvarEquipeObafog(){
+  const nome = document.getElementById('obafog-equipe-nome').value.trim();
+  if(!nome){ showToast('Digite o nome da equipe!', 'alerta'); return; }
+  if(obafogAlunosSelecionados.length < 1){ showToast('Selecione pelo menos 1 aluno!', 'alerta'); return; }
+  
+  const equipe = {
+    nome: nome,
+    alunos: obafogAlunosSelecionados,
+    lancamento1: 0,
+    lancamento2: 0
+  };
+  
+  const { data, error } = await supabaseClient.from('obafog_equipes').insert([equipe]).select();
+  if(error){
+    console.error('Erro ao salvar equipe:', error);
+    showToast('Erro ao salvar no banco!', 'alerta');
+    return;
+  }
+  
+  if(data && data[0]) OBAFOG_DATA.unshift(data[0]);
+  
+  showToast('Equipe cadastrada!', 'sucesso');
+  document.getElementById('obafog-equipe-nome').value = '';
+  obafogAlunosSelecionados = [];
+  renderObafogSelecionados();
+  renderObafog();
+}
+
+function renderObafog(){
+  const grid = document.getElementById('obafog-equipes-grid');
+  if(!grid) return;
+  
+  if(OBAFOG_DATA.length === 0){
+    grid.innerHTML = '<div style="font-size:13px; color:var(--gray5)">Nenhuma equipe cadastrada.</div>';
+    renderRankingObafog();
+    return;
+  }
+  
+  grid.innerHTML = OBAFOG_DATA.map(eq => {
+    const l1 = parseFloat(eq.lancamento1||0).toFixed(2);
+    const l2 = parseFloat(eq.lancamento2||0).toFixed(2);
+    const best = Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2);
+    return `
+    <div onclick="abrirMetragemObafog('${eq.id}')" style="cursor:pointer; background:var(--white); border:1px solid #fca5a5; border-radius:8px; padding:15px; box-shadow:0 2px 5px rgba(220,38,38,0.1); transition:transform 0.2s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+      <div style="font-weight:700; color:var(--red); font-size:15px; margin-bottom:10px">🚀 ${eq.nome}</div>
+      <div style="font-size:12px; color:var(--gray6); margin-bottom:12px">
+        ${(eq.alunos||[]).map(a => `<div>• ${a.nome.split(' ')[0]} (${a.turma})</div>`).join('')}
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--gray5)">
+        <div>L1: <b>${l1}m</b></div>
+        <div>L2: <b>${l2}m</b></div>
+      </div>
+      <div style="margin-top:6px; font-size:12px; font-weight:700; color:#d97706">Melhor: ${best}m</div>
+    </div>
+  `}).join('');
+  
+  renderRankingObafog();
+}
+
+function renderRankingObafog(){
+  const rankingDiv = document.getElementById('obafog-ranking');
+  if(!rankingDiv) return;
+  
+  const rankeado = [...OBAFOG_DATA].sort((a,b) => {
+    const bestA = Math.max(a.lancamento1||0, a.lancamento2||0);
+    const bestB = Math.max(b.lancamento1||0, b.lancamento2||0);
+    return bestB - bestA;
+  });
+  
+  if(rankeado.length === 0){
+    rankingDiv.innerHTML = '<div style="font-size:13px; color:var(--gray5)">Sem dados para ranking.</div>';
+    return;
+  }
+  
+  rankingDiv.innerHTML = rankeado.map((eq, i) => {
+    const best = Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2);
+    let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'º';
+    return `
+    <div style="display:flex; justify-content:space-between; align-items:center; background:var(--white); padding:10px 15px; border-radius:6px; border:1px solid #fde68a">
+      <div style="font-weight:700; font-size:14px; width:30px; text-align:center">${medal}</div>
+      <div style="flex:1; margin-left:10px">
+        <div style="font-weight:700; font-size:14px; color:var(--gray8)">${eq.nome}</div>
+        <div style="font-size:11px; color:var(--gray5)">${(eq.alunos||[]).map(a=>a.nome.split(' ')[0]).join(', ')}</div>
+      </div>
+      <div style="font-weight:900; color:#b45309; font-size:16px">${best}m</div>
+    </div>
+  `}).join('');
+}
+
+function abrirMetragemObafog(id){
+  const eq = OBAFOG_DATA.find(e => e.id === id);
+  if(!eq) return;
+  document.getElementById('obafog-modal-id').value = id;
+  document.getElementById('obafog-modal-equipe').textContent = eq.nome;
+  document.getElementById('obafog-modal-lanc1').value = eq.lancamento1 || 0;
+  document.getElementById('obafog-modal-lanc2').value = eq.lancamento2 || 0;
+  openModal('modal-obafog-metragem');
+}
+
+async function salvarMetragemObafog(){
+  const id = document.getElementById('obafog-modal-id').value;
+  const l1 = parseFloat(document.getElementById('obafog-modal-lanc1').value) || 0;
+  const l2 = parseFloat(document.getElementById('obafog-modal-lanc2').value) || 0;
+  
+  const { error } = await supabaseClient.from('obafog_equipes').update({
+    lancamento1: l1,
+    lancamento2: l2
+  }).eq('id', id);
+  
+  if(error){
+    console.error('Erro ao atualizar metragem:', error);
+    showToast('Erro ao atualizar no banco!', 'alerta');
+    return;
+  }
+  
+  // Atualiza memória
+  const eq = OBAFOG_DATA.find(e => e.id === id);
+  if(eq) {
+    eq.lancamento1 = l1;
+    eq.lancamento2 = l2;
+  }
+  
+  showToast('Metragens atualizadas!', 'sucesso');
+  closeModal('modal-obafog-metragem');
+  renderObafog();
 }

@@ -360,7 +360,60 @@
         <div id="rvs-agenda-mural"></div>
       </div>
 
-      <!-- ══════════════════ HORÁRIO DE AULA ══════════════════ -->
+      
+      <!-- ══════════════════ OBAFOG RVS ══════════════════ -->
+      <div class="page" id="page-obafog">
+        <div class="section-title" style="margin-bottom:20px; color:var(--red)">🚀 OBAFOG RVS - Mostra de Foguetes</div>
+        
+        <div style="display:grid; grid-template-columns:350px 1fr 300px; gap:20px; align-items:start">
+          
+          <!-- COLUNA 1: Cadastro -->
+          <div class="table-card" style="padding:20px">
+            <h3 style="margin-bottom:15px; font-size:16px; color:var(--gray7)">➕ Cadastrar Equipe</h3>
+            
+            <div class="form-group">
+              <label class="form-label">Nome da Equipe</label>
+              <input type="text" class="form-input" id="obafog-equipe-nome" placeholder="Ex: Apollo 11">
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Buscar Aluno (Mínimo 1, Máx 3)</label>
+              <div style="display:flex; gap:8px; margin-bottom:10px">
+                <input type="text" class="form-input" id="obafog-busca-aluno" placeholder="Digite o nome..." onkeyup="buscarAlunoObafog(this.value)">
+              </div>
+              <div id="obafog-busca-resultados" style="max-height:150px; overflow-y:auto; border:1px solid var(--gray3); border-radius:6px; display:none; margin-bottom:10px"></div>
+            </div>
+            
+            <div style="margin-bottom:15px">
+              <label class="form-label">Alunos Selecionados (<span id="obafog-count">0</span>/3)</label>
+              <div id="obafog-alunos-selecionados" style="display:flex; flex-direction:column; gap:8px; min-height:40px; padding:10px; background:var(--gray1); border-radius:6px; border:1px dashed var(--gray4)">
+                <div style="color:var(--gray4); font-size:12px; text-align:center">Nenhum aluno selecionado</div>
+              </div>
+            </div>
+            
+            <button class="btn btn-primary" style="width:100%" onclick="salvarEquipeObafog()">Cadastrar Equipe</button>
+          </div>
+          
+          <!-- COLUNA 2: Equipes Cadastradas -->
+          <div class="table-card" style="padding:20px; background:#fef2f2; border:1px solid #fca5a5">
+            <h3 style="margin-bottom:15px; font-size:16px; color:var(--red)">📋 Equipes Cadastradas (Clique para lançar)</h3>
+            <div id="obafog-equipes-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px">
+              <!-- Equipes renderizadas aqui -->
+            </div>
+          </div>
+          
+          <!-- COLUNA 3: Ranking -->
+          <div class="table-card" style="padding:20px; background:#fffbeb; border:1px solid #fcd34d">
+            <h3 style="margin-bottom:15px; font-size:16px; color:#d97706">🏆 Ranking de Lançamentos</h3>
+            <div id="obafog-ranking" style="display:flex; flex-direction:column; gap:10px">
+              <!-- Ranking renderizado aqui -->
+            </div>
+          </div>
+          
+        </div>
+      </div>
+
+<!-- ══════════════════ HORÁRIO DE AULA ══════════════════ -->
       <div class="page" id="page-horarios">
         <div class="section-title" style="margin-bottom:20px">🕐 Horário de Aula</div>
         <div class="tabs">
