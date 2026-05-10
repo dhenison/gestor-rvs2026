@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
-const ADMIN_SENHA = 'M@gnatha2026';
+const ADMIN_SENHA = 'RVS@gestor';
 let PERFIL_ATUAL  = 'professor';
 
 let TURMAS_DATA  = [];
@@ -16,6 +16,7 @@ let ALUNOS_DATA  = [];
 let OCORR_DATA   = [];
 let ROTAS_DATA   = [];
 let CALENDARIO   = {};
+let HORARIOS_LINKS = {};
 
 const CHAT_DATA = { coord:[], sec:[], prof:[] };
 const freq = { entrada:{}, saida:{} };
@@ -149,11 +150,15 @@ async function carregarDados(){
       supabaseClient.from('ocorrencias').select('*'),
       supabaseClient.from('eventos').select('*'),
       supabaseClient.from('rotas').select('*'),
-      supabaseClient.from('configuracoes').select('*').eq('chave', 'permissoes').maybeSingle()
+      supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios'])
     ]);
 
-    if (configData && configData.valor) {
-      PERMS = configData.valor;
+    if (configData && Array.isArray(configData)) {
+      const permsObj = configData.find(c => c.chave === 'permissoes');
+      if (permsObj && permsObj.valor) PERMS = permsObj.valor;
+      
+      const linksObj = configData.find(c => c.chave === 'links_horarios');
+      if (linksObj && linksObj.valor) HORARIOS_LINKS = linksObj.valor;
     }
 
     if (turmas) {
@@ -272,7 +277,7 @@ async function doLogin(){
   if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
 
   // ── 1. Fallback fixo para o administrador master ───────────────────────────
-  if(email === 'dhenison@escola.seduc.pa.gov.br' && pass === 'M@gnatha2026'){
+  if(email === 'dhenison@escola.seduc.pa.gov.br' && pass === 'RVS@gestor'){
     _entrarNoSistema({ nome:'Dhenison Carlos', perfil:'admin', email });
     if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
     return;
@@ -478,7 +483,7 @@ function emptyTr(icon,titulo,sub,cols=8){
 // ─── SELECTS ─────────────────────────────────────────────────────────────────
 function abrirExcluirAluno(){
   const s=prompt('🔐 Excluir aluno requer senha do administrador:');
-  if(s!=='RVSgestor2026@'){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
+  if(s!==ADMIN_SENHA){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
   const sel=document.getElementById('select-excluir-aluno');
   if(sel){
     sel.innerHTML='<option value="">— Selecione o aluno —</option>'+
@@ -879,7 +884,7 @@ function abrirEditarFicha(){
   const cpf=document.getElementById('modal-ficha').dataset.cpf;
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   const s=prompt('🔐 Edição de dados requer senha do administrador:');
-  if(s!=='RVSgestor2026@'){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
+  if(s!==ADMIN_SENHA){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
   // Preenche o modal de edição
   document.getElementById('edit-aluno-nome').value=a.nome||'';
   document.getElementById('edit-aluno-cpf').value=a.cpf||'';
@@ -2686,21 +2691,95 @@ function setHorarioTab(tab,el){
   document.getElementById('horario-prof')?.classList.toggle('hidden',tab!=='prof');
 }
 
-function salvarLink(chave){
+function carregarLinksHorario(){
+  const isAdm = PERFIL_ATUAL === 'admin';
+  const chaves = ['geral-manha', 'geral-tarde', 'geral-noite', 'prof-manha', 'prof-tarde', 'prof-noite'];
+  
+  chaves.forEach(chave => {
+    const inp = document.getElementById('link-' + chave);
+    if (!inp) return;
+    
+    // Configura o valor no input
+    const url = HORARIOS_LINKS[chave] || localStorage.getItem('rvs_link_'+chave) || '';
+    inp.value = url;
+    
+    const parent = inp.parentElement;
+    
+    // Obter ou criar o container de view do aluno/professor
+    let userView = parent.querySelector('.horario-user-view');
+    if (!userView) {
+      userView = document.createElement('div');
+      userView.className = 'horario-user-view';
+      parent.appendChild(userView);
+    }
+    
+    // Elementos de Admin
+    const labelLink = inp.previousElementSibling;
+    const divBotoes = inp.nextElementSibling;
+    
+    if (isAdm) {
+      // Visão de Admin
+      if(labelLink) labelLink.style.display = 'block';
+      inp.style.display = 'block';
+      if(divBotoes) divBotoes.style.display = 'flex';
+      userView.style.display = 'none';
+    } else {
+      // Visão de Usuário Comum
+      if(labelLink) labelLink.style.display = 'none';
+      inp.style.display = 'none';
+      if(divBotoes) divBotoes.style.display = 'none';
+      
+      const turno = chave.split('-')[1];
+      const emoji = turno === 'manha' ? '☀️' : turno === 'tarde' ? '🌤️' : '🌙';
+      
+      if (url) {
+        userView.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:10px;">
+            <div onclick="abrirLink('${chave}')" style="cursor:pointer; width:64px; height:64px; border-radius:50%; background:var(--primary); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.15); transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+              <span style="font-size:28px">${emoji}</span>
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="abrirLink('${chave}')">Acessar Aula</button>
+          </div>
+        `;
+      } else {
+        userView.innerHTML = `<div style="text-align:center; padding:20px 0; color:var(--gray4); font-size:13px;">Nenhum link configurado</div>`;
+      }
+      userView.style.display = 'block';
+    }
+  });
+}
+
+async function salvarLink(chave){
   const inp=document.getElementById('link-'+chave);
   if(!inp)return;
   const val=inp.value.trim();
   if(!val){showToast('Cole um link antes de salvar','alerta');return;}
+  
+  // Atualiza memória
+  HORARIOS_LINKS[chave] = val;
+  
+  // Salva no banco
+  const { error } = await supabaseClient.from('configuracoes').upsert({
+    chave: 'links_horarios',
+    valor: HORARIOS_LINKS
+  });
+  
+  if (error) {
+    console.error('Erro ao salvar link:', error);
+    showToast('Erro ao salvar no banco!', 'alerta');
+    return;
+  }
+  
   localStorage.setItem('rvs_link_'+chave,val);
-  showToast('Link salvo!','sucesso');
+  showToast('Link salvo no banco de dados!','sucesso');
+  carregarLinksHorario();
 }
 
 function abrirLink(chave){
-  const saved=localStorage.getItem('rvs_link_'+chave);
-  const inp=document.getElementById('link-'+chave);
-  const url=saved||inp?.value.trim();
+  const url = HORARIOS_LINKS[chave] || localStorage.getItem('rvs_link_'+chave);
   if(!url){showToast('Nenhum link cadastrado ainda','alerta');return;}
-  window.open(url,'_blank');
+  const finalUrl = url.startsWith('http') ? url : 'https://' + url;
+  window.open(finalUrl,'_blank');
 }
 // --- WIPE SYSTEM ---
 async function zerarSistema() {
