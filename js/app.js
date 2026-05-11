@@ -190,6 +190,11 @@ async function carregarDados(){
       ROTAS_DATA = rotas.map(r => ({ id: r.id, nome: r.nome, motorista: r.motorista, veiculo: r.veiculo, cap: r.capacidade }));
     }
 
+    // ── OBAFOG: atribuir dados carregados do banco ──
+    if (obafogEq) {
+      OBAFOG_DATA = obafogEq;
+    }
+
     if (ocorrencias) {
       OCORR_DATA = ocorrencias.map(o => {
          const al = ALUNOS_DATA.find(a => a.id === o.aluno_id);
