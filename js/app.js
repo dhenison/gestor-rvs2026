@@ -254,11 +254,13 @@ async function carregarDados(){
              }
              let parsedObs = ev.observacoes || '';
              let extra = {};
+             let isRVS = false;
              if (parsedObs.startsWith('{')) {
                try {
                  const obj = JSON.parse(parsedObs);
                  parsedObs = obj.desc || '';
                  extra = obj;
+                 isRVS = true; // Identifica que foi criado via RVS Agenda
                } catch(e){}
              }
              CALENDARIO[dKey] = {
@@ -267,6 +269,7 @@ async function carregarDados(){
                  label: ev.titulo,
                  responsavel: ev.responsavel,
                  desc: parsedObs,
+                 isRVS: isRVS,
                  ...extra
              };
          }
@@ -3337,9 +3340,26 @@ async function salvarAtividade(){
   }
 }
 
-function excluirAtividade(id){
-  RVS_ATIVIDADES=RVS_ATIVIDADES.filter(a=>a.id!==id);
-  localStorage.setItem('rvs_atividades',JSON.stringify(RVS_ATIVIDADES));
+async function excluirAtividade(id){
+  if(!confirm('Tem certeza que deseja excluir esta atividade?')) return;
+  
+  // Excluir do Supabase (eventos criados via RVS Agenda)
+  if (id && id.length > 10) { // UUID do Supabase
+    const {error} = await supabaseClient.from('eventos').delete().eq('id', id);
+    if(error){
+      console.error(error);
+      showToast('Erro ao excluir: ' + error.message, 'evasao');
+      return;
+    }
+  }
+
+  // Fallback para itens legados no localStorage
+  RVS_ATIVIDADES = RVS_ATIVIDADES.filter(a => a.id !== id);
+  localStorage.setItem('rvs_atividades', JSON.stringify(RVS_ATIVIDADES));
+  
+  showToast('Atividade excluída!', 'sucesso');
+  await carregarDados();
+  renderCalendar();
   renderAgendaMural();
 }
 
@@ -3562,8 +3582,11 @@ function renderAgendaMural(){
           '<div style="font-size:12px;color:#6b7280;margin-top:3px">'+dtFmt+(ev.turmas?' · '+ev.turmas:'')+'</div>'+
           (ev.desc||ev.obs?'<div style="font-size:11.5px;color:#9ca3af;margin-top:3px">'+(ev.desc||ev.obs)+'</div>':'')+ 
         '</div>'+
-        '<div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:'+(urgente?'#fee2e2':'#dbeafe')+';color:'+(urgente?'#991b1b':'#1d4ed8')+'">'+
-          (diasRestantes===0?'Hoje':diasRestantes===1?'Amanhã':diasRestantes+' dias')+
+        '<div style="display:flex;align-items:center;gap:8px">'+
+          '<div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:'+(urgente?'#fee2e2':'#dbeafe')+';color:'+(urgente?'#991b1b':'#1d4ed8')+'">'+
+            (diasRestantes===0?'Hoje':diasRestantes===1?'Amanhã':diasRestantes+' dias')+
+          '</div>'+
+          (ev.isRVS || (ev.id && !ev.id.includes('-')) ? `<button class="btn btn-outline btn-sm" style="margin:0;padding:2px 8px;font-size:11px;color:#ef4444;border-color:#ef4444" onclick="excluirAtividade('${ev.id}')">Excluir</button>` : '') +
         '</div>'+
       '</div></div>';
   });
