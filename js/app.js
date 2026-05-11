@@ -3176,7 +3176,8 @@ function popularTurmasSolicit(){
   sel.innerHTML = prefix + lista.map(t => '<option value="' + t.code + '">' + t.code + ' — ' + t.serie + '</option>').join('');
 }
 
-// ─── UPLOAD SUPABASE STORAGE (Solicitações) ──────────────────────────────────
+// ─── UPLOAD GOOGLE DRIVE via Apps Script ─────────────────────────────────────
+const DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _solicitArquivoPendente = null; // guarda o File selecionado
 
 function solicitPreviewArquivo(input) {
@@ -3200,8 +3201,7 @@ function solicitDropFile(event) {
   event.preventDefault();
   const file = event.dataTransfer.files[0];
   if (!file) return;
-  const fakeInput = { files: [file] };
-  solicitPreviewArquivo(fakeInput);
+  solicitPreviewArquivo({ files: [file] });
 }
 
 function solicitRemoverArquivo() {
@@ -3212,6 +3212,20 @@ function solicitRemoverArquivo() {
   const area = document.getElementById('solicit-upload-area');
   area.style.borderColor = 'var(--gray3)';
   area.style.background = 'var(--gray2)';
+}
+
+// Converte File para base64 string
+function fileParaBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Remove o prefixo "data:...;base64," para enviar só o base64 puro
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 async function salvarSolicitacao(){
@@ -3228,33 +3242,50 @@ async function salvarSolicitacao(){
   const user = getCurrentUser();
   let linkDrive = '';
 
-  // ── Upload do arquivo para o Supabase Storage ──
+  // ── Upload para o Google Drive via Apps Script ──
   if (_solicitArquivoPendente) {
     const file = _solicitArquivoPendente;
-    const ext = file.name.split('.').pop();
-    const timestamp = Date.now();
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const path = `solicitacoes/${timestamp}_${safeName}`;
-
-    showToast('Enviando arquivo… ⏳', 'alerta');
-
-    const { data: uploadData, error: uploadError } = await supabaseClient.storage
-      .from('solicitacoes')
-      .upload(path, file, { cacheControl: '3600', upsert: false });
-
-    if (uploadError) {
-      console.error('[Upload] Erro:', uploadError);
-      showToast('Erro no upload: ' + uploadError.message, 'evasao');
+    
+    // Mudar botão para estado de carregamento
+    const btnEnviar = document.querySelector('#modal-nova-solicit .btn-primary');
+    if(btnEnviar){ btnEnviar.disabled = true; btnEnviar.textContent = '⏳ Enviando arquivo…'; }
+    
+    try {
+      showToast('Enviando arquivo para o Google Drive… ⏳', 'alerta');
+      
+      const base64 = await fileParaBase64(file);
+      
+      const response = await fetch(DRIVE_UPLOAD_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          nome: file.name,
+          tipo: file.type || 'application/octet-stream',
+          arquivo: base64
+        })
+      });
+      
+      const resultado = await response.json();
+      
+      if (!resultado.ok) {
+        throw new Error(resultado.erro || 'Resposta inválida do servidor');
+      }
+      
+      linkDrive = resultado.url;
+      showToast('Arquivo enviado ao Drive! ✅', 'sucesso');
+      
+    } catch(err) {
+      console.error('[Drive Upload] Erro:', err);
+      showToast('Erro ao enviar para o Drive: ' + err.message, 'evasao');
+      const btnEnviar = document.querySelector('#modal-nova-solicit .btn-primary');
+      if(btnEnviar){ btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar Solicitação'; }
       return;
     }
-
-    // Gerar URL pública do arquivo
-    const { data: urlData } = supabaseClient.storage
-      .from('solicitacoes')
-      .getPublicUrl(path);
-    linkDrive = urlData?.publicUrl || '';
+    
+    const btnEnviar2 = document.querySelector('#modal-nova-solicit .btn-primary');
+    if(btnEnviar2){ btnEnviar2.disabled = false; btnEnviar2.textContent = 'Enviar Solicitação'; }
   }
 
+  // ── Salvar solicitação no banco (com link do Drive) ──
   const { data: inserted, error } = await supabaseClient.from('solicitacoes').insert({
     tipo, turno, turmas, data, hora_ini: hIni, hora_fim: hFim,
     obs, link_drive: linkDrive, status: 'pendente',
@@ -3276,7 +3307,6 @@ async function salvarSolicitacao(){
     criadoEm: new Date().toLocaleDateString('pt-BR')
   });
 
-  // Limpar campo de upload
   solicitRemoverArquivo();
   closeModal('modal-nova-solicit');
   showToast('Solicitação enviada! ✅','sucesso');
