@@ -410,18 +410,35 @@ function doLogout(){
   document.getElementById('app').classList.remove('visible');
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  // Verifica se o usuário já estava logado na sessão atual
+document.addEventListener('DOMContentLoaded', () => {
+  // Ao recarregar a página, restaura sessão buscando dados FRESCOS do banco
   try {
     const savedUser = sessionStorage.getItem('rvs_user');
     if (savedUser) {
       const usuario = JSON.parse(savedUser);
-      _entrarNoSistema(usuario);
+      
+      // Se tem ID, rebusca do banco para ter dados atualizados (foto, bio, etc.)
+      if (usuario.id) {
+        supabaseClient
+          .from('usuarios')
+          .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, senha, turno')
+          .eq('id', usuario.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            _entrarNoSistema(data || usuario);
+          })
+          .catch(() => _entrarNoSistema(usuario));
+      } else {
+        // Admin sem ID no banco: entra com dados da sessão
+        _entrarNoSistema(usuario);
+      }
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[Restore session]', e);
+  }
 
-  ['pass-input','email-input'].forEach(id=>{
-    document.getElementById(id)?.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+  ['pass-input','email-input'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   });
 });
 
