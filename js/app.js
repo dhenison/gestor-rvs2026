@@ -3176,6 +3176,44 @@ function popularTurmasSolicit(){
   sel.innerHTML = prefix + lista.map(t => '<option value="' + t.code + '">' + t.code + ' — ' + t.serie + '</option>').join('');
 }
 
+// ─── UPLOAD SUPABASE STORAGE (Solicitações) ──────────────────────────────────
+let _solicitArquivoPendente = null; // guarda o File selecionado
+
+function solicitPreviewArquivo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('Arquivo muito grande! Máximo 10MB.', 'alerta');
+    input.value = '';
+    return;
+  }
+  _solicitArquivoPendente = file;
+  document.getElementById('solicit-arquivo-nome').textContent = file.name;
+  const prev = document.getElementById('solicit-arquivo-preview');
+  prev.style.display = 'flex';
+  const area = document.getElementById('solicit-upload-area');
+  area.style.borderColor = 'var(--green)';
+  area.style.background = '#f0fdf4';
+}
+
+function solicitDropFile(event) {
+  event.preventDefault();
+  const file = event.dataTransfer.files[0];
+  if (!file) return;
+  const fakeInput = { files: [file] };
+  solicitPreviewArquivo(fakeInput);
+}
+
+function solicitRemoverArquivo() {
+  _solicitArquivoPendente = null;
+  const input = document.getElementById('solicit-arquivo');
+  if(input) input.value = '';
+  document.getElementById('solicit-arquivo-preview').style.display = 'none';
+  const area = document.getElementById('solicit-upload-area');
+  area.style.borderColor = 'var(--gray3)';
+  area.style.background = 'var(--gray2)';
+}
+
 async function salvarSolicitacao(){
   const tipo = document.getElementById('solicit-tipo')?.value;
   const turno = document.getElementById('solicit-turno')?.value;
@@ -3183,12 +3221,40 @@ async function salvarSolicitacao(){
   const hIni = document.getElementById('solicit-hora-ini')?.value;
   const hFim = document.getElementById('solicit-hora-fim')?.value;
   const obs = (document.getElementById('solicit-obs')?.value || '').trim();
-  const linkDrive = (document.getElementById('solicit-link-drive')?.value || '').trim();
   const turmaSel = document.getElementById('solicit-turmas');
   const turmas = turmaSel ? Array.from(turmaSel.selectedOptions).map(o => o.value).join(', ') : '';
   if(!tipo || !turno || !data){ showToast('Preencha Tipo, Turno e Data!','alerta'); return; }
   
   const user = getCurrentUser();
+  let linkDrive = '';
+
+  // ── Upload do arquivo para o Supabase Storage ──
+  if (_solicitArquivoPendente) {
+    const file = _solicitArquivoPendente;
+    const ext = file.name.split('.').pop();
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `solicitacoes/${timestamp}_${safeName}`;
+
+    showToast('Enviando arquivo… ⏳', 'alerta');
+
+    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+      .from('solicitacoes')
+      .upload(path, file, { cacheControl: '3600', upsert: false });
+
+    if (uploadError) {
+      console.error('[Upload] Erro:', uploadError);
+      showToast('Erro no upload: ' + uploadError.message, 'evasao');
+      return;
+    }
+
+    // Gerar URL pública do arquivo
+    const { data: urlData } = supabaseClient.storage
+      .from('solicitacoes')
+      .getPublicUrl(path);
+    linkDrive = urlData?.publicUrl || '';
+  }
+
   const { data: inserted, error } = await supabaseClient.from('solicitacoes').insert({
     tipo, turno, turmas, data, hora_ini: hIni, hora_fim: hFim,
     obs, link_drive: linkDrive, status: 'pendente',
@@ -3203,16 +3269,20 @@ async function salvarSolicitacao(){
   
   // Atualiza cache local
   SOLICIT_DATA.unshift({
-    id: inserted.id, tipo, turno, turmas, data, hIni, hFim, obs, linkDrive,
+    id: inserted.id, tipo, turno, turmas, data, hIni, hFim, obs,
+    linkDrive,
     status: 'pendente',
     responsavel: user?.nome || 'Usuário',
     criadoEm: new Date().toLocaleDateString('pt-BR')
   });
-  
+
+  // Limpar campo de upload
+  solicitRemoverArquivo();
   closeModal('modal-nova-solicit');
   showToast('Solicitação enviada! ✅','sucesso');
   renderSolicitacoes();
 }
+
 
 function renderSolicitacoes(){
   const container = document.getElementById('solicit-lista');
