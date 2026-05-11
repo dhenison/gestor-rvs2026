@@ -47,23 +47,23 @@ const LIVROS = [
 ];
 
 let PERMS = [
-  {func:'Dashboard', id:'page-dashboard', coord:true,sec:true,prof:false},
-  {func:'Agenda Pedagógica', id:'page-agenda', coord:true,sec:true,prof:true},
-  {func:'Turmas', id:'page-turmas', coord:true,sec:true,prof:true},
-  {func:'Alunos', id:'page-alunos', coord:true,sec:true,prof:false},
-  {func:'Frequência', id:'page-frequencia', coord:true,sec:false,prof:true},
-  {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true,sec:true,prof:true},
-  {func:'RVS Agenda', id:'page-rvs-agenda', coord:true,sec:true,prof:true},
-  {func:'Horário de Aula', id:'page-horarios', coord:true,sec:true,prof:true},
-  {func:'Topo do Saber', id:'page-topo-saber', coord:true,sec:true,prof:true},
-  {func:'Transporte', id:'page-transporte', coord:true,sec:true,prof:false},
-  {func:'OBAFOG RVS', id:'page-obafog', coord:true,sec:true,prof:true},
-  {func:'Ocorrências', id:'page-ocorrencias', coord:true,sec:false,prof:true},
-  {func:'Livros Didáticos', id:'page-livros', coord:true,sec:true,prof:false},
-  {func:'Relatórios', id:'page-relatorios', coord:true,sec:true,prof:false},
-  {func:'Chat RVS', id:'page-chat', coord:true,sec:true,prof:true},
-  {func:'Permissões', id:'page-permissoes', coord:true,sec:false,prof:false},
-  {func:'Usuários', id:'page-usuarios', coord:true,sec:false,prof:false}
+  {func:'Dashboard',                id:'page-dashboard',    coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
+  {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
+  {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
+  {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+  {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'Horário de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'Topo do Saber',            id:'page-topo-saber',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'Transporte',               id:'page-transporte',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'OBAFOG RVS',               id:'page-obafog',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+  {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'Chat RVS',                 id:'page-chat',         coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
 ];
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
@@ -2489,7 +2489,6 @@ async function enviarAlertaChat(){
   if(tipo === 'fora-sala') msgFinal = `Aluno(a) ${aluno} (Turma ${turma}) está fora de sala sem permissão. `;
   if(tipo === 'emergencia') msgFinal = `EMERGÊNCIA solicitada! `;
   if(tipo === 'aviso') msgFinal = `AVISO GERAL: `;
-  
   if(msgExtra) msgFinal += msgExtra;
   
   const user = getCurrentUser() || {nome: 'Admin', perfil: 'admin'};
@@ -2509,7 +2508,7 @@ async function enviarAlertaChat(){
     return;
   }
   
-  // 2. Se for fora de sala, registrar nas ocorrências do aluno para ficar salvo após as 48h do chat
+  // 2. Se for fora de sala, registrar nas ocorrências para ficarem salvas
   if(tipo === 'fora-sala' && aluno) {
     const oData = new Date().toLocaleDateString('pt-BR');
     const al = ALUNOS_DATA.find(a => a.nome === aluno);
@@ -2521,7 +2520,6 @@ async function enviarAlertaChat(){
         desc: msgExtra || 'Aluno avistado fora de sala sem permissão.',
         data: oData
       });
-      // Salvar na tabela global também
       OCORR_DATA.push({
         id: Date.now(), tipo: 'evasao', icon: '🚨', aluno: aluno, turma: turma,
         desc: msgFinal,
@@ -2529,7 +2527,14 @@ async function enviarAlertaChat(){
         data: oData,
         tratada: false, aguardandoPais: false, origem: 'manual'
       });
-      salvarDados();
+      // Persiste ocorrência no Supabase
+      if(al.id) {
+        supabaseClient.from('ocorrencias').insert({
+          tipo: 'evasao', aluno_id: al.id, turma_id: al.turma_id,
+          descricao: msgFinal, data_ocorr: new Date().toISOString().split('T')[0],
+          responsavel: user.nome, origem: 'manual'
+        }).then(({error}) => { if(error) console.error('Erro ocorr alerta:', error); });
+      }
     }
   }
   
