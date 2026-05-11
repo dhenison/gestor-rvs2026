@@ -146,7 +146,15 @@ async function carregarDados(){
        if(error) console.warn('Erro ao limpar chat antigo:', error);
     });
 
-    const [{data: turmas}, {data: alunos}, {data: ocorrencias}, {data: eventos}, {data: rotas}, {data: configData}, {data: obafogEq}] = await Promise.all([
+    const [
+      {data: turmas}, 
+      {data: alunos}, 
+      {data: ocorrencias}, 
+      {data: eventos}, 
+      {data: rotas}, 
+      configResult, // Capture full result instead of destructuring data
+      {data: obafogEq}
+    ] = await Promise.all([
       supabaseClient.from('turmas').select('*'),
       supabaseClient.from('alunos').select('*'),
       supabaseClient.from('ocorrencias').select('*'),
@@ -156,12 +164,26 @@ async function carregarDados(){
       supabaseClient.from('obafog_equipes').select('*').order('created_at', {ascending:false})
     ]);
 
+    if (configResult.error) {
+      console.error('[carregarDados] ERRO ao buscar configuracoes:', configResult.error);
+    }
+    
+    const configData = configResult.data;
+
     if (configData && Array.isArray(configData)) {
+      console.log('[carregarDados] configData raw:', configData);
       const permsObj = configData.find(c => c.chave === 'permissoes');
-      if (permsObj && permsObj.valor) PERMS = permsObj.valor;
+      if (permsObj && permsObj.valor) {
+        console.log('[carregarDados] Permissões carregadas do banco:', permsObj.valor.length, 'itens');
+        PERMS = permsObj.valor;
+      } else {
+        console.warn('[carregarDados] Permissões não encontradas no banco, usando padrão.');
+      }
       
       const linksObj = configData.find(c => c.chave === 'links_horarios');
       if (linksObj && linksObj.valor) HORARIOS_LINKS = linksObj.valor;
+    } else {
+      console.warn('[carregarDados] configData é nulo ou inválido:', configData);
     }
 
     if (turmas) {
@@ -355,7 +377,7 @@ async function doLogin(){
   if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
 }
 
-function _entrarNoSistema(usuario){
+async function _entrarNoSistema(usuario){
   // Atualiza variável global de perfil
   PERFIL_ATUAL = usuario.perfil || 'professor';
   
@@ -368,8 +390,7 @@ function _entrarNoSistema(usuario){
   document.getElementById('app').classList.add('visible');
   
   updateSidebarProfile();
-  aplicarPermissoesUI();
-  initApp();
+  await initApp(); // Agora espera carregar permissões do banco
   initChatRealtime();
   initPresenceRealtime();
 }
@@ -466,18 +487,43 @@ async function initApp(){
   renderChat('coord');
   renderPermissoes();
   renderCalendar();
+  
+  aplicarPermissoesUI(); 
+  console.log('[initApp] UI de permissões aplicada.');
 }
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
-function showPage(p,el){
-  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  document.getElementById('page-'+p)?.classList.add('active');
-  const titles={dashboard:'Dashboard',agenda:'Agenda Pedagógica',turmas:'Turmas',alunos:'Alunos',
-    frequencia:'Frequência Escolar',solicitacoes:'Solicitações Pedagógicas',transporte:'Transporte Escolar',ocorrencias:'Ocorrências',
-    livros:'Livros Didáticos',chat:'Chat RVS',permissoes:'Permissões',usuarios:'Usuários do Sistema',perfil:'Meu Perfil'};
-  document.getElementById('page-title').textContent=titles[p]||p;
-  if(el) el.classList.add('active');
+function showPage(p, el) {
+  const user = getCurrentUser();
+  const rKey = user ? getRoleKey(user.perfil) : 'prof';
+
+  // Verificação de segurança — bloqueia acesso direto mesmo que o menu esteja oculto
+  if (rKey !== 'admin' && p !== 'perfil') {
+    const perm = PERMS.find(item => item.id === 'page-' + p);
+    if (perm && !perm[rKey]) {
+      console.warn(`[showPage] Acesso NEGADO: perfil="${user?.perfil}" rKey="${rKey}" página="${p}"`);
+      showToast('Você não tem permissão para acessar esta página.', 'alerta');
+      return;
+    }
+  }
+
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p)?.classList.add('active');
+
+  const titles = {
+    dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos',
+    frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
+    livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil'
+  };
+  document.getElementById('page-title').textContent = titles[p] || p;
+  
+  // Se não passou o elemento, tenta achar o item no menu lateral para ativar
+  if (!el) {
+    const selector = `.nav-item[onclick*="showPage('${p}'"]`;
+    el = document.querySelector(selector);
+  }
+  if (el) el.classList.add('active');
   
   // Close mobile menu if open
   document.querySelector('.sidebar').classList.remove('sidebar-open');
@@ -2821,10 +2867,39 @@ async function salvarPerfil() {
 // ─── PERMISSÕES ───────────────────────────────────────────────────────────────
 function renderPermissoes(){
   const b=document.getElementById('perm-tbody'); if(!b)return;
-  b.innerHTML=PERMS.map((p, i)=>`<tr><td><strong>${p.func}</strong></td>
-    ${['coord','sec','prof'].map(r=>`<td><label class="perm-toggle">
-      <input type="checkbox" onchange="togglePermissao(${i}, '${r}')" ${p[r]?'checked':''}><span class="perm-toggle-track"></span><span class="perm-toggle-thumb"></span>
-    </label></td>`).join('')}</tr>`).join('');
+  
+  b.innerHTML = PERMS.map((p, i) => {
+    return `<tr>
+      <td>
+        <div style="font-weight:700;color:var(--gray7)">${p.func}</div>
+        <div style="font-size:10px;color:var(--gray4)">${p.id}</div>
+      </td>
+      
+      <!-- Coord -->
+      <td style="text-align:center">
+        <div style="display:flex;gap:10px;justify-content:center;align-items:center">
+          <input type="checkbox" title="Ver" onchange="togglePermissao(${i}, 'coord')" ${p.coord?'checked':''}>
+          <input type="checkbox" title="Editar" onchange="togglePermissao(${i}, 'editar_coord')" ${p.editar_coord?'checked':''}>
+        </div>
+      </td>
+      
+      <!-- Sec -->
+      <td style="text-align:center">
+        <div style="display:flex;gap:10px;justify-content:center;align-items:center">
+          <input type="checkbox" title="Ver" onchange="togglePermissao(${i}, 'sec')" ${p.sec?'checked':''}>
+          <input type="checkbox" title="Editar" onchange="togglePermissao(${i}, 'editar_sec')" ${p.editar_sec?'checked':''}>
+        </div>
+      </td>
+      
+      <!-- Prof -->
+      <td style="text-align:center">
+        <div style="display:flex;gap:10px;justify-content:center;align-items:center">
+          <input type="checkbox" title="Ver" onchange="togglePermissao(${i}, 'prof')" ${p.prof?'checked':''}>
+          <input type="checkbox" title="Editar" onchange="togglePermissao(${i}, 'editar_prof')" ${p.editar_prof?'checked':''}>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 async function togglePermissao(index, role) {
@@ -2845,46 +2920,116 @@ async function togglePermissao(index, role) {
   }
 }
 
+// ─── SISTEMA DE PERMISSÕES (reescrito v7) ──────────────────────────────────────
+
+/**
+ * Normaliza o string do perfil para comparação segura.
+ * Converte 'Secretária', 'PROFESSOR', 'Coordenador' → lowercase sem acento.
+ */
+function normalizeRole(role) {
+  if (!role) return '';
+  return String(role).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+/**
+ * Retorna a chave do PERMS (coord/sec/prof/admin) para o perfil do usuário.
+ */
+function getRoleKey(role) {
+  const n = normalizeRole(role);
+  if (n === 'admin') return 'admin';
+  if (n === 'coordenador') return 'coord';
+  if (n === 'secretaria' || n === 'secretario') return 'sec';
+  if (n === 'professor') return 'prof';
+  return 'prof'; // default seguro: acesso mínimo
+}
+
+/**
+ * Verifica se o usuário atual pode VER uma página.
+ */
+function podeVer(pageId) {
+  const user = getCurrentUser();
+  if (!user) return false;
+  const rKey = getRoleKey(user.perfil);
+  if (rKey === 'admin') return true;
+
+  const perm = PERMS.find(p => p.id === 'page-' + pageId);
+  if (!perm) return false;
+  const val = perm[rKey];
+  console.log(`[podeVer] pageId=${pageId} rKey=${rKey} valor=${val}`);
+  return !!val;
+}
+
+/**
+ * Verifica se o usuário atual pode EDITAR em uma página.
+ */
+function podeEditar(pageId) {
+  const user = getCurrentUser();
+  if (!user) return false;
+  const rKey = getRoleKey(user.perfil);
+  if (rKey === 'admin') return true;
+
+  const perm = PERMS.find(p => p.id === 'page-' + pageId);
+  if (!perm) return false;
+  return !!perm['editar_' + rKey];
+}
+
+/**
+ * Aplica as permissões na UI: mostra/oculta itens do menu e redireciona se necessário.
+ * DEVE ser chamado DEPOIS que PERMS foi carregado do banco.
+ */
 function aplicarPermissoesUI() {
   const user = getCurrentUser();
-  const role = user ? user.perfil : PERFIL_ATUAL;
-  const rKey = role === 'coordenador' ? 'coord' : role === 'secretaria' ? 'sec' : role === 'professor' ? 'prof' : 'admin';
-  
-  const navItems = document.querySelectorAll('.nav-item[onclick^="showPage("]');
+  if (!user) return;
+
+  const rKey = getRoleKey(user.perfil);
+  console.log(`[aplicarPermissoesUI] perfil="${user.perfil}" → rKey="${rKey}" | PERMS.length=${PERMS.length}`);
+
+  const navItems = document.querySelectorAll('.nav-item[onclick]');
   let firstAllowedNav = null;
-  let activeNavIsAllowed = false;
-  
+  let activePageIsAllowed = false;
+
   navItems.forEach(nav => {
     const match = nav.getAttribute('onclick').match(/showPage\(['"]([^'"]+)['"]/);
     if (!match) return;
     const pID = match[1];
+
+    // 'perfil' sempre visível
     if (pID === 'perfil') {
-      nav.style.display = 'flex';
+      nav.style.display = '';
       return;
     }
-    
-    const pageIdFull = 'page-' + pID;
-    const permConfig = PERMS.find(p => p.id === pageIdFull);
-    
+
     let isAllowed = false;
-    if (role === 'admin') {
+    if (rKey === 'admin') {
       isAllowed = true;
-    } else if (permConfig) {
-      isAllowed = !!permConfig[rKey];
+    } else {
+      const perm = PERMS.find(p => p.id === 'page-' + pID);
+      isAllowed = perm ? !!perm[rKey] : false;
     }
-    
-    nav.style.display = isAllowed ? 'flex' : 'none';
-    
-    if (isAllowed && !firstAllowedNav && pID !== 'chat' && pID !== 'permissoes') {
-      firstAllowedNav = nav;
-    }
-    if (isAllowed && nav.classList.contains('active')) {
-      activeNavIsAllowed = true;
+
+    nav.style.display = isAllowed ? '' : 'none';
+
+    if (isAllowed) {
+      const excludeAsLanding = ['chat', 'permissoes', 'usuarios', 'perfil'];
+      if (!firstAllowedNav && !excludeAsLanding.includes(pID)) {
+        firstAllowedNav = nav;
+      }
+      if (nav.classList.contains('active')) {
+        activePageIsAllowed = true;
+      }
+    } else {
+      // Garante que page oculta não fique active
+      if (nav.classList.contains('active')) {
+        nav.classList.remove('active');
+      }
     }
   });
 
-  // Se a página atualmente ativa não for permitida, navega para a primeira permitida
-  if (!activeNavIsAllowed && firstAllowedNav) {
+  // Se a página atual não é permitida → redireciona para a primeira permitida
+  if (!activePageIsAllowed && firstAllowedNav) {
+    console.log(`[aplicarPermissoesUI] Página ativa não permitida. Redirecionando para: ${firstAllowedNav.getAttribute('onclick')}`);
     firstAllowedNav.click();
   }
 }
