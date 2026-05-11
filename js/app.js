@@ -328,6 +328,7 @@ function _entrarNoSistema(usuario){
   aplicarPermissoesUI();
   initApp();
   initChatRealtime();
+  initPresenceRealtime();
 }
 
 function getCurrentUser() {
@@ -449,12 +450,23 @@ function renderDashCompleto(){
 }
 
 // ─── TOASTS / ALERTAS ────────────────────────────────────────────────────────
-function showToast(msg,type='alerta'){
+function showToast(msg,type='alerta', onClickAction=null){
   const c=document.getElementById('toast-container');
   const t=document.createElement('div');
   t.className='toast '+type;
-  const icons={evasao:'🚨',alerta:'ℹ️',sucesso:'✅'};
-  const labels={evasao:'Alerta de Evasão',alerta:'Notificação',sucesso:'Sucesso'};
+  
+  if(onClickAction) {
+    t.style.cursor = 'pointer';
+    t.onclick = function(e) {
+      if(!e.target.classList.contains('toast-close')){
+        onClickAction();
+        t.remove();
+      }
+    };
+  }
+  
+  const icons={evasao:'🚨',alerta:'ℹ️',sucesso:'✅', chat:'💬'};
+  const labels={evasao:'Alerta de Evasão',alerta:'Notificação',sucesso:'Sucesso', chat:'Chat RVS'};
   t.innerHTML=`<span class="toast-icon">${icons[type]||'ℹ️'}</span>
     <div class="toast-body"><h4>${labels[type]||'Aviso'}</h4><p>${msg}</p></div>
     <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
@@ -2129,7 +2141,73 @@ function fecharLivroAlunos(){
 
 // ─── CHAT RVS (Sincronizado Supabase Realtime) ───────────────────────────────
 let chatSubscription = null;
+let presenceChannel = null;
+let onlineUsers = {};
 let currentChatMessages = [];
+
+function initPresenceRealtime() {
+  if (presenceChannel) return;
+  const user = getCurrentUser() || {nome: 'Visitante', perfil: 'Geral'};
+  const sessionId = Math.random().toString(36).substring(2, 15);
+  
+  presenceChannel = supabaseClient.channel('online-users', {
+    config: { presence: { key: sessionId } },
+  });
+
+  presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      onlineUsers = presenceChannel.presenceState();
+      if(document.getElementById('page-chat')?.classList.contains('active')) {
+          renderChatContacts();
+      }
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceChannel.track({
+          nome: user.nome,
+          perfil: user.perfil,
+          online_at: new Date().toISOString()
+        });
+      }
+    });
+}
+
+function renderChatContacts() {
+  const el = document.getElementById('chat-contacts');
+  if(!el) return;
+  
+  const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
+  let html = `<div class="chat-contact active">
+        <div class="chat-contact-avatar" style="background:var(--primary)">👥</div>
+        <div class="chat-contact-info"><h4>Grupo ${titles[chatSegment] || chatSegment}</h4><p>Chat Coletivo</p></div>
+      </div>`;
+      
+  const uniqueUsers = {};
+  Object.values(onlineUsers).forEach(presences => {
+     presences.forEach(p => {
+       if (p.nome) uniqueUsers[p.nome] = p;
+     });
+  });
+  
+  const myName = getCurrentUser()?.nome || 'Visitante';
+  const usersList = Object.values(uniqueUsers).filter(u => u.nome !== myName);
+  
+  if (usersList.length > 0) {
+      html += `<div style="font-size:11px;font-weight:bold;color:var(--gray5);margin:15px 0 5px 10px;text-transform:uppercase;">Usuários Online</div>`;
+      usersList.forEach(u => {
+          const avatar = u.nome.substring(0,2).toUpperCase();
+          html += `<div class="chat-contact" style="pointer-events:none;opacity:0.8">
+            <div class="chat-contact-avatar" style="background:var(--gray4);position:relative;color:#fff;font-weight:bold;font-size:14px;display:flex;align-items:center;justify-content:center">
+               ${avatar}
+               <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;background:var(--green);border-radius:50%;border:2px solid #fff"></div>
+            </div>
+            <div class="chat-contact-info"><h4>${u.nome}</h4><p style="color:var(--green);font-size:11px">Online agora</p></div>
+          </div>`;
+      });
+  }
+  
+  el.innerHTML = html;
+}
 
 function initChatRealtime() {
   if (chatSubscription) return;
@@ -2137,9 +2215,32 @@ function initChatRealtime() {
     .channel('public:chat_mensagens')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensagens' }, payload => {
       const novaMsg = payload.new;
+      
       if (novaMsg.segmento === chatSegment) {
         currentChatMessages.push(novaMsg);
         renderChatMsgsUI();
+      }
+      
+      const myName = getCurrentUser()?.nome || 'Dhenison Carlos';
+      if (novaMsg.remetente !== myName) {
+        const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
+        const segName = titles[novaMsg.segmento] || novaMsg.segmento;
+        const isCurrentlyLooking = document.getElementById('page-chat')?.classList.contains('active') && chatSegment === novaMsg.segmento;
+        
+        if (!isCurrentlyLooking) {
+            let resumoMsg = novaMsg.mensagem.substring(0,35);
+            if(novaMsg.mensagem.length>35) resumoMsg += '...';
+            if(novaMsg.tipo === 'image') resumoMsg = '📸 Imagem recebida';
+            if(novaMsg.tipo === 'alert') resumoMsg = '🚨 ALERTA CRÍTICO';
+            
+            showToast(`${novaMsg.remetente} (${segName}):<br/>${resumoMsg}`, 'chat', () => {
+              showPage('chat', document.querySelector(".nav-item[onclick*=\"showPage('chat')\"]"));
+              const targetTab = document.querySelector(`#page-chat .tab[onclick*="'${novaMsg.segmento}'"]`) || document.querySelector('#page-chat .tab');
+              if (targetTab) {
+                setChatSegment(novaMsg.segmento, targetTab);
+              }
+            });
+        }
       }
     })
     .subscribe();
@@ -2168,13 +2269,7 @@ function renderChat(seg){
   const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
   document.getElementById('chat-current-name').textContent = 'Grupo ' + titles[seg];
   
-  // Limpar os contatos fakes antigos
-  const el=document.getElementById('chat-contacts');
-  if(el) el.innerHTML = `<div class="chat-contact active">
-        <div class="chat-contact-avatar" style="background:var(--primary)">👥</div>
-        <div class="chat-contact-info"><h4>Grupo ${titles[seg]}</h4><p>Chat Coletivo</p></div>
-      </div>`;
-  
+  renderChatContacts();
   carregarMensagensSegmento();
 }
 
