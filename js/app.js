@@ -246,20 +246,48 @@ async function carregarDados(){
       });
     }
 
-    // Load remaining from LocalStorage temporarily
+    // ── Carregar Solicitações do Supabase ──
+    const {data: solicits} = await supabaseClient.from('solicitacoes').select('*').order('created_at', {ascending: false});
+    if (solicits) {
+      SOLICIT_DATA = solicits.map(s => ({
+        id: s.id,
+        tipo: s.tipo,
+        turno: s.turno,
+        turmas: s.turmas,
+        data: s.data,
+        hIni: s.hora_ini,
+        hFim: s.hora_fim,
+        obs: s.obs,
+        linkDrive: s.link_drive,
+        status: s.status,
+        responsavel: s.responsavel,
+        criadoEm: s.created_at ? new Date(s.created_at).toLocaleDateString('pt-BR') : '—'
+      }));
+    }
+
+    // ── Carregar Livros Didáticos do Supabase ──
+    const {data: livrosDB} = await supabaseClient.from('livros_alunos').select('*');
+    if (livrosDB) {
+      livrosDB.forEach(l => {
+        const al = ALUNOS_DATA.find(a => a.id === l.aluno_id);
+        if (al) {
+          if (!al.livros) al.livros = {};
+          al.livros[l.livro_idx] = l.recebeu ? 'sim' : 'nao';
+          if (l.data_entrega) al.livros[l.livro_idx + '_data'] = new Date(l.data_entrega).toLocaleDateString('pt-BR');
+        }
+      });
+    }
+
+    // ── Manter apenas freq temporária do localStorage (não migrada) ──
     const raw = localStorage.getItem(DB_KEY);
     if(raw) {
-      const d = JSON.parse(raw);
-      if(d.LIVROS_DATA && Array.isArray(d.LIVROS_DATA))
-        d.LIVROS_DATA.forEach((l,i)=>{ if(LIVROS[i]) Object.assign(LIVROS[i],l); });
-      if(d.CHAT_DATA)
-        ['coord','sec','prof'].forEach(k=>{ if(d.CHAT_DATA[k]) CHAT_DATA[k]=d.CHAT_DATA[k]; });
-      
-      if(d.SOLICIT_DATA && Array.isArray(d.SOLICIT_DATA)) SOLICIT_DATA = d.SOLICIT_DATA;
-      if(d.freq) {
-         if(d.freq.entrada) Object.assign(freq.entrada, d.freq.entrada);
-         if(d.freq.saida) Object.assign(freq.saida, d.freq.saida);
-      }
+      try {
+        const d = JSON.parse(raw);
+        if(d.freq) {
+           if(d.freq.entrada) Object.assign(freq.entrada, d.freq.entrada);
+           if(d.freq.saida) Object.assign(freq.saida, d.freq.saida);
+        }
+      } catch(e) {}
     }
   } catch(e) {
     console.warn('Erro ao carregar do Supabase:', e);
@@ -1774,7 +1802,7 @@ function renderOcorrencias(){
   c.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Sem registros');
 }
 
-function saveOcorrencia(){
+async function saveOcorrencia(){
   const tipo=document.getElementById('input-ocorr-tipo')?.value;
   const turma=document.getElementById('input-ocorr-turma')?.value;
   const desc=document.getElementById('input-ocorr-desc')?.value.trim();
@@ -1782,54 +1810,85 @@ function saveOcorrencia(){
   const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰'};
   const alunoSel=document.getElementById('sel-aluno-principal')?.value;
   const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
+  const user = getCurrentUser();
   
+  // Buscar aluno principal e turma no banco
+  const alunoObj = ALUNOS_DATA.find(a => a.nome === alunoSel);
+  const turmaObj = TURMAS_DATA.find(t => t.code === turma);
+  
+  const payload = {
+    tipo,
+    aluno_id: alunoObj?.id || null,
+    turma_id: turmaObj?.id || null,
+    descricao: desc,
+    hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+    data_ocorr: new Date().toISOString().split('T')[0],
+    tratada: false,
+    aguardando_pais: comunicarPais,
+    auto_gerada: false,
+    responsavel: user?.nome || 'Usuário',
+    envolvidos: nomes,
+    origem: 'manual'
+  };
+  
+  const { data: insertedOcorr, error } = await supabaseClient.from('ocorrencias').insert(payload).select().single();
+  
+  if (error) {
+    console.error('[saveOcorrencia] Erro:', error);
+    showToast('Erro ao salvar ocorrência: ' + error.message, 'evasao');
+    return;
+  }
+  
+  // Atualiza cache local com os dados reais do banco
   const oData = new Date().toLocaleDateString('pt-BR');
-  OCORR_DATA.push({
-    id:Date.now(),tipo,icon:icons[tipo]||'⚠️',aluno:nomes||'—',turma,desc,
-    hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
-    data: oData,
-    tratada:false,aguardandoPais:comunicarPais,origem:'manual'
-  });
-  
-  // Salva no histórico de todos os envolvidos imediatamente
-  const arrayNomes = [alunoSel, ...envolvidos.map(e=>e.nome)].filter(Boolean);
-  arrayNomes.forEach(n => {
-    const al = ALUNOS_DATA.find(a => a.nome === n);
-    if(al) {
-      al.historico = al.historico || [];
-      al.historico.push({
-        tipo: 'ocorrencia',
-        titulo: 'Ocorrência: ' + tipo,
-        desc: desc || 'Registro disciplinar gerado.',
-        data: oData
-      });
-    }
+  OCORR_DATA.unshift({
+    id: insertedOcorr?.id || Date.now(),
+    tipo, icon: icons[tipo]||'⚠️', aluno: nomes||'—', turma,
+    desc, hora: payload.hora, data: oData,
+    tratada: false, aguardandoPais: comunicarPais, origem: 'manual'
   });
 
   envolvidos=[];
   const el=document.getElementById('envolvidos-list-ocorr');
   if(el) el.innerHTML='';
   closeModal('modal-ocorr');
-  showToast('Ocorrência registrada e salva na ficha do aluno!','sucesso');
-  renderOcorrencias(); renderDashOcorr(); salvarDados();
+  showToast('Ocorrência registrada! ✅','sucesso');
+  renderOcorrencias(); renderDashOcorr();
 }
 
 function abrirTratarOcorr(id){
   document.getElementById('modal-tratar-id').value=id;
   openModal('modal-tratar-ocorr');
 }
-function salvarTratamento(manter){
-  const id=Number(document.getElementById('modal-tratar-id').value);
-  const just=document.getElementById('input-justificativa')?.value.trim();
-  const o=OCORR_DATA.find(x=>x.id===id); if(!o)return;
+async function salvarTratamento(manter){
+  const id = document.getElementById('modal-tratar-id').value; // pode ser UUID string
+  const just = document.getElementById('input-justificativa')?.value.trim();
+  
+  // Busca no cache local (id pode ser UUID ou Number)
+  const o = OCORR_DATA.find(x => String(x.id) === String(id));
+  if(!o) return;
+  
   if(!manter){
-    o.tratada=true; o.justificativa=just;
-    const al=ALUNOS_DATA.find(a=>a.nome===o.aluno);
-    if(al)(al.historico=al.historico||[]).push({tipo:'ocorrencia',titulo:'Ocorrência tratada: '+o.tipo,desc:just||o.desc,data:o.data});
-    showToast('Ocorrência tratada ✅','sucesso');
-  } else { showToast('Mantida sem tratamento','alerta'); }
+    o.tratada = true;
+    o.justificativa = just;
+    
+    // Persiste no Supabase
+    const { error } = await supabaseClient
+      .from('ocorrencias')
+      .update({ tratada: true, justificativa: just })
+      .eq('id', id);
+    
+    if(error) {
+      console.error('[salvarTratamento] Erro:', error);
+      showToast('Aviso: tratamento salvo localmente, mas não sincronizado.', 'alerta');
+    } else {
+      showToast('Ocorrência tratada ✅','sucesso');
+    }
+  } else {
+    showToast('Mantida sem tratamento','alerta');
+  }
   closeModal('modal-tratar-ocorr');
-  renderOcorrencias(); renderDashOcorr(); salvarDados();
+  renderOcorrencias(); renderDashOcorr();
 }
 
 function filtrarHistoricoOcorr(status){
@@ -1993,7 +2052,20 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
         data:new Date().toLocaleDateString('pt-BR')
       });
     }
-    renderDashOcorr(); renderOcorrencias(); salvarDados();
+    if (aluno && aluno.id) {
+      supabaseClient.from('ocorrencias').insert({
+          tipo: 'evasao',
+          aluno_id: aluno.id,
+          turma_id: aluno.turma_id,
+          descricao: `Evasão no transporte escolar — Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'—'}`,
+          hora: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+          data_ocorr: new Date().toISOString().split('T')[0],
+          tratada: false,
+          auto_gerada: true,
+          origem: 'transporte'
+      }).then(({error}) => { if(error) console.error('Erro transporte ocorr:', error); });
+    }
+    renderDashOcorr(); renderOcorrencias();
     // Atualiza fundo da linha
     const rowEl=btn.closest('[style*="border-radius:8px"]');
     if(rowEl) rowEl.style.background='#ffe4e4';
@@ -2116,10 +2188,13 @@ function abrirLivroAlunos(liIdx, liNome){
   document.getElementById('livros-alunos-section').classList.remove('hidden');
 }
 
-function toggleLivroAluno(cpf, liIdx, checkbox){
+async function toggleLivroAluno(cpf, liIdx, checkbox){
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   if(!a.livros) a.livros={};
-  if(checkbox.checked){
+  const recebeu = checkbox.checked;
+  const dataEntrega = recebeu ? new Date().toISOString().split('T')[0] : null;
+  
+  if(recebeu){
     a.livros[liIdx]='sim';
     a.livros[liIdx+'_data']=new Date().toLocaleDateString('pt-BR');
   } else {
@@ -2127,10 +2202,21 @@ function toggleLivroAluno(cpf, liIdx, checkbox){
     delete a.livros[liIdx+'_data'];
   }
   const span=checkbox.nextElementSibling;
-  if(span){span.style.color=checkbox.checked?'var(--green-dark)':'var(--gray4)';span.textContent=checkbox.checked?'✓ Recebeu':'Não recebeu';}
+  if(span){span.style.color=recebeu?'var(--green-dark)':'var(--gray4)';span.textContent=recebeu?'✓ Recebeu':'Não recebeu';}
   const td=checkbox.closest('td').nextElementSibling;
-  if(td) td.textContent=checkbox.checked?new Date().toLocaleDateString('pt-BR'):'';
-  salvarDados(); renderLivros();
+  if(td) td.textContent=recebeu?new Date().toLocaleDateString('pt-BR'):'';
+  
+  // Persiste no Supabase
+  if (a.id) {
+    const { error } = await supabaseClient.from('livros_alunos').upsert({
+      aluno_id: a.id,
+      livro_idx: parseInt(liIdx),
+      recebeu: recebeu,
+      data_entrega: dataEntrega
+    }, { onConflict: 'aluno_id,livro_idx' });
+    if(error) console.error('[toggleLivroAluno] Erro:', error);
+  }
+  renderLivros();
 }
 
 function fecharLivroAlunos(){
@@ -3091,16 +3177,30 @@ async function salvarSolicitacao(){
   const turmaSel = document.getElementById('solicit-turmas');
   const turmas = turmaSel ? Array.from(turmaSel.selectedOptions).map(o => o.value).join(', ') : '';
   if(!tipo || !turno || !data){ showToast('Preencha Tipo, Turno e Data!','alerta'); return; }
-  const nova = {
-    id: Date.now(), tipo, turno, turmas, data, hIni, hFim, obs, linkDrive,
+  
+  const user = getCurrentUser();
+  const { data: inserted, error } = await supabaseClient.from('solicitacoes').insert({
+    tipo, turno, turmas, data, hora_ini: hIni, hora_fim: hFim,
+    obs, link_drive: linkDrive, status: 'pendente',
+    responsavel: user?.nome || 'Usuário'
+  }).select().single();
+  
+  if (error) {
+    console.error('[salvarSolicitacao] Erro:', error);
+    showToast('Erro ao salvar solicitação: ' + error.message, 'evasao');
+    return;
+  }
+  
+  // Atualiza cache local
+  SOLICIT_DATA.unshift({
+    id: inserted.id, tipo, turno, turmas, data, hIni, hFim, obs, linkDrive,
     status: 'pendente',
-    criadoEm: new Date().toLocaleDateString('pt-BR'),
-    responsavel: getCurrentUser()?.nome || 'Usuário'
-  };
-  SOLICIT_DATA.unshift(nova);
-  salvarDados();
+    responsavel: user?.nome || 'Usuário',
+    criadoEm: new Date().toLocaleDateString('pt-BR')
+  });
+  
   closeModal('modal-nova-solicit');
-  showToast('Solicitação enviada!','sucesso');
+  showToast('Solicitação enviada! ✅','sucesso');
   renderSolicitacoes();
 }
 
@@ -3156,19 +3256,31 @@ function renderSolicitacoes(){
   container.innerHTML = html;
 }
 
-function atualizarStatusSolicit(id, novoStatus){
+async function atualizarStatusSolicit(id, novoStatus){
   var s = SOLICIT_DATA.find(function(x){ return x.id === id; });
   if(!s) return;
   s.status = novoStatus;
-  salvarDados();
+  
+  const { error } = await supabaseClient.from('solicitacoes').update({ status: novoStatus }).eq('id', id);
+  if(error) {
+    console.error('[atualizarStatusSolicit] Erro:', error);
+    showToast('Erro ao atualizar status.', 'evasao');
+    return;
+  }
   renderSolicitacoes();
   showToast('Status atualizado: ' + novoStatus,'sucesso');
 }
 
-function excluirSolicit(id){
+async function excluirSolicit(id){
   if(!confirm('Excluir esta solicitação?')) return;
+  
+  const { error } = await supabaseClient.from('solicitacoes').delete().eq('id', id);
+  if(error) {
+    console.error('[excluirSolicit] Erro:', error);
+    showToast('Erro ao excluir solicitação.', 'evasao');
+    return;
+  }
   SOLICIT_DATA = SOLICIT_DATA.filter(function(s){ return s.id !== id; });
-  salvarDados();
   renderSolicitacoes();
   showToast('Solicitação excluída','alerta');
 }
