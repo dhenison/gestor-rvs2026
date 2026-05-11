@@ -2555,6 +2555,70 @@ async function enviarAlertaChat(){
 // ─── PERFIL DO USUÁRIO ────────────────────────────────────────────────────────
 const DRIVE_FOTO_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _perfilFotoPendente = null;
+let _cameraStream = null; // guarda o stream ativo da webcam
+
+// Abre o modal com a câmera (getUserMedia — funciona em desktop e celular)
+async function abrirCameraPerfil() {
+  const erroEl = document.getElementById('camera-perfil-erro');
+  if (erroEl) erroEl.style.display = 'none';
+
+  // Em celular, prefere câmera frontal; em desktop, abre a webcam
+  const constraints = {
+    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+    audio: false
+  };
+
+  try {
+    _cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('camera-perfil-video');
+    if (video) { video.srcObject = _cameraStream; }
+    openModal('modal-camera-perfil');
+  } catch (err) {
+    console.error('[Camera] Erro:', err);
+    // Se câmera negada/indisponível, cai para o seletor de arquivo
+    if (err.name === 'NotAllowedError') {
+      showToast('Permissão de câmera negada. Selecione da galeria.', 'alerta');
+    } else if (err.name === 'NotFoundError') {
+      showToast('Nenhuma câmera encontrada. Use "Da Galeria".', 'alerta');
+    } else {
+      // Fallback: abre o file picker com capture
+      document.getElementById('perfil-foto-input')?.click();
+    }
+  }
+}
+
+// Fecha o modal e para o stream da câmera
+function fecharCameraPerfil() {
+  if (_cameraStream) {
+    _cameraStream.getTracks().forEach(t => t.stop());
+    _cameraStream = null;
+  }
+  const video = document.getElementById('camera-perfil-video');
+  if (video) { video.srcObject = null; }
+  closeModal('modal-camera-perfil');
+}
+
+// Captura o frame atual do vídeo e converte em File
+function tirarFotoPerfil() {
+  const video = document.getElementById('camera-perfil-video');
+  const canvas = document.getElementById('camera-perfil-canvas');
+  if (!video || !canvas) return;
+
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  // Espelha horizontalmente (mais natural para selfie)
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  canvas.toBlob((blob) => {
+    if (!blob) { showToast('Erro ao capturar foto.', 'evasao'); return; }
+    const file = new File([blob], `selfie_${Date.now()}.jpg`, { type: 'image/jpeg' });
+    perfilSelecionarFoto({ files: [file] });
+    fecharCameraPerfil();
+  }, 'image/jpeg', 0.9);
+}
 
 function renderPerfil() {
   const user = getCurrentUser();

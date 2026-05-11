@@ -856,11 +856,10 @@
                   🖼️ Da Galeria
                   <input type="file" id="perfil-foto-input" accept="image/*" style="display:none" onchange="perfilSelecionarFoto(this)">
                 </label>
-                <!-- Câmera (funciona em celular e computador com webcam) -->
-                <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+                <!-- Câmera: usa getUserMedia no desktop, capture no celular -->
+                <button class="btn btn-outline btn-sm" style="margin:0" onclick="abrirCameraPerfil()">
                   📷 Câmera
-                  <input type="file" accept="image/*" capture="user" style="display:none" onchange="perfilSelecionarFoto(this)">
-                </label>
+                </button>
               </div>
               <div style="font-size:11px;color:var(--gray4);margin-top:6px">JPG, PNG, WEBP — máx. 5MB · A foto será salva no Google Drive</div>
               <div id="perfil-foto-status" style="display:none;font-size:12px;font-weight:600;margin-top:6px"></div>
@@ -888,6 +887,28 @@
 <!-- ════════════════════════════════════════════
      MODAIS
 ════════════════════════════════════════════ -->
+
+<!-- Modal: Câmera do Perfil (getUserMedia) -->
+<div class="modal-overlay" id="modal-camera-perfil" onclick="if(event.target===this)fecharCameraPerfil()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <span class="modal-title">📷 Tirar Foto de Perfil</span>
+      <button class="modal-close" onclick="fecharCameraPerfil()">✕</button>
+    </div>
+    <div style="padding:16px;text-align:center">
+      <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:14px">
+        <video id="camera-perfil-video" autoplay playsinline muted
+          style="width:100%;max-height:320px;display:block;border-radius:12px"></video>
+        <canvas id="camera-perfil-canvas" style="display:none"></canvas>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn btn-outline" onclick="fecharCameraPerfil()">Cancelar</button>
+        <button class="btn btn-primary" onclick="tirarFotoPerfil()">📸 Tirar Foto</button>
+      </div>
+      <div id="camera-perfil-erro" style="display:none;margin-top:10px;font-size:12px;color:var(--red);padding:8px;background:#fff0f0;border-radius:6px"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: OBAFOG Metragem -->
 <div class="modal-overlay" id="modal-obafog-metragem" onclick="if(event.target===this)closeModal('modal-obafog-metragem')">
