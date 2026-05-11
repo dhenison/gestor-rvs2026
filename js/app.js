@@ -384,20 +384,27 @@ function getCurrentUser() {
 function updateSidebarProfile() {
   const user = getCurrentUser();
   if(!user) return;
-  const nameEl = document.getElementById('sidebar-user-name');
-  const roleEl = document.getElementById('sidebar-user-role');
+  const nameEl  = document.getElementById('sidebar-user-name');
+  const roleEl  = document.getElementById('sidebar-user-role');
   const avatarEl = document.getElementById('sidebar-user-avatar');
-  
+
   if(nameEl) nameEl.textContent = user.nome || 'Usuário';
   if(roleEl) {
     const pLabel = {admin:'Administrador',coordenador:'Coordenador',secretaria:'Secretaria',professor:'Professor'};
     roleEl.textContent = pLabel[user.perfil] || 'Membro';
   }
-  if(avatarEl && user.nome) {
-    const parts = user.nome.split(' ');
-    let init = parts[0].charAt(0);
-    if(parts.length > 1) init += parts[parts.length-1].charAt(0);
-    avatarEl.textContent = init.toUpperCase();
+  if(avatarEl) {
+    if (user.foto_url) {
+      // Mostra a foto de perfil
+      avatarEl.innerHTML = `<img src="${user.foto_url}" alt="${user.nome || ''}" 
+        style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
+    } else {
+      // Mostra as iniciais
+      const parts = (user.nome || 'U').split(' ');
+      let init = parts[0].charAt(0);
+      if(parts.length > 1) init += parts[parts.length-1].charAt(0);
+      avatarEl.textContent = init.toUpperCase();
+    }
   }
 }
 
@@ -2768,37 +2775,27 @@ async function salvarPerfil() {
     }
   }
 
-  // ── Salvar no banco: busca id pelo email, depois atualiza ──
-  // Primeiro garante que temos o id mais atual
-  let userId = user.id || null;
+  // ── Salvar no banco usando upsert pelo email ──
+  // Inclui senha/perfil/turno para não perder dados existentes no upsert
+  const upsertData = {
+    email:    user.email,
+    nome,
+    formacao,
+    bio,
+    whatsapp,
+    foto_url: fotoUrl,
+    // preserva campos de sessão que já existem
+    perfil:   user.perfil   || 'professor',
+    cargo:    user.cargo    || '',
+    turno:    user.turno    || '',
+    senha:    user.senha    || '',
+  };
 
-  if (!userId) {
-    // Tenta buscar o id pelo email
-    const { data: found } = await supabaseClient
-      .from('usuarios')
-      .select('id')
-      .eq('email', user.email)
-      .maybeSingle();
-    if (found) userId = found.id;
-  }
-
-  let dbError = null;
-
-  if (userId) {
-    // Usuário existe no banco → UPDATE pelo id
-    const { error } = await supabaseClient
-      .from('usuarios')
-      .update({ nome, formacao, bio, whatsapp, foto_url: fotoUrl })
-      .eq('id', userId);
-    dbError = error;
-  } else {
-    // Não tem id (admin fixo sem registro) → UPDATE pelo email
-    const { error } = await supabaseClient
-      .from('usuarios')
-      .update({ nome, formacao, bio, whatsapp, foto_url: fotoUrl })
-      .eq('email', user.email);
-    dbError = error;
-  }
+  const { data: savedUser, error: dbError } = await supabaseClient
+    .from('usuarios')
+    .upsert(upsertData, { onConflict: 'email' })
+    .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
+    .maybeSingle();
 
   if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
 
@@ -2808,16 +2805,12 @@ async function salvarPerfil() {
     return;
   }
 
-  // Atualiza sessão local
+  // Atualiza sessão com dados devolvidos pelo banco (inclui id gerado)
   const userAtual = getCurrentUser();
   if (userAtual) {
-    userAtual.nome = nome;
-    userAtual.formacao = formacao;
-    userAtual.bio = bio;
-    userAtual.whatsapp = whatsapp;
-    if (userId) userAtual.id = userId;
-    if (fotoUrl) userAtual.foto_url = fotoUrl;
-    try { sessionStorage.setItem('rvs_user', JSON.stringify(userAtual)); } catch(_){}
+    const merged = { ...userAtual, ...(savedUser || {}), nome, formacao, bio, whatsapp };
+    if (fotoUrl) merged.foto_url = fotoUrl;
+    try { sessionStorage.setItem('rvs_user', JSON.stringify(merged)); } catch(_){}
   }
 
   renderPerfil();
