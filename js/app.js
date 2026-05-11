@@ -501,16 +501,24 @@ function abrirExcluirAluno(){
   openModal('modal-excluir-aluno');
 }
 
-function excluirAluno(){
+async function excluirAluno(){
   const cpf=document.getElementById('select-excluir-aluno')?.value;
   if(!cpf){ showToast('Selecione um aluno','alerta'); return; }
-  const al=ALUNOS_DATA.find(a=>a.cpf===cpf);
-  if(!al)return;
-  ALUNOS_DATA=ALUNOS_DATA.filter(a=>a.cpf!==cpf);
+  const al=ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf);
+  if(!al || !al.id){ showToast('Aluno não encontrado no banco de dados.', 'alerta'); return; }
+  
+  const { error } = await supabaseClient.from('alunos').delete().eq('id', al.id);
+  if (error) {
+      console.error("[excluirAluno] Erro Supabase:", error);
+      showToast('Erro no banco de dados: ' + error.message, 'evasao');
+      return;
+  }
+  
   closeModal('modal-excluir-aluno');
   showToast(al.nome+' excluído do sistema.','sucesso');
+  
+  await carregarDados();
   renderAlunos(); renderMetricasDash(); renderTurmasTable(); renderTurmaGrid();
-  salvarDados();
 }
 
 function atualizarSelectTurmas(){
@@ -794,10 +802,10 @@ function calcularIdade(){
   idadeEl.value=idade>0?idade+' anos':'—';
 }
 
-function saveAluno(){
+async function saveAluno(){
   const nome   =document.getElementById('input-aluno-nome')?.value.trim();
   const cpf    =document.getElementById('input-aluno-cpf')?.value.trim();
-  const turma  =document.getElementById('input-aluno-turma')?.value;
+  const turmaCode =document.getElementById('input-aluno-turma')?.value;
   const turno  =document.getElementById('input-aluno-turno')?.value;
   const resp   =document.getElementById('input-aluno-resp')?.value.trim();
   const contato=document.getElementById('input-aluno-contato')?.value.trim();
@@ -805,14 +813,37 @@ function saveAluno(){
   const email  =document.getElementById('input-aluno-email')?.value.trim();
   const nasc   =document.getElementById('input-aluno-nasc')?.value;
   const idade  =document.getElementById('input-aluno-idade')?.value;
-  if(!nome||!cpf||!turma){ showToast('Preencha nome, CPF e turma!','alerta'); return; }
-  if(ALUNOS_DATA.find(a=>a.cpf===cpf)){ showToast('CPF já cadastrado!','alerta'); return; }
-  ALUNOS_DATA.push({cpf,nome,turma,turno,rota,resp,contato,email,nasc,idade,status:'ativo',historico:[]});
+  
+  if(!nome||!cpf||!turmaCode){ showToast('Preencha nome, CPF e turma!','alerta'); return; }
+  if(ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf)){ showToast('CPF/Matrícula já cadastrado!','alerta'); return; }
+  
+  const tObj = TURMAS_DATA.find(t => t.code === turmaCode);
+  if (!tObj) { showToast('Turma não encontrada no sistema.', 'alerta'); return; }
+
+  const { data, error } = await supabaseClient.from('alunos').insert({
+      matricula: cpf,
+      nome: nome,
+      turma_id: tObj.id,
+      rota: rota || 'Sem transporte',
+      responsavel: resp,
+      contato: contato,
+      instagram: email, // Usando instagram para o email de acordo com o padrão do import
+      data_nascimento: nasc || null,
+      status: 'ativo'
+  });
+
+  if (error) {
+      console.error("[saveAluno] Erro Supabase:", error);
+      showToast('Erro no banco: ' + error.message, 'evasao');
+      return;
+  }
+
   closeModal('modal-aluno');
   showToast(nome+' cadastrado!','sucesso');
+  
+  await carregarDados();
   atualizarSelectTurmas();
   renderAlunos(); renderMetricasDash(); renderTurmasTable(); renderTurmaGrid();
-  salvarDados();
 }
 
 function verFicha(cpf){
