@@ -2716,12 +2716,17 @@ function perfilSelecionarFoto(input) {
 
 async function salvarPerfil() {
   const user = getCurrentUser();
-  if (!user) return;
+  if (!user) { showToast('Sessão expirada. Faça login novamente.', 'alerta'); return; }
 
-  const nome = document.getElementById('perfil-nome')?.value.trim() || user.nome;
-  const formacao = document.getElementById('perfil-formacao')?.value.trim() || '';
-  const bio = document.getElementById('perfil-bio')?.value.trim() || '';
-  const whatsapp = document.getElementById('perfil-whatsapp')?.value.trim() || '';
+  const nome     = (document.getElementById('perfil-nome')?.value     || '').trim() || user.nome;
+  const formacao = (document.getElementById('perfil-formacao')?.value || '').trim();
+  const bio      = (document.getElementById('perfil-bio')?.value      || '').trim();
+  const whatsapp = (document.getElementById('perfil-whatsapp')?.value || '').trim();
+
+  if (!user.email) {
+    showToast('Usuário sem e-mail na sessão. Faça logout e login novamente.', 'alerta');
+    return;
+  }
 
   const btn = document.querySelector('#page-perfil .btn-primary');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
@@ -2736,7 +2741,7 @@ async function salvarPerfil() {
     try {
       const base64 = await fileParaBase64(_perfilFotoPendente);
       const nomeSafe = nome.replace(/[^a-zA-Z0-9À-ú\s]/g, '').trim();
-      const ext = _perfilFotoPendente.name.split('.').pop();
+      const ext = (_perfilFotoPendente.name || 'jpg').split('.').pop();
 
       const response = await fetch(DRIVE_FOTO_URL, {
         method: 'POST',
@@ -2744,7 +2749,7 @@ async function salvarPerfil() {
           nome: `foto_perfil_${Date.now()}.${ext}`,
           tipo: _perfilFotoPendente.type || 'image/jpeg',
           arquivo: base64,
-          subpasta: nomeSafe  // Apps Script usará para criar subpasta
+          subpasta: nomeSafe
         })
       });
 
@@ -2763,17 +2768,43 @@ async function salvarPerfil() {
     }
   }
 
-  // ── Salvar no banco (tabela usuarios) ──
-  const { error } = await supabaseClient
-    .from('usuarios')
-    .update({ nome, formacao, bio, whatsapp, foto_url: fotoUrl })
-    .eq('id', user.id);
+  // ── Salvar no banco: busca id pelo email, depois atualiza ──
+  // Primeiro garante que temos o id mais atual
+  let userId = user.id || null;
+
+  if (!userId) {
+    // Tenta buscar o id pelo email
+    const { data: found } = await supabaseClient
+      .from('usuarios')
+      .select('id')
+      .eq('email', user.email)
+      .maybeSingle();
+    if (found) userId = found.id;
+  }
+
+  let dbError = null;
+
+  if (userId) {
+    // Usuário existe no banco → UPDATE pelo id
+    const { error } = await supabaseClient
+      .from('usuarios')
+      .update({ nome, formacao, bio, whatsapp, foto_url: fotoUrl })
+      .eq('id', userId);
+    dbError = error;
+  } else {
+    // Não tem id (admin fixo sem registro) → UPDATE pelo email
+    const { error } = await supabaseClient
+      .from('usuarios')
+      .update({ nome, formacao, bio, whatsapp, foto_url: fotoUrl })
+      .eq('email', user.email);
+    dbError = error;
+  }
 
   if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
 
-  if (error) {
-    console.error('[salvarPerfil] Erro:', error);
-    showToast('Erro ao salvar perfil: ' + error.message, 'evasao');
+  if (dbError) {
+    console.error('[salvarPerfil] Erro no banco:', dbError);
+    showToast('Erro ao salvar perfil: ' + dbError.message, 'evasao');
     return;
   }
 
@@ -2784,11 +2815,13 @@ async function salvarPerfil() {
     userAtual.formacao = formacao;
     userAtual.bio = bio;
     userAtual.whatsapp = whatsapp;
+    if (userId) userAtual.id = userId;
     if (fotoUrl) userAtual.foto_url = fotoUrl;
     try { sessionStorage.setItem('rvs_user', JSON.stringify(userAtual)); } catch(_){}
   }
 
   renderPerfil();
+  updateSidebarProfile();
   showToast('Perfil atualizado! ✅', 'sucesso');
 }
 
@@ -2805,16 +2838,17 @@ async function togglePermissao(index, role) {
   PERMS[index][role] = !PERMS[index][role];
   renderPermissoes();
   aplicarPermissoesUI();
-  
-  const { error } = await supabaseClient.from('configuracoes').upsert({
-    chave: 'permissoes',
-    valor: PERMS
-  });
+
+  // onConflict:'chave' garante que faz UPDATE na linha existente
+  const { error } = await supabaseClient
+    .from('configuracoes')
+    .upsert({ chave: 'permissoes', valor: PERMS }, { onConflict: 'chave' });
+
   if (error) {
-    console.error('Erro ao salvar permissões no banco', error);
-    showToast('Erro ao salvar no banco. A tabela "configuracoes" existe?', 'alerta');
+    console.error('[togglePermissao] Erro:', error);
+    showToast('Erro ao salvar permissão: ' + error.message, 'alerta');
   } else {
-    showToast('Permissões atualizadas para todos!', 'sucesso');
+    showToast('Permissões atualizadas!', 'sucesso');
   }
 }
 
