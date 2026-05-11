@@ -455,6 +455,8 @@ function showPage(p,el){
   if(p==='rvs-agenda'){ popularDatasAtividade(); popularTurmasAtividade(); renderAgendaMural(); }
   if(p==='horarios') carregarLinksHorario();
   if(p==='obafog') renderObafog();
+  if(p==='permissoes') renderPermissoes();
+  if(p==='perfil') renderPerfil();
   if(p==='frequencia'){
     // Sempre mostra etapa1 se não houver chamada em andamento
     if(!turmaChamadaAtual){
@@ -2548,6 +2550,155 @@ async function enviarAlertaChat(){
   if(document.getElementById('page-chat')?.classList.contains('active')) {
     setChatSegment(destino, document.querySelector(`.tab[onclick*="${destino}"]`));
   }
+}
+
+// ─── PERFIL DO USUÁRIO ────────────────────────────────────────────────────────
+const DRIVE_FOTO_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
+let _perfilFotoPendente = null;
+
+function renderPerfil() {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  // Preencher campos
+  const set = (id, val) => { const el = document.getElementById(id); if(el) el.value = val || ''; };
+  set('perfil-nome', user.nome);
+  set('perfil-email', user.email);
+  set('perfil-cargo', user.perfil ? (user.perfil.charAt(0).toUpperCase() + user.perfil.slice(1)) : '');
+  set('perfil-formacao', user.formacao);
+  set('perfil-bio', user.bio);
+  set('perfil-whatsapp', user.whatsapp);
+
+  // Avatar: foto ou iniciais
+  const iniciais = (user.nome || '?').split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
+  const iniciaisEl = document.getElementById('perfil-avatar-iniciais');
+  const imgEl = document.getElementById('perfil-avatar-img');
+  if (iniciaisEl) iniciaisEl.textContent = iniciais;
+
+  if (user.foto_url && imgEl) {
+    imgEl.src = user.foto_url;
+    imgEl.style.display = 'block';
+    if(iniciaisEl) iniciaisEl.style.display = 'none';
+  } else {
+    if(imgEl) imgEl.style.display = 'none';
+    if(iniciaisEl) iniciaisEl.style.display = 'block';
+  }
+
+  // Atualiza sidebar também
+  const sideAvatar = document.getElementById('sidebar-user-avatar');
+  if (sideAvatar) {
+    if (user.foto_url) {
+      sideAvatar.innerHTML = `<img src="${user.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="${user.nome}">`;
+    } else {
+      sideAvatar.textContent = iniciais;
+    }
+  }
+}
+
+function perfilSelecionarFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Foto muito grande! Máximo 5MB.', 'alerta');
+    input.value = '';
+    return;
+  }
+  _perfilFotoPendente = file;
+
+  // Preview imediato
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const imgEl = document.getElementById('perfil-avatar-img');
+    const iniciaisEl = document.getElementById('perfil-avatar-iniciais');
+    if (imgEl) { imgEl.src = e.target.result; imgEl.style.display = 'block'; }
+    if (iniciaisEl) iniciaisEl.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+
+  const status = document.getElementById('perfil-foto-status');
+  if (status) {
+    status.style.display = 'block';
+    status.style.color = 'var(--blue-dark)';
+    status.textContent = '📎 Foto selecionada — clique em "Salvar Alterações" para enviar ao Drive.';
+  }
+}
+
+async function salvarPerfil() {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  const nome = document.getElementById('perfil-nome')?.value.trim() || user.nome;
+  const formacao = document.getElementById('perfil-formacao')?.value.trim() || '';
+  const bio = document.getElementById('perfil-bio')?.value.trim() || '';
+  const whatsapp = document.getElementById('perfil-whatsapp')?.value.trim() || '';
+
+  const btn = document.querySelector('#page-perfil .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
+
+  let fotoUrl = user.foto_url || null;
+
+  // ── Upload da foto para o Google Drive (subpasta com nome da pessoa) ──
+  if (_perfilFotoPendente) {
+    const status = document.getElementById('perfil-foto-status');
+    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '⏳ Enviando foto ao Google Drive…'; }
+
+    try {
+      const base64 = await fileParaBase64(_perfilFotoPendente);
+      const nomeSafe = nome.replace(/[^a-zA-Z0-9À-ú\s]/g, '').trim();
+      const ext = _perfilFotoPendente.name.split('.').pop();
+
+      const response = await fetch(DRIVE_FOTO_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          nome: `foto_perfil_${Date.now()}.${ext}`,
+          tipo: _perfilFotoPendente.type || 'image/jpeg',
+          arquivo: base64,
+          subpasta: nomeSafe  // Apps Script usará para criar subpasta
+        })
+      });
+
+      const resultado = await response.json();
+      if (!resultado.ok) throw new Error(resultado.erro || 'Erro no Drive');
+
+      fotoUrl = resultado.url;
+      _perfilFotoPendente = null;
+      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = '✅ Foto salva no Google Drive!'; }
+
+    } catch(err) {
+      console.error('[Foto Perfil] Erro:', err);
+      showToast('Erro ao enviar foto: ' + err.message, 'evasao');
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
+      return;
+    }
+  }
+
+  // ── Salvar no banco (tabela usuarios) ──
+  const { error } = await supabaseClient
+    .from('usuarios')
+    .update({ nome, formacao, bio, whatsapp, foto_url: fotoUrl })
+    .eq('id', user.id);
+
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
+
+  if (error) {
+    console.error('[salvarPerfil] Erro:', error);
+    showToast('Erro ao salvar perfil: ' + error.message, 'evasao');
+    return;
+  }
+
+  // Atualiza sessão local
+  const userAtual = getCurrentUser();
+  if (userAtual) {
+    userAtual.nome = nome;
+    userAtual.formacao = formacao;
+    userAtual.bio = bio;
+    userAtual.whatsapp = whatsapp;
+    if (fotoUrl) userAtual.foto_url = fotoUrl;
+    try { sessionStorage.setItem('rvs_user', JSON.stringify(userAtual)); } catch(_){}
+  }
+
+  renderPerfil();
+  showToast('Perfil atualizado! ✅', 'sucesso');
 }
 
 // ─── PERMISSÕES ───────────────────────────────────────────────────────────────

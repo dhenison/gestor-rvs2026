@@ -822,23 +822,62 @@
 
       <!-- ══════════════════ PERFIL ══════════════════ -->
       <div class="page" id="page-perfil">
-        <div class="section-title" style="margin-bottom:16px">Meu Perfil</div>
-        <div class="profile-card">
-          <div class="profile-avatar-wrap">
-            <div class="profile-avatar">DC</div>
-            <div class="profile-avatar-edit" onclick="alert('Selecione da galeria ou câmera')">✎</div>
+        <div class="section-title" style="margin-bottom:16px">👤 Meu Perfil</div>
+        <div class="profile-card" style="max-width:640px">
+
+          <!-- Avatar com câmera/galeria -->
+          <div style="display:flex;align-items:center;gap:20px;margin-bottom:24px;padding:20px;background:var(--gray2);border-radius:var(--radius2)">
+            <div style="position:relative;flex-shrink:0">
+              <div id="perfil-avatar-circulo" style="
+                width:90px;height:90px;border-radius:50%;
+                background:var(--primary);color:white;
+                display:flex;align-items:center;justify-content:center;
+                font-size:32px;font-weight:700;border:3px solid var(--blue);
+                overflow:hidden;cursor:pointer;
+              " onclick="document.getElementById('perfil-foto-input').click()" title="Clique para alterar a foto">
+                <span id="perfil-avatar-iniciais">?</span>
+                <img id="perfil-avatar-img" src="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0" alt="Foto de perfil">
+              </div>
+              <div style="
+                position:absolute;bottom:2px;right:2px;
+                width:26px;height:26px;border-radius:50%;
+                background:var(--primary);color:white;
+                display:flex;align-items:center;justify-content:center;
+                font-size:14px;cursor:pointer;border:2px solid white;
+                box-shadow:0 2px 6px rgba(0,0,0,0.2);
+              " onclick="document.getElementById('perfil-foto-input').click()" title="Alterar foto">✎</div>
+            </div>
+
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--gray7);margin-bottom:10px">📷 Foto de Perfil</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <!-- Galeria -->
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+                  🖼️ Da Galeria
+                  <input type="file" id="perfil-foto-input" accept="image/*" style="display:none" onchange="perfilSelecionarFoto(this)">
+                </label>
+                <!-- Câmera (funciona em celular e computador com webcam) -->
+                <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+                  📷 Câmera
+                  <input type="file" accept="image/*" capture="user" style="display:none" onchange="perfilSelecionarFoto(this)">
+                </label>
+              </div>
+              <div style="font-size:11px;color:var(--gray4);margin-top:6px">JPG, PNG, WEBP — máx. 5MB · A foto será salva no Google Drive</div>
+              <div id="perfil-foto-status" style="display:none;font-size:12px;font-weight:600;margin-top:6px"></div>
+            </div>
           </div>
+
+          <!-- Campos do perfil -->
           <div class="profile-grid">
-            <div class="form-group"><label class="form-label">Nome Completo</label><input class="form-input" value="Dhenison Carlos"></div>
-            <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" value="admin@escola.seduc.pa.gov.br"></div>
-            <div class="form-group"><label class="form-label">Formação</label><input class="form-input" value="Especialista em Gestão Escolar"></div>
-            <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" value="Administrador"></div>
-            <div class="form-group"><label class="form-label">Bio</label><input class="form-input" value="Administrador do Sistema RVS Escolar"></div>
-            <div class="form-group"><label class="form-label">WhatsApp</label><input class="form-input" value="(91) 99999-0000"></div>
-            <div class="form-group"><label class="form-label">Instagram</label><input class="form-input" value="@joao.admin"></div>
-            <div class="form-group"><label class="form-label">LinkedIn</label><input class="form-input" value="linkedin.com/in/joaoadmin"></div>
+            <div class="form-group"><label class="form-label">Nome Completo</label><input class="form-input" id="perfil-nome" placeholder="Seu nome completo"></div>
+            <div class="form-group"><label class="form-label">E-mail</label><input class="form-input" id="perfil-email" type="email" placeholder="seu@email.com" readonly style="background:var(--gray2);color:var(--gray5)"></div>
+            <div class="form-group"><label class="form-label">Formação</label><input class="form-input" id="perfil-formacao" placeholder="Ex: Licenciatura em Matemática"></div>
+            <div class="form-group"><label class="form-label">Cargo</label><input class="form-input" id="perfil-cargo" placeholder="Ex: Professor de Matemática" readonly style="background:var(--gray2);color:var(--gray5)"></div>
+            <div class="form-group"><label class="form-label">Bio</label><input class="form-input" id="perfil-bio" placeholder="Uma frase sobre você..."></div>
+            <div class="form-group"><label class="form-label">WhatsApp</label><input class="form-input" id="perfil-whatsapp" placeholder="(99) 99999-0000" type="tel"></div>
           </div>
-          <button class="btn btn-primary" style="margin-top:12px" onclick="showToast('Perfil salvo!','sucesso')">Salvar Alterações</button>
+
+          <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="salvarPerfil()">💾 Salvar Alterações</button>
         </div>
       </div>
 
