@@ -338,7 +338,7 @@ async function doLogin(){
   if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
 
   // ── 1. Fallback fixo para o administrador master ───────────────────────────
-  if(email === 'dhenison@escola.seduc.pa.gov.br' && pass === 'RVS@gestor'){
+  if(email === 'dhenison@escola.seduc.pa.gov.br' && pass === 'RVS@gestor#'){
     // Tenta buscar do banco para ter o ID e campos extras do perfil
     try {
       const { data: adminData } = await supabaseClient
