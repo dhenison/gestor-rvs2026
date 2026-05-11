@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
-const ADMIN_SENHA = 'RVS@gestor';
+const ADMIN_SENHA = 'RVS@gestor2026';
 let PERFIL_ATUAL  = 'professor';
 
 let TURMAS_DATA  = [];
