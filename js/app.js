@@ -314,7 +314,17 @@ async function doLogin(){
 
   // ── 1. Fallback fixo para o administrador master ───────────────────────────
   if(email === 'dhenison@escola.seduc.pa.gov.br' && pass === 'RVS@gestor'){
-    _entrarNoSistema({ nome:'Dhenison Carlos', perfil:'admin', email });
+    // Tenta buscar do banco para ter o ID e campos extras do perfil
+    try {
+      const { data: adminData } = await supabaseClient
+        .from('usuarios')
+        .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo')
+        .eq('email', email)
+        .maybeSingle();
+      _entrarNoSistema(adminData || { nome:'Dhenison Carlos', perfil:'admin', email });
+    } catch(_) {
+      _entrarNoSistema({ nome:'Dhenison Carlos', perfil:'admin', email });
+    }
     if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
     return;
   }
@@ -323,7 +333,7 @@ async function doLogin(){
   try {
     const { data, error } = await supabaseClient
       .from('usuarios')
-      .select('id, nome, perfil, email, senha, turno, cargo')
+      .select('id, nome, perfil, email, senha, turno, cargo, foto_url, formacao, bio, whatsapp')
       .eq('email', email)
       .maybeSingle();
 
