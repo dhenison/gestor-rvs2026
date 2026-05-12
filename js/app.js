@@ -2806,6 +2806,15 @@ async function salvarPerfil() {
       if (!resultado.ok) throw new Error(resultado.erro || 'Erro no Drive');
 
       fotoUrl = resultado.url;
+      
+      // ── Corrige links do Google Drive para evitar bloqueio de imagem (CORS/Cookies) ──
+      if(fotoUrl.includes('drive.google.com')){
+        const match = fotoUrl.match(/id=([^&]+)/) || fotoUrl.match(/d\/([a-zA-Z0-9_-]+)/);
+        if(match && match[1]){
+          fotoUrl = `https://lh3.googleusercontent.com/d/${match[1]}`;
+        }
+      }
+
       _perfilFotoPendente = null;
       if (status) { status.style.color = 'var(--green-dark)'; status.textContent = '✅ Foto salva no Google Drive!'; }
 
