@@ -4399,9 +4399,15 @@ async function salvarEquipeObafog(){
   renderObafog();
 }
 
-function renderObafog(){
+async function renderObafog(){
   const grid = document.getElementById('obafog-equipes-grid');
   if(!grid) return;
+  
+  // Busca os dados mais recentes do banco sempre que abrir a aba
+  const { data, error } = await supabaseClient.from('obafog_equipes').select('*').order('created_at', {ascending:false});
+  if(!error && data) {
+    OBAFOG_DATA = data;
+  }
   
   if(OBAFOG_DATA.length === 0){
     grid.innerHTML = '<div style="font-size:13px; color:var(--gray5)">Nenhuma equipe cadastrada.</div>';
