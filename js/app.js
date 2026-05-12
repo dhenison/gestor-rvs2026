@@ -334,45 +334,43 @@ async function doLogin(){
   if(!email || !pass){ errEl.style.display='block'; return; }
   errEl.style.display='none';
 
-  // Loading state
   if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
 
-  // ── 1. Fallback fixo para o administrador master ───────────────────────────
-  if(email === 'dhenison@escola.seduc.pa.gov.br' && pass === 'RVS@gestor#'){
-    // Tenta buscar do banco para ter o ID e campos extras do perfil
-    try {
-      const { data: adminData } = await supabaseClient
-        .from('usuarios')
-        .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo')
-        .eq('email', email)
-        .maybeSingle();
-      _entrarNoSistema(adminData || { nome:'Dhenison Carlos', perfil:'admin', email });
-    } catch(_) {
-      _entrarNoSistema({ nome:'Dhenison Carlos', perfil:'admin', email });
-    }
-    if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
-    return;
-  }
-
-  // ── 2. Consulta na tabela usuarios do Supabase ─────────────────────────────
   try {
-    const { data, error } = await supabaseClient
-      .from('usuarios')
-      .select('id, nome, perfil, email, senha, turno, cargo, foto_url, formacao, bio, whatsapp')
-      .eq('email', email)
-      .maybeSingle();
+    // Autenticação oficial via Supabase Auth
+    const { data: authData, error: authErr } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: pass,
+    });
 
-    if(error) throw error;
-
-    if(!data || !data.senha || data.senha !== pass){
+    if(authErr) {
+      console.error('[login]', authErr);
       errEl.style.display='block';
+      errEl.textContent = 'Credenciais inválidas.';
       if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
       return;
     }
 
-    _entrarNoSistema(data);
+    // Busca os dados adicionais do usuário na tabela pública
+    const { data: userData, error: userErr } = await supabaseClient
+      .from('usuarios')
+      .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+
+    if(userErr) throw userErr;
+
+    // Se userData for nulo, cria um fallback com os dados do Auth
+    const user = userData || {
+      id: authData.user.id,
+      nome: authData.user.user_metadata?.nome || 'Usuário',
+      perfil: authData.user.user_metadata?.perfil || 'professor',
+      email: authData.user.email
+    };
+
+    _entrarNoSistema(user);
   } catch(err){
-    console.error('[login]', err);
+    console.error('[login exception]', err);
     errEl.style.display='block';
     errEl.textContent = 'Erro de conexão. Tente novamente.';
   }
@@ -419,11 +417,9 @@ function updateSidebarProfile() {
   }
   if(avatarEl) {
     if (user.foto_url) {
-      // Mostra a foto de perfil
       avatarEl.innerHTML = `<img src="${user.foto_url}" alt="${user.nome || ''}" 
         style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block">`;
     } else {
-      // Mostra as iniciais
       const parts = (user.nome || 'U').split(' ');
       let init = parts[0].charAt(0);
       if(parts.length > 1) init += parts[parts.length-1].charAt(0);
@@ -432,41 +428,38 @@ function updateSidebarProfile() {
   }
 }
 
-function doLogout(){
-  salvarDados();
+async function doLogout(){
   try { sessionStorage.removeItem('rvs_user'); } catch(_){}
-  const ls = document.getElementById('login-screen');
-  ls.style.display='flex';
-  setTimeout(()=>ls.classList.remove('hidden'),10);
-  document.getElementById('app').classList.remove('visible');
+  await supabaseClient.auth.signOut();
+  location.reload();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Ao recarregar a página, restaura sessão buscando dados FRESCOS do banco
-  try {
-    const savedUser = sessionStorage.getItem('rvs_user');
-    if (savedUser) {
-      const usuario = JSON.parse(savedUser);
-      
-      // Se tem ID, rebusca do banco para ter dados atualizados (foto, bio, etc.)
-      if (usuario.id) {
-        supabaseClient
-          .from('usuarios')
-          .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, senha, turno')
-          .eq('id', usuario.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            _entrarNoSistema(data || usuario);
-          })
-          .catch(() => _entrarNoSistema(usuario));
-      } else {
-        // Admin sem ID no banco: entra com dados da sessão
-        _entrarNoSistema(usuario);
-      }
+  // Ao recarregar a página, verifica a sessão ativa do Supabase
+  supabaseClient.auth.getSession().then(({ data: { session } }) => {
+    if (session && session.user) {
+      // Rebusca dados adicionais na tabela pública
+      supabaseClient
+        .from('usuarios')
+        .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
+        .eq('id', session.user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            _entrarNoSistema(data);
+          } else {
+            // Se falhar na pública, usa metadados
+            _entrarNoSistema({
+              id: session.user.id,
+              nome: session.user.user_metadata?.nome || 'Usuário',
+              perfil: session.user.user_metadata?.perfil || 'professor',
+              email: session.user.email
+            });
+          }
+        })
+        .catch(() => doLogout());
     }
-  } catch(e) {
-    console.warn('[Restore session]', e);
-  }
+  });
 
   ['pass-input','email-input'].forEach(id => {
     document.getElementById(id)?.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
@@ -4037,29 +4030,48 @@ async function salvarUsuario(){
     if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
   }
 
-  // ── Tenta usar RPC (ignora schema cache, salva senha diretamente) ──────────
-  const { data: rpcId, error: rpcErr } = await supabaseClient.rpc('salvar_usuario', {
-    p_id:     id ? id : null,
-    p_nome:   nome,
-    p_email:  email,
-    p_perfil: perfil,
-    p_turno:  turno,
-    p_cargo:  cargo,
-    p_turma:  turma,
-    p_avatar: avatar,
-    p_senha:  senha
-  });
+  // ── Se for NOVO USUÁRIO, usa o RPC seguro para Supabase Auth ─────────
+  if (!id) {
+    const { data: rpcResp, error: rpcErr } = await supabaseClient.rpc('admin_criar_usuario', {
+      p_nome:   nome,
+      p_email:  email,
+      p_senha:  senha,
+      p_perfil: perfil,
+      p_turno:  turno,
+      p_cargo:  cargo
+    });
 
-  if(!rpcErr){
-    // RPC funcionou — tudo salvo incluindo senha
-    closeModal('modal-usuario');
-    showToast(id ? 'Usuário atualizado!' : 'Usuário cadastrado!','sucesso');
-    await carregarUsuarios();
-    return;
+    if(!rpcErr && rpcResp?.status === 'success'){
+      closeModal('modal-usuario');
+      showToast('Usuário cadastrado com segurança!','sucesso');
+      await carregarUsuarios();
+      return;
+    }
+    console.error('[RPC admin_criar_usuario]', rpcErr || rpcResp);
+    showToast('Erro ao criar usuário: ' + (rpcErr?.message || rpcResp?.message || 'Verifique o console.'), 'evasao');
+  } 
+  // ── Se for EDIÇÃO, atualiza a tabela pública normalmente ──────────────
+  else {
+    const payload = {
+      nome: nome,
+      email: email,
+      perfil: perfil,
+      turno: turno,
+      cargo: cargo,
+      foto_url: avatar
+    };
+    if(senha) payload.senha = senha;
+
+    const { error } = await supabaseClient.from('usuarios').update(payload).eq('id', id);
+    if (!error) {
+      closeModal('modal-usuario');
+      showToast('Usuário atualizado!','sucesso');
+      await carregarUsuarios();
+    } else {
+      console.error('[Update Usuario]', error);
+      showToast('Erro ao atualizar: ' + error.message, 'evasao');
+    }
   }
-  // ── Fallback: RPC falhou — exibe o erro real ──────────────────────────────
-  console.error('[RPC salvar_usuario]', rpcErr.code, rpcErr.message);
-  showToast('Erro ao salvar: ' + (rpcErr.message || 'Verifique o console.'), 'evasao');
 }
 
 async function excluirUsuario(id, nome){
