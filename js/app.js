@@ -204,7 +204,7 @@ async function carregarDados(){
         turno: turnoMap[a.turma_id] || '', rota: a.rota || 'Sem transporte', resp: a.responsavel || '',
         contato: a.contato || '', email: a.instagram || '', nasc: a.data_nascimento || '',
         idade: a.data_nascimento ? Math.floor((new Date() - new Date(a.data_nascimento))/(1000*60*60*24*365.25)) : 0,
-        status: a.status || 'ativo', historico: []
+        status: a.status || 'ativo', historico: [], foto_url: a.foto_url || ''
       }));
     }
     
@@ -1089,6 +1089,70 @@ function calcularIdade(){
   idadeEl.value=idade>0?idade+' anos':'—';
 }
 
+function abrirModalNovoAluno() {
+  _alunoFotoPendente = null;
+  const prev = document.getElementById('aluno-avatar-preview');
+  if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
+  const st = document.getElementById('aluno-foto-status');
+  if(st) { st.style.color='var(--gray4)'; st.textContent='Mínimo 5MB. Arquivo será salvo no Drive.'; }
+  openModal('modal-aluno');
+}
+
+// ─── CÂMERA E FOTO DO ALUNO ────────────────────────────────────────────────────────
+async function abrirCameraAluno() {
+  const erroEl = document.getElementById('camera-aluno-erro');
+  if (erroEl) erroEl.style.display = 'none';
+  const constraints = { video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false };
+  try {
+    _cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('camera-aluno-video');
+    if (video) { video.srcObject = _cameraStream; }
+    openModal('modal-camera-aluno');
+  } catch (err) {
+    console.error('[Camera Aluno] Erro:', err);
+    if (err.name === 'NotAllowedError') showToast('Permissão de câmera negada. Selecione da galeria.', 'alerta');
+    else document.getElementById('aluno-foto-input')?.click();
+  }
+}
+
+function fecharCameraAluno() {
+  if (_cameraStream) { _cameraStream.getTracks().forEach(t => t.stop()); _cameraStream = null; }
+  const video = document.getElementById('camera-aluno-video');
+  if (video) video.srcObject = null;
+  closeModal('modal-camera-aluno');
+}
+
+function tirarFotoAluno() {
+  const video = document.getElementById('camera-aluno-video');
+  const canvas = document.getElementById('camera-aluno-canvas');
+  if (!video || !canvas) return;
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob((blob) => {
+    if (!blob) { showToast('Erro ao capturar foto.', 'evasao'); return; }
+    const file = new File([blob], `aluno_${Date.now()}.jpg`, { type: 'image/jpeg' });
+    selecionarFotoAluno({ files: [file] });
+    fecharCameraAluno();
+  }, 'image/jpeg', 0.9);
+}
+
+function selecionarFotoAluno(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { showToast('Foto muito grande! Máximo 5MB.', 'alerta'); input.value = ''; return; }
+  _alunoFotoPendente = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const imgEl = document.getElementById('aluno-avatar-preview');
+    if (imgEl) imgEl.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  const status = document.getElementById('aluno-foto-status');
+  if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '📎 Foto selecionada.'; }
+}
+
 async function saveAluno(){
   const nome   =document.getElementById('input-aluno-nome')?.value.trim();
   const cpf    =document.getElementById('input-aluno-cpf')?.value.trim();
@@ -1107,17 +1171,50 @@ async function saveAluno(){
   const tObj = TURMAS_DATA.find(t => t.code === turmaCode);
   if (!tObj) { showToast('Turma não encontrada no sistema.', 'alerta'); return; }
 
-  const { data, error } = await supabaseClient.from('alunos').insert({
+  let fotoUrl = null;
+  if (_alunoFotoPendente) {
+    const status = document.getElementById('aluno-foto-status');
+    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '⏳ Enviando foto ao Google Drive...'; }
+    try {
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+        reader.readAsDataURL(_alunoFotoPendente);
+      });
+      const response = await fetch(DRIVE_FOTO_URL, {
+        method: 'POST',
+        body: JSON.stringify({ filename: 'aluno_' + cpf + '_' + Date.now() + '.jpg', mimeType: _alunoFotoPendente.type, data: base64 })
+      });
+      const resultado = await response.json();
+      if (!resultado.ok) throw new Error(resultado.erro || 'Erro no Drive');
+      fotoUrl = resultado.url;
+      if(fotoUrl.includes('drive.google.com')){
+        const match = fotoUrl.match(/id=([^&]+)/) || fotoUrl.match(/d\/([a-zA-Z0-9_-]+)/);
+        if(match && match[1]) fotoUrl = 'https://drive.google.com/uc?id=' + match[1] + '&export=view';
+      }
+      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = '✅ Foto salva no Drive!'; }
+    } catch(err) {
+      console.error('[Drive Upload Aluno]', err);
+      showToast('Aviso: Foto falhou, mas aluno será salvo. ' + err.message, 'evasao');
+    }
+  }
+
+  const payload = {
       matricula: cpf,
       nome: nome,
       turma_id: tObj.id,
+      turma: turmaCode,
+      turno: turno,
       rota: rota || 'Sem transporte',
       responsavel: resp,
       contato: contato,
       instagram: email, // Usando instagram para o email de acordo com o padrão do import
       data_nascimento: nasc || null,
       status: 'ativo'
-  });
+  };
+  if (fotoUrl) payload.foto_url = fotoUrl;
+
+  const { data, error } = await supabaseClient.from('alunos').insert(payload);
 
   if (error) {
       console.error("[saveAluno] Erro Supabase:", error);
@@ -1143,6 +1240,20 @@ function verFicha(cpf){
   document.getElementById('ficha-faltas').textContent=(a.historico||[]).filter(h=>h.tipo==='falta').length+' faltas';
   document.getElementById('ficha-nasc').textContent=a.nasc?new Date(a.nasc).toLocaleDateString('pt-BR'):'—';
   document.getElementById('ficha-idade').textContent=a.idade||'—';
+  
+  const imgEl = document.getElementById('ficha-avatar');
+  const fallbackEl = document.getElementById('ficha-avatar-fallback');
+  if (a.foto_url) {
+    if (imgEl) { imgEl.src = a.foto_url; imgEl.style.display = 'block'; }
+    if (fallbackEl) fallbackEl.style.display = 'none';
+  } else {
+    if (imgEl) imgEl.style.display = 'none';
+    if (fallbackEl) {
+      fallbackEl.textContent = a.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+      fallbackEl.style.display = 'flex';
+    }
+  }
+
   renderTimeline(a);
   renderFichaOcorrencias(a);
   document.getElementById('modal-ficha').dataset.cpf=cpf;
@@ -2807,6 +2918,7 @@ async function enviarAlertaChat(){
 // ─── PERFIL DO USUÁRIO ────────────────────────────────────────────────────────
 const DRIVE_FOTO_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _perfilFotoPendente = null;
+let _alunoFotoPendente = null;
 let _cameraStream = null; // guarda o stream ativo da webcam
 
 // Abre o modal com a câmera (getUserMedia — funciona em desktop e celular)

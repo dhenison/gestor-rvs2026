@@ -19,12 +19,14 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray);color:var(--gray7);min-height:100vh;overflow-x:hidden;transition:background 0.3s}
+h1, h2, h3, h4, h5, h6, .metric-value, .btn { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
 #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#312e81 100%);display:flex;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
 #login-screen.hidden{opacity:0;pointer-events:none}
-.login-card{background:white;border-radius:var(--radius3);padding:44px 40px;width:100%;max-width:400px;box-shadow:0 25px 50px rgba(0,0,0,.25)}
+.login-card{background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:var(--glass-border);border-radius:var(--radius3);padding:44px 40px;width:100%;max-width:400px;box-shadow:0 25px 50px rgba(0,0,0,.25)}
 .login-logo{text-align:center;margin-bottom:28px}
-.login-logo-icon{width:64px;height:64px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:26px}
-.login-logo h1{font-size:22px;font-weight:700}.login-logo p{font-size:13px;color:var(--gray5);margin-top:3px}
+.login-logo-icon{width:72px;height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);object-fit:contain}
+.login-logo h1{font-size:24px;font-weight:700;letter-spacing:-0.03em;color:var(--gray7)}
+.login-logo p{font-size:13px;color:var(--gray5);margin-top:3px;text-transform:uppercase;letter-spacing:0.05em;font-weight:600}
 .login-field{margin-bottom:16px}
 .login-field label{display:block;font-size:12.5px;font-weight:600;color:var(--gray6);margin-bottom:6px}
 .login-field input{width:100%;padding:11px 14px;border:1.5px solid var(--gray3);border-radius:var(--radius);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
@@ -46,10 +48,11 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray);color:var
 .nav-item{display:flex;align-items:center;gap:11px;padding:9px 18px;cursor:pointer;transition:background .15s;font-size:13px;color:#94a3b8;border-left:2px solid transparent}
 .nav-item:hover{background:rgba(255,255,255,.05);color:white}
 .nav-item.active{background:rgba(59,130,246,.15);color:white;border-left-color:var(--blue)}
-.nav-item-icon{font-size:16px;width:20px;text-align:center}
+.nav-item-icon{width:20px;height:20px;stroke-width:2px;display:flex;align-items:center;justify-content:center}
 .sidebar-user{padding:16px 18px;border-top:1px solid rgba(255,255,255,.08)}
 .sidebar-user-info{display:flex;align-items:center;gap:11px}
-.user-avatar{width:38px;height:38px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;cursor:pointer}
+.user-avatar{width:42px;height:42px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:15px;font-family:'Outfit',sans-serif;font-weight:700;color:white;flex-shrink:0;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 6px rgba(0,0,0,0.1);overflow:hidden}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
 .user-meta h4{font-size:12px;font-weight:600;color:white}
 .user-meta p{font-size:10.5px;color:#64748b}
 .logout-btn{margin-top:3px;font-size:10.5px;color:#64748b;cursor:pointer;display:block;background:none;border:none;font-family:inherit;text-align:left}
@@ -72,10 +75,14 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray);color:var
 .metric-card:hover{transform:translateY(-4px);box-shadow:var(--shadow3)}
 .metric-card::before{content:'';position:absolute;top:0;right:0;width:70px;height:70px;border-radius:0 14px 0 100%;opacity:.07}
 .metric-card.green::before{background:var(--green)}.metric-card.red::before{background:var(--red)}.metric-card.blue::before{background:var(--blue)}.metric-card.yellow::before{background:var(--yellow)}
-.metric-icon{font-size:22px;margin-bottom:10px}
-.metric-label{font-size:11.5px;font-weight:600;color:var(--gray5);text-transform:uppercase;letter-spacing:.05em}
-.metric-value{font-size:30px;font-weight:700;color:var(--gray7);margin:3px 0}
-.metric-sub{font-size:12px;color:var(--gray5)}
+.metric-icon{margin-bottom:12px;color:var(--gray5);display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:rgba(241,245,249,0.5)}
+.metric-card.green .metric-icon{color:var(--green);background:var(--green-light)}
+.metric-card.red .metric-icon{color:var(--red);background:var(--red-light)}
+.metric-card.blue .metric-icon{color:var(--blue);background:var(--blue-light)}
+.metric-card.yellow .metric-icon{color:var(--yellow);background:var(--yellow-light)}
+.metric-label{font-size:11.5px;font-weight:700;color:var(--gray5);text-transform:uppercase;letter-spacing:.08em;font-family:'Outfit',sans-serif}
+.metric-value{font-size:32px;font-weight:800;color:var(--gray7);margin:4px 0;letter-spacing:-0.03em}
+.metric-sub{font-size:12.5px;color:var(--gray5);font-weight:500}
 .metric-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;margin-top:5px}
 .badge-green{background:var(--green-light);color:var(--green-dark)}.badge-red{background:var(--red-light);color:var(--red-dark)}.badge-blue{background:var(--blue-light);color:var(--blue-dark)}.badge-yellow{background:var(--yellow-light);color:var(--yellow-dark)}.badge-orange{background:var(--orange-light);color:var(--orange-dark)}.badge-gray{background:var(--gray2);color:var(--gray6)}
 .btn{padding:8px 16px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .2s cubic-bezier(0.4,0,0.2,1);border:none;display:inline-flex;align-items:center;justify-content:center;gap:6px}
@@ -87,7 +94,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray);color:var
 .btn-green{background:var(--green);color:white}.btn-red{background:var(--red);color:white}.btn-orange{background:var(--orange);color:white}.btn-gray{background:var(--gray3);color:var(--gray6)}
 .btn-sm{padding:6px 12px;font-size:12px}.btn-xs{padding:4px 9px;font-size:11px}
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
-.section-title{font-size:15px;font-weight:700;color:var(--gray7)}
+.section-title{font-size:18px;font-weight:700;color:var(--gray7);letter-spacing:-0.02em}
 .table-card{background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-radius:var(--radius2);box-shadow:var(--shadow);border:var(--glass-border);overflow:hidden}
 .table-filters{padding:14px 18px;border-bottom:1px solid var(--gray3);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .table-filters input,.table-filters select{padding:8px 14px;border:1.5px solid var(--gray3);border-radius:9px;font-size:13px;font-family:inherit;outline:none;background:white;transition:all 0.2s}
