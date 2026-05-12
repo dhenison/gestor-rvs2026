@@ -394,6 +394,7 @@ async function _entrarNoSistema(usuario){
   await initApp(); // Agora espera carregar permissões do banco
   initChatRealtime();
   initPresenceRealtime();
+  initOcorrenciaRealtime(); // Notificações em tempo real de ocorrências
 }
 
 function getCurrentUser() {
@@ -560,29 +561,192 @@ function renderDashCompleto(){
   renderDashOcorr();
 }
 
+// ─── SISTEMA DE NOTIFICAÇÕES ─────────────────────────────────────────────────
+const NOTIFICATIONS = []; // store em memória
+let notifPanelOpen = false;
+let ocorrenciaRealtimeSubscription = null;
+
+function addNotification({ type, title, body, action }) {
+  const notif = {
+    id: Date.now() + Math.random(),
+    type,       // 'chat' | 'ocorrencia' | 'alerta'
+    title,
+    body,
+    action,     // função chamada ao clicar
+    time: new Date(),
+    read: false
+  };
+  NOTIFICATIONS.unshift(notif); // mais recente primeiro
+  updateNotifBadge();
+  renderNotifPanel(); // re-render se painel aberto
+  return notif;
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  const btn   = document.getElementById('notif-bell-btn');
+  const unread = NOTIFICATIONS.filter(n => !n.read).length;
+  if (!badge) return;
+  if (unread > 0) {
+    badge.textContent = unread > 99 ? '99+' : unread;
+    badge.style.display = 'flex';
+    btn?.classList.add('has-notif');
+  } else {
+    badge.style.display = 'none';
+    btn?.classList.remove('has-notif');
+  }
+}
+
+function toggleNotifPanel() {
+  const wrapper = document.getElementById('notif-bell-wrapper');
+  const existing = document.getElementById('notif-panel');
+  if (existing) {
+    existing.remove();
+    notifPanelOpen = false;
+    return;
+  }
+  notifPanelOpen = true;
+  // Marcar todas como lidas ao abrir
+  NOTIFICATIONS.forEach(n => n.read = true);
+  updateNotifBadge();
+  renderNotifPanel();
+  // Fechar ao clicar fora
+  setTimeout(() => {
+    document.addEventListener('click', closeNotifPanelOutside, { once: true });
+  }, 100);
+}
+
+function closeNotifPanelOutside(e) {
+  const panel = document.getElementById('notif-panel');
+  const wrapper = document.getElementById('notif-bell-wrapper');
+  if (panel && !wrapper?.contains(e.target)) {
+    panel.remove();
+    notifPanelOpen = false;
+  }
+}
+
+function renderNotifPanel() {
+  const wrapper = document.getElementById('notif-bell-wrapper');
+  if (!wrapper) return;
+  let panel = document.getElementById('notif-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'notif-panel';
+    panel.className = 'notif-panel';
+    wrapper.appendChild(panel);
+  }
+
+  const typeIcons = { chat: '💬', ocorrencia: '📋', alerta: '🚨' };
+  const typeLabels = { chat: 'Chat RVS', ocorrencia: 'Ocorrência', alerta: 'Alerta Crítico' };
+  const typeIconClass = { chat: 'notif-icon-chat', ocorrencia: 'notif-icon-ocorrencia', alerta: 'notif-icon-alerta' };
+
+  const formatTime = (date) => {
+    const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (diff < 60) return 'agora';
+    if (diff < 3600) return `${Math.floor(diff/60)}min atrás`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h atrás`;
+    return date.toLocaleDateString('pt-BR');
+  };
+
+  const items = NOTIFICATIONS.slice(0, 30);
+  panel.innerHTML = `
+    <div class="notif-panel-header">
+      <h4>🔔 Notificações <span style="font-weight:400;color:var(--gray4);font-size:12px">(${items.length})</span></h4>
+      <button class="notif-clear-btn" onclick="clearAllNotifs()">Limpar tudo</button>
+    </div>
+    <div class="notif-list" id="notif-list">
+      ${items.length === 0 ? `
+        <div class="notif-empty">
+          <span>🔕</span>
+          Nenhuma notificação ainda
+        </div>
+      ` : items.map(n => `
+        <div class="notif-item ${n.read ? '' : 'unread'}" onclick="handleNotifClick('${n.id}')">
+          <div class="notif-item-icon ${typeIconClass[n.type] || 'notif-icon-alerta'}">
+            ${typeIcons[n.type] || '📌'}
+          </div>
+          <div class="notif-item-body">
+            <h5>${n.title}</h5>
+            <p>${n.body}</p>
+            <div class="notif-item-time">${formatTime(n.time)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function handleNotifClick(id) {
+  const notif = NOTIFICATIONS.find(n => String(n.id) === String(id));
+  if (!notif) return;
+  notif.read = true;
+  document.getElementById('notif-panel')?.remove();
+  notifPanelOpen = false;
+  if (notif.action) notif.action();
+}
+
+function clearAllNotifs() {
+  NOTIFICATIONS.length = 0;
+  updateNotifBadge();
+  renderNotifPanel();
+}
+
+// ── Realtime: escuta novas ocorrências inseridas por qualquer usuário ──
+function initOcorrenciaRealtime() {
+  if (ocorrenciaRealtimeSubscription) return;
+  ocorrenciaRealtimeSubscription = supabaseClient
+    .channel('public:ocorrencias:insert')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'ocorrencias' }, payload => {
+      const o = payload.new;
+      const aluno = ALUNOS_DATA.find(a => a.id === o.aluno_id);
+      const nomeAluno = aluno ? aluno.nome : 'Aluno';
+      const titulo = `Nova Ocorrência: ${nomeAluno}`;
+      const corpo = o.descricao ? o.descricao.substring(0, 60) + (o.descricao.length > 60 ? '...' : '') : 'Sem descrição';
+
+      addNotification({
+        type: 'ocorrencia',
+        title: titulo,
+        body: corpo,
+        action: () => showPage('ocorrencias', document.querySelector(".nav-item[onclick*=\"'ocorrencias'\"]"))
+      });
+
+      showToast(`📋 ${titulo}`, 'ocorrencia', () => {
+        showPage('ocorrencias', document.querySelector(".nav-item[onclick*=\"'ocorrencias'\"]"));
+      });
+    })
+    .subscribe();
+}
+
 // ─── TOASTS / ALERTAS ────────────────────────────────────────────────────────
-function showToast(msg,type='alerta', onClickAction=null){
-  const c=document.getElementById('toast-container');
-  const t=document.createElement('div');
-  t.className='toast '+type;
-  
-  if(onClickAction) {
+function showToast(msg, type='alerta', onClickAction=null) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+
+  if (onClickAction) {
     t.style.cursor = 'pointer';
     t.onclick = function(e) {
-      if(!e.target.classList.contains('toast-close')){
+      if (!e.target.classList.contains('toast-close')) {
         onClickAction();
         t.remove();
       }
     };
   }
-  
-  const icons={evasao:'🚨',alerta:'ℹ️',sucesso:'✅', chat:'💬'};
-  const labels={evasao:'Alerta de Evasão',alerta:'Notificação',sucesso:'Sucesso', chat:'Chat RVS'};
-  t.innerHTML=`<span class="toast-icon">${icons[type]||'ℹ️'}</span>
+
+  const icons  = { evasao:'🚨', alerta:'ℹ️', sucesso:'✅', chat:'💬', ocorrencia:'📋' };
+  const labels = { evasao:'Alerta de Evasão', alerta:'Notificação', sucesso:'Sucesso', chat:'Chat RVS', ocorrencia:'Ocorrência' };
+  t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span>
     <div class="toast-body"><h4>${labels[type]||'Aviso'}</h4><p>${msg}</p></div>
     <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
   c.appendChild(t);
-  setTimeout(()=>{ if(t.parentElement) t.remove(); },5000);
+
+  // auto-dismiss depois de 6s com fade-out
+  setTimeout(() => {
+    if (t.parentElement) {
+      t.style.animation = 'slide-out 0.3s ease-in forwards';
+      setTimeout(() => t.remove(), 300);
+    }
+  }, 6000);
 }
 function triggerAlert(){ document.getElementById('alert-bar').classList.add('show'); showToast('Aluno fora da sala detectado','evasao'); }
 function dismissAlert(){ document.getElementById('alert-bar').classList.remove('show'); }
@@ -2397,10 +2561,22 @@ function initChatRealtime() {
         const isCurrentlyLooking = document.getElementById('page-chat')?.classList.contains('active') && chatSegment === novaMsg.segmento;
         
         if (!isCurrentlyLooking) {
-            let resumoMsg = novaMsg.mensagem.substring(0,35);
-            if(novaMsg.mensagem.length>35) resumoMsg += '...';
+            let resumoMsg = novaMsg.mensagem.substring(0,50);
+            if(novaMsg.mensagem.length>50) resumoMsg += '...';
             if(novaMsg.tipo === 'image') resumoMsg = '📸 Imagem recebida';
             if(novaMsg.tipo === 'alert') resumoMsg = '🚨 ALERTA CRÍTICO';
+
+            // Adiciona ao painel de notificações
+            addNotification({
+              type: 'chat',
+              title: `${novaMsg.remetente} — ${segName}`,
+              body: resumoMsg,
+              action: () => {
+                showPage('chat', document.querySelector(".nav-item[onclick*=\'chat\']"));
+                const targetTab = document.querySelector(`#page-chat .tab[onclick*="'${novaMsg.segmento}'"]`) || document.querySelector('#page-chat .tab');
+                if (targetTab) setChatSegment(novaMsg.segmento, targetTab);
+              }
+            });
             
             showToast(`${novaMsg.remetente} (${segName}):<br/>${resumoMsg}`, 'chat', () => {
               showPage('chat', document.querySelector(".nav-item[onclick*=\"showPage('chat')\"]"));
