@@ -239,9 +239,15 @@ textarea.form-input{resize:vertical;min-height:70px}
 .empty-state p{font-size:13px}
 .hidden{display:none!important}.page{display:none}.page.active{display:block}
 .info-box{background:var(--blue-light);border:1.5px solid var(--blue);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--blue-dark);margin-bottom:14px}
-.warn-box{background:var(--yellow-light);border:1.5px solid var(--yellow);border-radius:10px;padding:12px 14px;font-size:12.5px;color:var(--yellow-dark);margin-bottom:14px}/* =======================================================================
+/* =======================================================================
    RESPONSIVIDADE (MOBILE & TABLET)
    ======================================================================= */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .metric-grid, 
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
 @media (max-width: 768px) {
   /* Sidebar */
   .sidebar {
@@ -299,6 +305,10 @@ textarea.form-input{resize:vertical;min-height:70px}
     gap: 8px;
     margin-top: 10px;
   }
+  .topbar-filters input, .topbar-filters select {
+    flex: 1 1 100%;
+    margin-bottom: 4px;
+  }
   
   /* Grids and Layouts */
   .metric-grid, 
@@ -321,12 +331,18 @@ textarea.form-input{resize:vertical;min-height:70px}
     width: 100%;
     display: block;
   }
+  table th, table td {
+    font-size: 11px !important;
+    padding: 8px 10px !important;
+  }
   
   /* Modals */
   .modal-content {
     width: 95% !important;
-    margin: 10% auto !important;
+    margin: 5% auto !important;
     padding: 15px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
   }
   
   /* Form Grids */
@@ -338,23 +354,57 @@ textarea.form-input{resize:vertical;min-height:70px}
   .content {
     padding: 10px;
   }
+  
+  /* Buttons - Make action buttons 100% width on mobile */
+  .topbar-actions .btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+
   /* Chat Responsive */
   .chat-wrap {
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
     height: 700px;
     max-height: 85vh;
   }
   .chat-contacts {
-    display: none; /* Hide contacts on mobile by default, or you can make them a dropdown */
+    display: flex !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--gray3) !important;
+    padding: 10px !important;
+  }
+  .chat-contact {
+    min-width: 180px;
+    margin-right: 10px;
+    margin-bottom: 0 !important;
   }
   .chat-contact-info p {
-    max-width: 200px;
+    max-width: 120px;
   }
   .chat-messages {
     padding: 15px;
+    flex: 1;
   }
   .msg {
     max-width: 90%;
+  }
+
+  /* Agenda & Calendar */
+  .agenda-calendar td {
+    padding: 2px !important;
+  }
+  .cal-day {
+    min-height: 50px !important;
+    font-size: 10px !important;
+    padding: 4px !important;
+  }
+  .cal-day-num {
+    font-size: 11px !important;
+    margin-bottom: 2px !important;
   }
 }
 
