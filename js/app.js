@@ -2817,25 +2817,19 @@ async function salvarPerfil() {
     }
   }
 
-  // ── Salvar no banco usando upsert pelo email ──
-  // Inclui senha/perfil/turno para não perder dados existentes no upsert
-  const upsertData = {
-    email:    user.email,
+  // ── Salvar no banco usando update pelo ID ──
+  const updateData = {
     nome,
     formacao,
     bio,
     whatsapp,
     foto_url: fotoUrl,
-    // preserva campos de sessão que já existem
-    perfil:   user.perfil   || 'professor',
-    cargo:    user.cargo    || '',
-    turno:    user.turno    || '',
-    senha:    user.senha    || '',
   };
 
   const { data: savedUser, error: dbError } = await supabaseClient
     .from('usuarios')
-    .upsert(upsertData, { onConflict: 'email' })
+    .update(updateData)
+    .eq('id', user.id)
     .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
     .maybeSingle();
 
