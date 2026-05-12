@@ -1,12 +1,14 @@
 // ══════════════════════════════════════════════════════
-//  RVS GESTOR — Service Worker v1
+//  RVS GESTOR — Service Worker v2
 //  ESTRATÉGIA DE CACHE:
-//  ✅ Cache-First  → Arquivos estáticos do sistema
-//  🌐 Network-Only → Supabase, Google APIs (banco de dados)
-//  📵 Offline Page → Tela amigável quando sem internet
+//  ✅ Cache-First    → Arquivos estáticos do sistema
+//  🌐 Network-Only  → Supabase, Google APIs (banco de dados)
+//  📵 Offline Page  → Tela amigável quando sem internet
+//  🔄 BG Sync       → Sincroniza fila offline automaticamente
 // ══════════════════════════════════════════════════════
 
-const CACHE_NAME = 'rvs-gestor-v1';
+const CACHE_NAME    = 'rvs-gestor-v2';
+const SYNC_TAG_FREQ = 'rvs-sync-frequencias';
 
 // Arquivos estáticos que serão cacheados (carregados offline)
 const STATIC_ASSETS = [
@@ -21,7 +23,6 @@ const STATIC_ASSETS = [
 ];
 
 // ── URLs que NUNCA devem ser interceptadas (vão sempre para a rede) ──
-// Supabase, Google APIs, CDNs de terceiros
 const NETWORK_ONLY_PATTERNS = [
   'supabase.co',
   'supabase.io',
@@ -36,89 +37,103 @@ const NETWORK_ONLY_PATTERNS = [
 ];
 
 function isNetworkOnly(url) {
-  return NETWORK_ONLY_PATTERNS.some(pattern => url.includes(pattern));
+  return NETWORK_ONLY_PATTERNS.some(p => url.includes(p));
 }
 
-// ── INSTALL: Pré-carrega os assets estáticos no cache ──
+// ── INSTALL ──
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando RVS Gestor v1...');
+  console.log('[SW] Instalando RVS Gestor v2...');
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS).catch(err => {
-        // Não deixa o install falhar se algum asset não existir ainda
-        console.warn('[SW] Alguns assets não foram cacheados:', err);
-      });
-    })
+    caches.open(CACHE_NAME).then(cache =>
+      cache.addAll(STATIC_ASSETS).catch(err =>
+        console.warn('[SW] Alguns assets não cacheados:', err)
+      )
+    )
   );
-  // Ativa imediatamente sem esperar abas antigas fecharem
   self.skipWaiting();
 });
 
-// ── ACTIVATE: Remove caches de versões antigas ──
+// ── ACTIVATE ──
 self.addEventListener('activate', event => {
-  console.log('[SW] Ativando e limpando caches antigos...');
+  console.log('[SW] Ativando v2, limpando caches antigos...');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => {
-            console.log('[SW] Removendo cache antigo:', key);
-            return caches.delete(key);
-          })
+        keys.filter(k => k !== CACHE_NAME).map(k => {
+          console.log('[SW] Removendo cache antigo:', k);
+          return caches.delete(k);
+        })
       )
     )
   );
   self.clients.claim();
 });
 
-// ── FETCH: Estratégia inteligente de cache ──
+// ── FETCH ──
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = request.url;
 
-  // 1. Ignora requisições que não são GET
   if (request.method !== 'GET') return;
-
-  // 2. NETWORK ONLY — Banco de dados e APIs externas → sempre vai para a rede
   if (isNetworkOnly(url)) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // 3. CACHE FIRST com fallback para rede — Assets estáticos do sistema
   event.respondWith(
-    caches.match(request).then(cachedResponse => {
-      if (cachedResponse) {
-        // Atualiza o cache em background (stale-while-revalidate)
-        fetch(request).then(networkResponse => {
-          if (networkResponse && networkResponse.ok) {
-            caches.open(CACHE_NAME).then(cache => cache.put(request, networkResponse));
-          }
-        }).catch(() => {}); // silencioso se offline
-        return cachedResponse;
+    caches.match(request).then(cached => {
+      if (cached) {
+        // Atualiza em background (stale-while-revalidate)
+        fetch(request).then(net => {
+          if (net && net.ok)
+            caches.open(CACHE_NAME).then(c => c.put(request, net));
+        }).catch(() => {});
+        return cached;
       }
-
-      // Não está no cache → vai para a rede
-      return fetch(request).then(networkResponse => {
-        if (networkResponse && networkResponse.ok && request.url.startsWith('http')) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(request, responseClone));
+      return fetch(request).then(net => {
+        if (net && net.ok && url.startsWith('http')) {
+          caches.open(CACHE_NAME).then(c => c.put(request, net.clone()));
         }
-        return networkResponse;
+        return net;
       }).catch(() => {
-        // Completamente offline → mostra página de offline
-        if (request.headers.get('accept')?.includes('text/html')) {
+        if (request.headers.get('accept')?.includes('text/html'))
           return caches.match('/offline.html');
-        }
       });
     })
   );
 });
 
-// ── MESSAGE: Permite forçar update via app ──
+// ── BACKGROUND SYNC ─────────────────────────────────────────────────────────
+// Disparado automaticamente pelo navegador quando a conexão é restaurada,
+// mesmo que o app esteja fechado. Avisa todas as abas abertas para
+// sincronizarem a fila do IndexedDB com o Supabase.
+self.addEventListener('sync', event => {
+  if (event.tag === SYNC_TAG_FREQ) {
+    console.log('[SW] Background Sync disparado — notificando abas...');
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clients => {
+          if (clients.length > 0) {
+            // Avisa a aba ativa para executar sincronizarFilaOffline()
+            clients.forEach(c => c.postMessage({ type: 'RVS_SYNC_NOW' }));
+          } else {
+            // Nenhuma aba aberta: tenta sincronizar via fetch direto
+            // (sem acesso ao IndexedDB do app, apenas avisa para próxima abertura)
+            console.log('[SW] Nenhuma aba aberta. Sync será feito ao abrir o app.');
+          }
+        })
+    );
+  }
+});
+
+// ── MESSAGE ──
 self.addEventListener('message', event => {
-  if (event.data === 'SKIP_WAITING') {
-    self.skipWaiting();
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+
+  // Quando o app está offline e quer registrar um sync futuro
+  if (event.data?.type === 'REGISTER_SYNC') {
+    self.registration.sync.register(SYNC_TAG_FREQ).catch(err =>
+      console.warn('[SW] Background Sync não suportado:', err)
+    );
   }
 });

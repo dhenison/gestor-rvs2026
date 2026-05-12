@@ -1851,19 +1851,29 @@
   lucide.createIcons();
 </script>
 
-<!-- ── SERVICE WORKER (PWA) ─────────────────────────────────── -->
+<!-- ── SERVICE WORKER (PWA) + BACKGROUND SYNC ─────────────────── -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then(reg => {
-          console.log('[PWA] Service Worker registrado:', reg.scope);
+          console.log('[PWA] Service Worker v2 registrado:', reg.scope);
+
+          // ── Escuta mensagens do SW (ex: RVS_SYNC_NOW do Background Sync) ──
+          navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data?.type === 'RVS_SYNC_NOW') {
+              console.log('[PWA] SW solicitou sync — executando sincronizarFilaOffline()...');
+              if (typeof sincronizarFilaOffline === 'function') {
+                sincronizarFilaOffline();
+              }
+            }
+          });
+
           // Verifica nova versão disponível
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             newWorker?.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // Nova versão disponível — notifica o usuário
                 if (typeof showToast === 'function') {
                   showToast('Nova versão disponível! Recarregando...', 'sucesso');
                 }
@@ -1875,6 +1885,20 @@
         .catch(err => console.warn('[PWA] Falha ao registrar SW:', err));
     });
   }
+
+  // Expõe função para registrar Background Sync quando enfileirar offline
+  // Chamada pelo app.js via _enfileirarOp()
+  window.registerBackgroundSync = function() {
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.sync.register('rvs-sync-frequencias').then(() => {
+          console.log('[PWA] Background Sync registrado — será sincronizado ao conectar.');
+        }).catch(err => {
+          console.warn('[PWA] Não foi possível registrar Background Sync:', err);
+        });
+      });
+    }
+  };
 </script>
 </body>
 </html>

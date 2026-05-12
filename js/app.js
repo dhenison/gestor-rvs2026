@@ -7,6 +7,129 @@ const SUPABASE_URL = 'https://xjtluflzpkkbckkcwagf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdGx1Zmx6cGtrYmNra2N3YWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjMxNzMsImV4cCI6MjA5MzIzOTE3M30.3Fj_xCwTwx0MYWjFx3xM41BP8DQCsRMgGYmZJkHuidE';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ─── OFFLINE QUEUE — sync automático sem botão ───────────────────────────────
+// Estratégia: online → Supabase direto | offline → IndexedDB fila local
+// Ao reconectar: evento 'online' dispara sincronização automática
+
+const OFFLINE_DB_NAME = 'rvs_offline_queue';
+const OFFLINE_DB_VER  = 1;
+let _offlineQueueDB   = null;
+
+function _abrirOfflineDB() {
+  return new Promise((resolve, reject) => {
+    if (_offlineQueueDB) { resolve(_offlineQueueDB); return; }
+    const req = indexedDB.open(OFFLINE_DB_NAME, OFFLINE_DB_VER);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('fila')) {
+        db.createObjectStore('fila', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = e => { _offlineQueueDB = e.target.result; resolve(_offlineQueueDB); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function _enfileirarOp(tabela, operacao, dados, conflito) {
+  const db = await _abrirOfflineDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('fila', 'readwrite');
+    tx.objectStore('fila').add({ tabela, operacao, dados, conflito, ts: Date.now() });
+    tx.oncomplete = () => {
+      // Registra Background Sync para sincronizar mesmo com o app fechado
+      if (typeof window.registerBackgroundSync === 'function') {
+        window.registerBackgroundSync();
+      }
+      resolve();
+    };
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+async function _obterFila() {
+  const db = await _abrirOfflineDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('fila', 'readonly');
+    const req = tx.objectStore('fila').getAll();
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+async function _removerDaFila(id) {
+  const db = await _abrirOfflineDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('fila', 'readwrite');
+    tx.objectStore('fila').delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror    = e => reject(e.target.error);
+  });
+}
+
+// Sincroniza fila offline → Supabase (chamado automaticamente ao reconectar)
+async function sincronizarFilaOffline() {
+  if (!navigator.onLine) return;
+  let fila;
+  try { fila = await _obterFila(); } catch(e) { return; }
+  if (!fila || !fila.length) return;
+
+  console.log(`[Sync] ${fila.length} operação(ões) pendente(s) — sincronizando...`);
+  let sucesso = 0;
+
+  for (const item of fila) {
+    try {
+      let resultado;
+      if (item.operacao === 'upsert') {
+        resultado = await supabaseClient
+          .from(item.tabela)
+          .upsert(item.dados, item.conflito ? { onConflict: item.conflito } : undefined);
+      } else if (item.operacao === 'insert') {
+        resultado = await supabaseClient.from(item.tabela).insert(item.dados);
+      }
+      if (resultado && !resultado.error) {
+        await _removerDaFila(item.id);
+        sucesso++;
+      } else {
+        console.warn('[Sync] Falha no item:', resultado?.error);
+      }
+    } catch(e) { console.warn('[Sync] Erro:', e); }
+  }
+
+  if (sucesso > 0) {
+    showToast(`✅ ${sucesso} registro(s) sincronizado(s) automaticamente`, 'sucesso');
+    console.log(`[Sync] ${sucesso}/${fila.length} itens sincronizados com sucesso.`);
+  }
+}
+
+// Wrapper inteligente: salva no Supabase ou enfileira se offline
+async function supabaseSalvar(tabela, dados, conflito = null) {
+  if (navigator.onLine) {
+    const { error } = await supabaseClient
+      .from(tabela)
+      .upsert(dados, conflito ? { onConflict: conflito } : undefined);
+    if (error) {
+      console.error('[Supabase] Erro ao salvar, enfileirando:', error);
+      await _enfileirarOp(tabela, 'upsert', dados, conflito);
+      showToast('⚠️ Salvo localmente — será sincronizado em breve', 'alerta');
+    }
+  } else {
+    await _enfileirarOp(tabela, 'upsert', dados, conflito);
+    showToast('📵 Sem internet — salvo localmente, sync automático ao conectar', 'alerta');
+  }
+}
+
+// Sync automático ao reconectar (sem botão)
+window.addEventListener('online', () => {
+  console.log('[Rede] Conexão restaurada — sincronizando fila offline...');
+  setTimeout(sincronizarFilaOffline, 1500); // pequeno delay para a rede estabilizar
+});
+
+// Tenta sincronizar itens pendentes ao carregar a página
+window.addEventListener('load', () => {
+  if (navigator.onLine) setTimeout(sincronizarFilaOffline, 4000);
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
 const ADMIN_SENHA = 'RVS@gestor2026';
 let PERFIL_ATUAL  = 'professor';
@@ -2022,19 +2145,20 @@ async function markFreq(tipo,idx,val,btn){
   
   const aluno=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual)[idx];
   
-  // -- SYNC SUPABASE --
+  // -- SYNC SUPABASE (offline-first) --
   if (aluno && aluno.id) {
-      const dataHoje = new Date().toISOString().split('T')[0];
-      let dbStatus = val.startsWith('FJ') ? 'FJ' : val;
-      supabaseClient.from('frequencia').upsert({
-          aluno_id: aluno.id,
-          turma_id: aluno.turma_id,
-          data: dataHoje,
-          tipo: tipo,
-          status: dbStatus
-      }, { onConflict: 'aluno_id, data, tipo' }).then(({error}) => {
-          if(error) console.error('Erro ao salvar frequencia:', error);
-      });
+    const dataFreq   = document.getElementById('sel-dia-freq')?.value
+                       || new Date().toISOString().split('T')[0];
+    const turmaObj   = TURMAS_DATA.find(t => t.code === turmaChamadaAtual);
+    const turnoAtual = turmaObj?.turno || '';
+    await supabaseSalvar('frequencias', {
+      aluno_id:        aluno.id,
+      turma_id:        turmaObj?.id || aluno.turma_id,
+      data_frequencia: dataFreq,
+      turno:           turnoAtual,
+      tipo:            tipo,      // 'entrada' ou 'saida'
+      presente:        val === 'P'
+    }, 'aluno_id,data_frequencia,tipo');
   }
 
   if(evasao){
