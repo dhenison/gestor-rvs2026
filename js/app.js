@@ -1958,7 +1958,42 @@ function renderFiltrosDiaFreq(){
   if(valAtual&&dias.includes(valAtual)) sel.value=valAtual;
 }
 
-function carregarChamada(){
+async function carregarDadosFrequencia(turmaSel, diaSel) {
+  if (!turmaSel || !diaSel) return;
+  const turmaObj = TURMAS_DATA.find(t=>t.code===turmaSel);
+  if(!turmaObj) return;
+
+  try {
+    const {data: fq, error} = await supabaseClient.from('frequencia')
+      .select('aluno_id, tipo, status, consolidado')
+      .eq('turma_id', turmaObj.id)
+      .eq('data', diaSel);
+
+    if (error) throw error;
+
+    const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaSel);
+
+    if(fq && fq.length > 0) {
+      fq.forEach(f => {
+        const idx = alunos.findIndex(a => a.id === f.aluno_id);
+        if(idx !== -1) {
+          freq[f.tipo][idx] = f.status;
+          if (f.consolidado) {
+            chamadaConsolidada[f.tipo] = true;
+          }
+        }
+      });
+      const ent=document.getElementById('entrada-status');
+      const sai=document.getElementById('saida-status');
+      if(ent && chamadaConsolidada.entrada){ent.textContent='Consolidado';ent.className='chamada-status status-consolidado';}
+      if(sai && chamadaConsolidada.saida){sai.textContent='Consolidado';sai.className='chamada-status status-consolidado';}
+    }
+  } catch (err) {
+    console.error('Erro ao buscar frequencia:', err);
+  }
+}
+
+async function carregarChamada(){
   // Força popular o select antes de ler o valor
   popularSelectTurmaFreq();
 
@@ -1999,6 +2034,11 @@ function carregarChamada(){
   // Popula dias letivos
   renderFiltrosDiaFreq();
 
+  const diaSel = document.getElementById('sel-dia-freq')?.value;
+  if(diaSel) {
+    await carregarDadosFrequencia(turmaChamadaAtual, diaSel);
+  }
+
   // Mostra estado inicial das listas
   ['entrada','saida'].forEach(tipo=>{
     const cont=document.getElementById('chamada-'+tipo);
@@ -2020,13 +2060,19 @@ function voltarEtapa1(){
   chamadaConsolidada.entrada=false; chamadaConsolidada.saida=false;
 }
 
-function onDiaFreqChange(){
+async function onDiaFreqChange(){
   freq.entrada={}; freq.saida={};
   chamadaConsolidada.entrada=false; chamadaConsolidada.saida=false;
   const ent=document.getElementById('entrada-status');
   const sai=document.getElementById('saida-status');
   if(ent){ent.textContent='Pendente';ent.className='chamada-status status-pendente';}
   if(sai){sai.textContent='Pendente';sai.className='chamada-status status-pendente';}
+
+  const diaSel=document.getElementById('sel-dia-freq')?.value;
+  if(diaSel) {
+    await carregarDadosFrequencia(turmaChamadaAtual, diaSel);
+  }
+
   renderChamada();
 }
 
@@ -2091,10 +2137,15 @@ function atualizarBloqueioSaida(){
   btn.title=bloqueado?'Consolide a Entrada primeiro':'Consolidar Saída';
 }
 
-function presencaTodos(tipo){
+async function presencaTodos(tipo){
   if(tipo==='saida'&&!chamadaConsolidada.entrada){showToast('Consolide a Entrada primeiro','alerta');return;}
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual);
   if(!alunos.length){showToast('Nenhum aluno','alerta');return;}
+  
+  const dataFreq = document.getElementById('sel-dia-freq')?.value;
+  if(!dataFreq) { showToast('Selecione o dia letivo','alerta'); return; }
+  const turmaObj = TURMAS_DATA.find(t => t.code === turmaChamadaAtual);
+
   alunos.forEach((_,i)=>{ freq[tipo][i]='P'; });
   const container=document.getElementById('chamada-'+tipo);
   if(container){
@@ -2105,6 +2156,16 @@ function presencaTodos(tipo){
       row.style.background=evasao?'#ffe4e4':chamadaConsolidada[tipo]?'var(--green-light)':'var(--red-light)';
     });
   }
+
+  const payload = alunos.map(a => ({
+    aluno_id: a.id,
+    turma_id: turmaObj?.id || a.turma_id,
+    data: dataFreq,
+    tipo: tipo,
+    status: 'P'
+  }));
+  await supabaseSalvar('frequencia', payload, 'aluno_id,data,tipo');
+
   showToast('Todos marcados como Presentes ✅','sucesso');
   updateConsolidado();
 }
@@ -2150,15 +2211,14 @@ async function markFreq(tipo,idx,val,btn){
     const dataFreq   = document.getElementById('sel-dia-freq')?.value
                        || new Date().toISOString().split('T')[0];
     const turmaObj   = TURMAS_DATA.find(t => t.code === turmaChamadaAtual);
-    const turnoAtual = turmaObj?.turno || '';
-    await supabaseSalvar('frequencias', {
+    
+    await supabaseSalvar('frequencia', {
       aluno_id:        aluno.id,
       turma_id:        turmaObj?.id || aluno.turma_id,
-      data_frequencia: dataFreq,
-      turno:           turnoAtual,
+      data:            dataFreq,
       tipo:            tipo,      // 'entrada' ou 'saida'
-      presente:        val === 'P'
-    }, 'aluno_id,data_frequencia,tipo');
+      status:          val
+    }, 'aluno_id,data,tipo');
   }
 
   if(evasao){
@@ -2204,10 +2264,25 @@ async function markFreq(tipo,idx,val,btn){
   updateConsolidado();
 }
 
-function consolidar(tipo){
+async function consolidar(tipo){
   if(tipo==='saida'&&!chamadaConsolidada.entrada){showToast('Consolide a Entrada primeiro','alerta');return;}
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual);
   if(!alunos.length){showToast('Nenhum aluno para consolidar','alerta');return;}
+  
+  const dataFreq = document.getElementById('sel-dia-freq')?.value;
+  if(!dataFreq) { showToast('Selecione o dia letivo','alerta'); return; }
+
+  const turmaObj = TURMAS_DATA.find(t => t.code === turmaChamadaAtual);
+  const payload = alunos.map((a, i) => ({
+    aluno_id: a.id,
+    turma_id: turmaObj?.id || a.turma_id,
+    data: dataFreq,
+    tipo: tipo,
+    status: freq[tipo][i] || 'P',
+    consolidado: true
+  }));
+  await supabaseSalvar('frequencia', payload, 'aluno_id,data,tipo');
+
   chamadaConsolidada[tipo]=true;
   const s=document.getElementById(tipo+'-status');
   if(s){s.textContent='Consolidado';s.className='chamada-status status-consolidado';}
