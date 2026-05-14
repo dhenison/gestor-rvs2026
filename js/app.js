@@ -1358,12 +1358,10 @@ async function saveAluno(){
       matricula: cpf,
       nome: nome,
       turma_id: tObj.id,
-      turma: turmaCode,
-      turno: turno,
       rota: rota || 'Sem transporte',
       responsavel: resp,
       contato: contato,
-      instagram: email, // Usando instagram para o email de acordo com o padrão do import
+      instagram: email,
       data_nascimento: nasc || null,
       status: 'ativo'
   };
