@@ -3598,76 +3598,131 @@ function toggleCustomDatas(tipo){
   if(divData)   divData.style.display=periodo==='data'?'flex':'none';
 }
 
-function gerarRelFreq(){
-  const turma=document.getElementById('rel-freq-turma')?.value;
-  const periodo=document.getElementById('rel-freq-periodo')?.value||'mensal';
-  if(!turma){showToast('Selecione uma turma','alerta');return;}
-  const alunos=ALUNOS_DATA.filter(a=>a.turma===turma);
-  if(!alunos.length){showToast('Nenhum aluno nesta turma','alerta');return;}
-  const dias=getDiasLetivos(periodo,'freq');
-  // Busca frequências salvas (ou usa freq atual)
-  // Busca histórico de frequência salvo + dados atuais em memória
-  const freqHist=JSON.parse(localStorage.getItem('rvs_freq_hist')||'{}');
-  const dados=alunos.map(al=>{
-    let presencas=0,faltas=0,fjs=0;
-    const porDia={};
-    dias.forEach(dia=>{
-      // Prioridade: histórico salvo > dados em memória
-      const hist=freqHist[turma]?.[dia]?.[al.cpf]||null;
-      let status='—';
-      if(hist){
-        status=hist;
-      } else {
-        // Usa dados em memória (chamada atual)
-        const alunosTurma=ALUNOS_DATA.filter(a=>a.turma===turma);
-        const idx=alunosTurma.findIndex(a=>a.cpf===al.cpf);
-        if(idx>=0){
-          const ent=freq.entrada[idx]||'—';
-          const sai=freq.saida[idx]||'—';
-          const diaAtual=document.getElementById('sel-dia-freq')?.value||'';
-          if(diaAtual===dia){
-            if(ent==='P'&&(sai==='P'||sai?.startsWith('FJ'))) status='P';
-            else if(ent==='F'||(ent==='P'&&sai==='F')) status='F';
-            else if(ent?.startsWith('FJ')||sai?.startsWith('FJ')) status='FJ';
-          }
-        }
-        // Busca ocorrências do dia para indicar falta
-        const dataFormatada=formatarDataKey(dia);
-        const ocorrDia=OCORR_DATA.filter(o=>o.aluno===al.nome&&o.data===dataFormatada&&o.tipo==='evasao');
-        if(ocorrDia.length) status='F';
+async function gerarRelFreq(){
+  const turma = document.getElementById('rel-freq-turma')?.value;
+  const periodo = document.getElementById('rel-freq-periodo')?.value || 'mensal';
+  if(!turma){ showToast('Selecione uma turma','alerta'); return; }
+
+  const alunos = ALUNOS_DATA.filter(a => a.turma === turma);
+  if(!alunos.length){ showToast('Nenhum aluno nesta turma','alerta'); return; }
+
+  const turmaObj = TURMAS_DATA.find(t => t.code === turma);
+  const dias = getDiasLetivos(periodo, 'freq');
+
+  // Feedback visual de carregamento
+  const resultado = document.getElementById('rel-freq-resultado');
+  resultado.innerHTML = `<div style="text-align:center;padding:32px;color:var(--gray5)">
+    <div style="font-size:28px;margin-bottom:10px">⏳</div>
+    <div style="font-size:14px;font-weight:600">Buscando dados consolidados do banco...</div>
+  </div>`;
+
+  // Busca TODOS os registros de frequência consolidados da turma no período
+  let freqDB = {};
+  try {
+    if(turmaObj) {
+      const diasIni = dias.length > 0 ? dias[0] : null;
+      const diasFim = dias.length > 0 ? dias[dias.length-1] : null;
+
+      let query = supabaseClient
+        .from('frequencia')
+        .select('aluno_id, data, tipo, status, consolidado')
+        .eq('turma_id', turmaObj.id)
+        .eq('consolidado', true)
+        .limit(50000);
+
+      if(diasIni && diasFim) {
+        query = query.gte('data', diasIni).lte('data', diasFim);
       }
-      porDia[dia]=status;
-      if(status==='P') presencas++;
-      else if(status==='F') faltas++;
+
+      const { data: fqRows, error } = await query;
+      if(error) throw error;
+
+      // Monta índice: freqDB[aluno_id][data][tipo] = status
+      (fqRows || []).forEach(f => {
+        if(!freqDB[f.aluno_id]) freqDB[f.aluno_id] = {};
+        if(!freqDB[f.aluno_id][f.data]) freqDB[f.aluno_id][f.data] = {};
+        freqDB[f.aluno_id][f.data][f.tipo] = f.status;
+      });
+    }
+  } catch(err) {
+    console.error('[gerarRelFreq] Erro ao buscar Supabase:', err);
+  }
+
+  // Monta dados por aluno
+  const dados = alunos.map(al => {
+    let presencas = 0, faltas = 0, fjs = 0;
+    const porDia = {};
+
+    dias.forEach(dia => {
+      const ent = freqDB[al.id]?.[dia]?.['entrada'] || null;
+      const sai = freqDB[al.id]?.[dia]?.['saida'] || null;
+
+      let status = '—';
+
+      if(ent || sai) {
+        // Regra de negócio: P = presente nos dois; F = falta em algum; FJ = falta justificada
+        const evasao = ent === 'P' && sai === 'F';
+        if(ent?.startsWith('FJ') || sai?.startsWith('FJ')) status = 'FJ';
+        else if(ent === 'F' || evasao) status = 'F';
+        else if(ent === 'P' && (sai === 'P' || sai === null)) status = 'P';
+        else if(ent === 'P') status = 'P';
+        else status = ent || sai || '—';
+      }
+
+      porDia[dia] = status;
+      if(status === 'P') presencas++;
+      else if(status === 'F') faltas++;
       else if(status?.startsWith('FJ')) fjs++;
     });
-    const total=Math.max(presencas+faltas+fjs,dias.length);
-    const pctP=total>0?Math.round(presencas/total*100):0;
-    const pctF=total>0?Math.round(faltas/total*100):0;
-    return{nome:al.nome,porDia,presencas,faltas,fjs,pctP,pctF};
+
+    const total = dias.length;
+    const pctP = total > 0 ? Math.round(presencas / total * 100) : 0;
+    const pctF = total > 0 ? Math.round(faltas / total * 100) : 0;
+    return { nome: al.nome, porDia, presencas, faltas, fjs, pctP, pctF };
   });
-  relDadosCache.freq={alunos:dados,dias,turma,periodo};
+
+  relDadosCache.freq = { alunos: dados, dias, turma, periodo };
+
+  // Verifica se há dados consolidados
+  const totalRegistros = dados.reduce((s, d) => s + Object.values(d.porDia).filter(v => v !== '—').length, 0);
+
+  if(totalRegistros === 0) {
+    resultado.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray5)">
+      <div style="font-size:36px;margin-bottom:12px">📭</div>
+      <div style="font-size:15px;font-weight:700;color:var(--gray6)">Nenhuma frequência consolidada encontrada</div>
+      <div style="font-size:12px;margin-top:8px">Certifique-se de que a chamada foi <strong>consolidada</strong> na aba Frequência.</div>
+    </div>`;
+    document.getElementById('rel-freq-actions')?.classList.remove('hidden');
+    return;
+  }
+
   // Renderiza tabela
-  const tHead=`<tr><th>Aluno</th>${dias.map(d=>`<th style="font-size:10px">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%P</th><th>%F</th><th>Presenças</th><th>Faltas</th></tr>`;
-  const tBody=dados.map(d=>`<tr>
-    <td style="font-size:12px;font-weight:600">${d.nome}</td>
-    ${dias.map(dia=>{
-      const v=d.porDia[dia];
-      const bg=v==='P'?'var(--green-light)':v==='F'?'var(--red-light)':v?.startsWith('FJ')?'var(--yellow-light)':'var(--gray2)';
-      return`<td style="text-align:center;background:${bg};font-size:11px;font-weight:600">${v||'—'}</td>`;
+  const tHead = `<tr><th>Aluno</th>${dias.map(d => `<th style="font-size:10px;white-space:nowrap">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%P</th><th>%F</th><th>✅ Pres.</th><th>❌ Falt.</th><th>📝 FJ</th></tr>`;
+  const tBody = dados.map(d => `<tr>
+    <td style="font-size:12px;font-weight:600;white-space:nowrap">${d.nome}</td>
+    ${dias.map(dia => {
+      const v = d.porDia[dia];
+      const bg = v === 'P' ? 'var(--green-light)' : v === 'F' ? 'var(--red-light)' : v?.startsWith('FJ') ? 'var(--yellow-light)' : 'var(--gray2)';
+      const color = v === 'P' ? 'var(--green-dark)' : v === 'F' ? 'var(--red-dark)' : v?.startsWith('FJ') ? 'var(--yellow-dark)' : 'var(--gray5)';
+      return `<td style="text-align:center;background:${bg};color:${color};font-size:11px;font-weight:700">${v || '—'}</td>`;
     }).join('')}
     <td style="text-align:center"><span class="metric-badge badge-green">${d.pctP}%</span></td>
     <td style="text-align:center"><span class="metric-badge badge-red">${d.pctF}%</span></td>
-    <td style="text-align:center;font-weight:700">${d.presencas}</td>
+    <td style="text-align:center;font-weight:700;color:var(--green-dark)">${d.presencas}</td>
     <td style="text-align:center;font-weight:700;color:var(--red)">${d.faltas}</td>
-    <td style="text-align:center"><span class="metric-badge ${d.evasoesTransp>0?'badge-red':'badge-green'}">${d.evasoesTransp}</span></td>
+    <td style="text-align:center;font-weight:700;color:var(--yellow-dark)">${d.fjs}</td>
   </tr>`).join('');
-  const html=`<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Relatório de Frequência — Turma ${turma} — ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
-    <table style="min-width:600px"><thead style="background:var(--gray2)">${tHead}</thead><tbody>${tBody}</tbody></table>
+
+  const html = `<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">📊 Relatório de Frequência — Turma ${turma}</div>
+    <div style="font-size:12px;color:var(--gray5);margin-bottom:12px">Período: ${periodo.charAt(0).toUpperCase()+periodo.slice(1)} · ${totalRegistros} registro(s) consolidado(s)</div>
+    <div style="overflow:auto">
+      <table style="min-width:600px"><thead style="background:var(--gray2)">${tHead}</thead><tbody>${tBody}</tbody></table>
+    </div>
   </div>`;
-  document.getElementById('rel-freq-resultado').innerHTML=html;
-  document.getElementById('rel-freq-actions').classList.remove('hidden');
+
+  resultado.innerHTML = html;
+  document.getElementById('rel-freq-actions')?.classList.remove('hidden');
 }
 
 function gerarRelTransp(){
