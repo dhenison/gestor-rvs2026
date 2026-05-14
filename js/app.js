@@ -2373,19 +2373,17 @@ async function saveOcorrencia(){
   const alunoObj = ALUNOS_DATA.find(a => a.nome === alunoSel);
   const turmaObj = TURMAS_DATA.find(t => t.code === turma);
   
+  const descFinal = desc + 
+    (comunicarPais ? '\n[AGUARDANDO PAIS]' : '') + 
+    '\nResponsável: ' + (user?.nome || 'Usuário');
+
   const payload = {
     tipo,
     aluno_id: alunoObj?.id || null,
     turma_id: turmaObj?.id || null,
-    descricao: desc,
-    hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
-    data_ocorr: new Date().toISOString().split('T')[0],
-    tratada: false,
-    aguardando_pais: comunicarPais,
-    auto_gerada: false,
-    responsavel: user?.nome || 'Usuário',
-    envolvidos: nomes,
-    origem: 'manual'
+    participante: nomes,
+    descricao: descFinal,
+    auto_gerada: false
   };
   
   const { data: insertedOcorr, error } = await supabaseClient.from('ocorrencias').insert(payload).select().single();
@@ -2429,10 +2427,14 @@ async function salvarTratamento(manter){
     o.tratada = true;
     o.justificativa = just;
     
+    // Anexa a tag [TRATADA] e a justificativa à descrição original
+    const novaDesc = o.desc + '\n[TRATADA] ' + just;
+    o.desc = novaDesc; // atualiza na memória
+    
     // Persiste no Supabase
     const { error } = await supabaseClient
       .from('ocorrencias')
-      .update({ tratada: true, justificativa: just })
+      .update({ descricao: novaDesc })
       .eq('id', id);
     
     if(error) {
