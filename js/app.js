@@ -355,7 +355,7 @@ async function carregarDados(){
             id: o.id,
             tipo: tipoView,
             icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : '❌',
-            aluno: al ? al.nome : o.participante || '—',
+            aluno: o.participante || (al ? al.nome : '—'),
             cpf: al ? al.cpf : '',
             turma: tu ? tu.code : '',
             desc: descView,
@@ -2410,10 +2410,11 @@ async function saveOcorrencia(){
   
   // Atualiza cache local com os dados reais do banco
   const oData = new Date().toLocaleDateString('pt-BR');
-  OCORR_DATA.unshift({
+  const oHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+  OCORR_DATA.push({
     id: insertedOcorr?.id || Date.now(),
     tipo, icon: icons[tipo]||'⚠️', aluno: nomes||'—', turma,
-    desc, hora: payload.hora, data: oData,
+    desc: descFinal, hora: oHora, data: oData,
     tratada: false, aguardandoPais: comunicarPais, origem: 'manual'
   });
 
