@@ -278,13 +278,13 @@ async function carregarDados(){
       configResult, // Capture full result instead of destructuring data
       {data: obafogEq}
     ] = await Promise.all([
-      supabaseClient.from('turmas').select('*'),
-      supabaseClient.from('alunos').select('*'),
-      supabaseClient.from('ocorrencias').select('*'),
-      supabaseClient.from('eventos').select('*'),
-      supabaseClient.from('rotas').select('*'),
+      supabaseClient.from('turmas').select('*').limit(5000),
+      supabaseClient.from('alunos').select('*').limit(10000),
+      supabaseClient.from('ocorrencias').select('*').limit(10000),
+      supabaseClient.from('eventos').select('*').limit(5000),
+      supabaseClient.from('rotas').select('*').limit(1000),
       supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios']),
-      supabaseClient.from('obafog_equipes').select('*').order('created_at', {ascending:false})
+      supabaseClient.from('obafog_equipes').select('*').order('created_at', {ascending:false}).limit(5000)
     ]);
 
     if (configResult.error) {
@@ -1018,7 +1018,7 @@ async function renderTurmasTable(){
   
   let freqData = {}; // aluno_id → {entrada, saida}
   try{
-    const {data:fq} = await supabaseClient.from('frequencia').select('aluno_id,tipo,status').eq('data',targetDate);
+    const {data:fq} = await supabaseClient.from('frequencia').select('aluno_id,tipo,status').eq('data',targetDate).limit(10000);
     if(fq) fq.forEach(f=>{
       if(!freqData[f.aluno_id]) freqData[f.aluno_id]={};
       freqData[f.aluno_id][f.tipo]=f.status;
