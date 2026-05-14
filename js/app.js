@@ -997,20 +997,45 @@ function getDashFiltros(){
   return { turno: dashTurnoAtual, dia };
 }
 
-function renderMetricasDash(){
-  const el=id=>document.getElementById(id);
+async function renderMetricasDash(){
+  const el = id => document.getElementById(id);
   const {turno, dia} = getDashFiltros();
-  const alunos = turno ? ALUNOS_DATA.filter(a=>a.turno===turno) : ALUNOS_DATA;
-  const turmas = turno ? TURMAS_DATA.filter(t=>t.turno===turno) : TURMAS_DATA;
-  const ocorrs = OCORR_DATA.filter(o=>{
+  const alunos = turno ? ALUNOS_DATA.filter(a => a.turno===turno) : ALUNOS_DATA;
+  const turmas = turno ? TURMAS_DATA.filter(t => t.turno===turno) : TURMAS_DATA;
+  const ocorrs = OCORR_DATA.filter(o => {
     if(turno){const al=ALUNOS_DATA.find(a=>a.nome===o.aluno||a.cpf===o.cpf); if(!al||al.turno!==turno) return false;}
     if(dia && o.data !== new Date(dia+'T12:00:00').toLocaleDateString('pt-BR')) return false;
     return true;
   });
-  if(el('dash-total'))    el('dash-total').textContent    = alunos.length;
-  if(el('dash-presentes'))el('dash-presentes').textContent= alunos.filter(a=>a.status==='ativo').length;
-  if(el('dash-faltas'))   el('dash-faltas').textContent   = ocorrs.filter(o=>o.tipo==='evasao'&&!o.tratada).length;
-  if(el('dash-turmas'))   el('dash-turmas').textContent   = turmas.length;
+
+  if(el('dash-total'))  el('dash-total').textContent  = alunos.length;
+  if(el('dash-turmas')) el('dash-turmas').textContent = turmas.length;
+  if(el('dash-faltas')) el('dash-faltas').textContent = ocorrs.filter(o=>o.tipo==='evasao'&&!o.tratada).length;
+
+  // Busca presentes de hoje direto do Supabase (frequência real)
+  try {
+    const hoje = new Date().toISOString().split('T')[0];
+    const targetDate = dia || hoje;
+    const alunoIds = alunos.map(a => a.id).filter(Boolean);
+    if(alunoIds.length > 0) {
+      let query = supabaseClient.from('frequencia')
+        .select('aluno_id, status')
+        .eq('data', targetDate)
+        .eq('tipo', 'entrada')
+        .in('aluno_id', alunoIds);
+      const { data: fqHoje } = await query;
+      const presentes = (fqHoje || []).filter(f => f.status === 'P').length;
+      const faltas    = (fqHoje || []).filter(f => f.status === 'F' || f.status?.startsWith('FJ')).length;
+      if(el('dash-presentes')) el('dash-presentes').textContent = presentes;
+      if(el('dash-faltas'))    el('dash-faltas').textContent    = faltas;
+    } else {
+      if(el('dash-presentes')) el('dash-presentes').textContent = 0;
+    }
+  } catch(e) {
+    // fallback: conta alunos ativos
+    if(el('dash-presentes')) el('dash-presentes').textContent = alunos.filter(a=>a.status==='ativo').length;
+    console.warn('[renderMetricasDash] Supabase error:', e);
+  }
 }
 async function renderTurmasTable(){
   const b=document.getElementById('turmas-table-body'); if(!b)return;
@@ -2304,6 +2329,9 @@ async function consolidar(tipo){
   if(tipo==='entrada') renderChamada();
   atualizarBloqueioSaida();
   updateConsolidado();
+  // Atualiza o Dashboard em tempo real após consolidação
+  renderTurmasTable();
+  renderMetricasDash();
 }
 
 function updateConsolidado(){
