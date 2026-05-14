@@ -342,16 +342,23 @@ async function carregarDados(){
 
     if (ocorrencias) {
       OCORR_DATA = ocorrencias.map(o => {
+         let tipoView = o.tipo;
+         let descView = o.descricao || '';
+         if (descView.startsWith('[ATRASO]')) {
+             tipoView = 'atraso';
+             descView = descView.replace('[ATRASO] ', '').replace('[ATRASO]\n', '').trim();
+         }
+
          const al = ALUNOS_DATA.find(a => a.id === o.aluno_id);
          const tu = TURMAS_DATA.find(t => t.id === o.turma_id);
          return {
             id: o.id,
-            tipo: o.tipo,
-            icon: o.tipo === 'evasao' ? '🚨' : o.tipo === 'indisciplina' ? '⚠️' : '❌',
+            tipo: tipoView,
+            icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : '❌',
             aluno: al ? al.nome : o.participante || '—',
             cpf: al ? al.cpf : '',
             turma: tu ? tu.code : '',
-            desc: o.descricao,
+            desc: descView,
             hora: new Date(o.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
             data: new Date(o.created_at).toLocaleDateString('pt-BR'),
             tratada: o.descricao && o.descricao.includes('[TRATADA]'),
@@ -2373,12 +2380,19 @@ async function saveOcorrencia(){
   const alunoObj = ALUNOS_DATA.find(a => a.nome === alunoSel);
   const turmaObj = TURMAS_DATA.find(t => t.code === turma);
   
-  const descFinal = desc + 
+  let tipoDb = tipo;
+  let prefixoAtraso = '';
+  if (tipo === 'atraso') {
+    tipoDb = 'indisciplina'; // Mapeia para uma categoria existente no banco
+    prefixoAtraso = '[ATRASO] ';
+  }
+
+  const descFinal = prefixoAtraso + desc + 
     (comunicarPais ? '\n[AGUARDANDO PAIS]' : '') + 
     '\nResponsável: ' + (user?.nome || 'Usuário');
 
   const payload = {
-    tipo,
+    tipo: tipoDb,
     aluno_id: alunoObj?.id || null,
     turma_id: turmaObj?.id || null,
     participante: nomes,
