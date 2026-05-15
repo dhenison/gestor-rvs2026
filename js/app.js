@@ -3717,6 +3717,16 @@ async function gerarRelFreq(){
       <div style="font-size:36px;margin-bottom:12px">📭</div>
       <div style="font-size:15px;font-weight:700;color:var(--gray6)">Nenhuma frequência consolidada encontrada</div>
       <div style="font-size:12px;margin-top:8px">Certifique-se de que a chamada foi <strong>consolidada</strong> na aba Frequência.</div>
+      <div style="margin-top:20px;padding:15px;background:#fff3cd;color:#856404;border-radius:6px;font-size:12px;text-align:left;border:1px solid #ffeeba">
+        <strong>Debug Técnico:</strong><br>
+        Turma Code: ${turma}<br>
+        Turma ID: ${turmaObj?.id}<br>
+        Dias Buscados: ${dias.join(', ')}<br>
+        DiasIni: ${diasIni || 'null'}, DiasFim: ${diasFim || 'null'}<br>
+        Alunos na Turma: ${alunos.length}<br>
+        Registros retornados do Banco: ${dados.reduce((s, d) => s + Object.keys(d.porDia).length, 0)} (dias testados)<br>
+        FreqDB Keys (Alunos c/ Freq): ${Object.keys(freqDB).length}<br>
+      </div>
     </div>`;
     document.getElementById('rel-freq-actions')?.classList.remove('hidden');
     return;
