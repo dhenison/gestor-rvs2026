@@ -3642,13 +3642,15 @@ async function gerarRelFreq(){
     <div style="font-size:14px;font-weight:600">Buscando dados consolidados do banco...</div>
   </div>`;
 
+  const diasIni = dias.length > 0 ? dias[0] : null;
+  const diasFim = dias.length > 0 ? dias[dias.length-1] : null;
+
   // Busca TODOS os registros de frequência consolidados da turma no período
   let freqDB = {};
+  let numRegistrosBanco = 0; // Para debug
+
   try {
     if(turmaObj) {
-      const diasIni = dias.length > 0 ? dias[0] : null;
-      const diasFim = dias.length > 0 ? dias[dias.length-1] : null;
-
       let query = supabaseClient
         .from('frequencia')
         .select('aluno_id, data, tipo, status, consolidado')
@@ -3662,6 +3664,8 @@ async function gerarRelFreq(){
 
       const { data: fqRows, error } = await query;
       if(error) throw error;
+      
+      numRegistrosBanco = fqRows ? fqRows.length : 0;
 
       // Monta índice: freqDB[aluno_id][data][tipo] = status
       (fqRows || []).forEach(f => {
@@ -3724,7 +3728,8 @@ async function gerarRelFreq(){
         Dias Buscados: ${dias.join(', ')}<br>
         DiasIni: ${diasIni || 'null'}, DiasFim: ${diasFim || 'null'}<br>
         Alunos na Turma: ${alunos.length}<br>
-        Registros retornados do Banco: ${dados.reduce((s, d) => s + Object.keys(d.porDia).length, 0)} (dias testados)<br>
+        Dias letivos encontrados para este período: ${dias.length}<br>
+        Registros retornados do Banco: ${numRegistrosBanco} (cru) / ${dados.reduce((s, d) => s + Object.keys(d.porDia).length, 0)} (processados)<br>
         FreqDB Keys (Alunos c/ Freq): ${Object.keys(freqDB).length}<br>
       </div>
     </div>`;
