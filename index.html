@@ -430,7 +430,10 @@
           
           <!-- COLUNA 3: Ranking -->
           <div class="table-card" style="padding:20px; background:#fffbeb; border:1px solid #fcd34d">
-            <h3 style="margin-bottom:15px; font-size:16px; color:#d97706">🏆 Ranking de Lançamentos</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+              <h3 style="font-size:16px; color:#d97706; margin:0">🏆 Ranking de Lançamentos</h3>
+              <button class="btn btn-outline" style="font-size:11px; padding:4px 8px" onclick="downloadObafogXLSX()">⬇️ Baixar Excel</button>
+            </div>
             <div id="obafog-ranking" style="display:flex; flex-direction:column; gap:10px">
               <!-- Ranking renderizado aqui -->
             </div>
@@ -1844,6 +1847,7 @@
 
 <!-- ── SCRIPTS ─────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/app.js?v=1.1"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->

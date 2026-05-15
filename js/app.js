@@ -5126,3 +5126,66 @@ function toggleMobileMenu() {
   document.querySelector('.sidebar').classList.toggle('sidebar-open');
   document.getElementById('sidebar-overlay').classList.toggle('show');
 }
+// [OBAFOG] Download Excel
+function downloadObafogXLSX() {
+  if (typeof XLSX === 'undefined') {
+    showToast('A biblioteca Excel ainda está carregando. Tente novamente em alguns segundos.', 'alerta');
+    return;
+  }
+  if (!OBAFOG_DATA || OBAFOG_DATA.length === 0) {
+    showToast('Nenhuma equipe cadastrada para exportar.', 'alerta');
+    return;
+  }
+
+  // Ordena os dados pelo melhor lançamento
+  const rankeado = [...OBAFOG_DATA].sort((a,b) => {
+    const bestA = Math.max(a.lancamento1||0, a.lancamento2||0);
+    const bestB = Math.max(b.lancamento1||0, b.lancamento2||0);
+    return bestB - bestA;
+  });
+
+  const exportData = rankeado.map((eq, index) => {
+    const al1 = eq.alunos[0] ? eq.alunos[0].nome : '';
+    const al2 = eq.alunos[1] ? eq.alunos[1].nome : '';
+    const al3 = eq.alunos[2] ? eq.alunos[2].nome : '';
+    
+    // Obter as turmas únicas dos alunos envolvidos
+    const turmasArray = eq.alunos.map(a => a.turma).filter(Boolean);
+    const turmasUnicas = [...new Set(turmasArray)].join(', ');
+
+    return {
+      "Colocação": (index + 1) + 'º',
+      "Nome da Equipe": eq.nome || '',
+      "Número da Equipe": eq.numero || '',
+      "Turma(s)": turmasUnicas,
+      "Aluno 1": al1,
+      "Aluno 2": al2,
+      "Aluno 3": al3,
+      "Lançamento 1 (m)": parseFloat(eq.lancamento1||0).toFixed(2).replace('.', ','),
+      "Lançamento 2 (m)": parseFloat(eq.lancamento2||0).toFixed(2).replace('.', ','),
+      "Melhor Marca (m)": Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2).replace('.', ',')
+    };
+  });
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Ranking OBAFOG");
+
+  // Ajustar a largura das colunas
+  const colWidths = [
+    { wch: 12 }, // Colocação
+    { wch: 25 }, // Equipe
+    { wch: 18 }, // Número
+    { wch: 15 }, // Turma(s)
+    { wch: 30 }, // Aluno 1
+    { wch: 30 }, // Aluno 2
+    { wch: 30 }, // Aluno 3
+    { wch: 18 }, // Lançamento 1
+    { wch: 18 }, // Lançamento 2
+    { wch: 18 }  // Melhor Marca
+  ];
+  ws['!cols'] = colWidths;
+
+  const dataAtual = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Ranking_OBAFOG_${dataAtual}.xlsx`);
+}
