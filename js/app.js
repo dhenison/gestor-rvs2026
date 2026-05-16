@@ -3613,6 +3613,14 @@ function getDiasLetivos(periodo, prefixo){
     .filter(([,ev])=>['letivo','prova','evento','bimestre'].includes(ev.tipo))
     .map(([k])=>k).sort();
   const hoje=new Date();
+  if(periodo==='data' && prefixo){
+    const unica=document.getElementById('rel-'+prefixo+'-data-especifica')?.value;
+    if(unica){
+      const [yU, mU, dU] = unica.split('-');
+      const target = `${parseInt(yU, 10)}-${parseInt(mU, 10)}-${parseInt(dU, 10)}`;
+      return diasLetivos.filter(k => k === target);
+    }
+  }
   if(periodo==='custom' && prefixo){
     const ini=document.getElementById('rel-'+prefixo+'-data-ini')?.value;
     const fim=document.getElementById('rel-'+prefixo+'-data-fim')?.value;
