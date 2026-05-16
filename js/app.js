@@ -3658,8 +3658,30 @@ async function gerarRelFreq(){
     <div style="font-size:14px;font-weight:600">Buscando dados consolidados do banco...</div>
   </div>`;
 
-  const diasIni = dias.length > 0 ? dias[0] : null;
-  const diasFim = dias.length > 0 ? dias[dias.length-1] : null;
+  // Garante ordem cronológica para pegar o início e fim reais
+  const diasChronological = [...dias].sort((a, b) => {
+    const [yA, mA, dA] = a.split('-').map(Number);
+    const [yB, mB, dB] = b.split('-').map(Number);
+    return new Date(yA, mA - 1, dA) - new Date(yB, mB - 1, dB);
+  });
+
+  const pad = (n) => n.toString().padStart(2, '0');
+  
+  let diasIni = null;
+  let diasFim = null;
+  let diasIniDb = null;
+  let diasFimDb = null;
+
+  if (diasChronological.length > 0) {
+    diasIni = diasChronological[0];
+    diasFim = diasChronological[diasChronological.length - 1];
+    
+    const [yI, mI, dI] = diasIni.split('-');
+    diasIniDb = `${yI}-${pad(mI)}-${pad(dI)}`;
+    
+    const [yF, mF, dF] = diasFim.split('-');
+    diasFimDb = `${yF}-${pad(mF)}-${pad(dF)}`;
+  }
 
   // Busca TODOS os registros de frequência consolidados da turma no período
   let freqDB = {};
@@ -3667,27 +3689,28 @@ async function gerarRelFreq(){
 
   try {
     if(turmaObj) {
-      let query = supabaseClient
-        .from('frequencia')
-        .select('aluno_id, data, tipo, status, consolidado')
-        .eq('turma_id', turmaObj.id)
-        .eq('consolidado', true)
-        .limit(50000);
+      // Usando fetchAllRows para não esbarrar no limite de 1000 da API
+      const { data: fqRows, error } = await fetchAllRows('frequencia', 'aluno_id, data, tipo, status, consolidado', q => {
+        let qFilter = q.eq('turma_id', turmaObj.id).eq('consolidado', true);
+        if(diasIniDb && diasFimDb) {
+          qFilter = qFilter.gte('data', diasIniDb).lte('data', diasFimDb);
+        }
+        return qFilter;
+      });
 
-      if(diasIni && diasFim) {
-        query = query.gte('data', diasIni).lte('data', diasFim);
-      }
-
-      const { data: fqRows, error } = await query;
       if(error) throw error;
       
       numRegistrosBanco = fqRows ? fqRows.length : 0;
 
-      // Monta índice: freqDB[aluno_id][data][tipo] = status
+      // Monta índice: freqDB[aluno_id][data_unpadded][tipo] = status
       (fqRows || []).forEach(f => {
+        // Remove padding do Supabase (YYYY-MM-DD -> YYYY-M-D) para bater com 'dias'
+        const [y, m, d] = f.data.split('-');
+        const unpaddedData = `${y}-${parseInt(m)}-${parseInt(d)}`;
+
         if(!freqDB[f.aluno_id]) freqDB[f.aluno_id] = {};
-        if(!freqDB[f.aluno_id][f.data]) freqDB[f.aluno_id][f.data] = {};
-        freqDB[f.aluno_id][f.data][f.tipo] = f.status;
+        if(!freqDB[f.aluno_id][unpaddedData]) freqDB[f.aluno_id][unpaddedData] = {};
+        freqDB[f.aluno_id][unpaddedData][f.tipo] = f.status;
       });
     }
   } catch(err) {
