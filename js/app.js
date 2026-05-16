@@ -1028,20 +1028,22 @@ async function renderMetricasDash(){
   if(el('dash-turmas')) el('dash-turmas').textContent = turmas.length;
   if(el('dash-faltas')) el('dash-faltas').textContent = ocorrs.filter(o=>o.tipo==='evasao'&&!o.tratada).length;
 
-  // Busca presentes de hoje direto do Supabase (frequência real)
+  // Busca presentes de hoje direto do Supabase via fetchAllRows para não esbarrar em limite (ex: 1500 alunos)
   try {
     const hoje = new Date().toISOString().split('T')[0];
     const targetDate = dia || hoje;
-    const alunoIds = alunos.map(a => a.id).filter(Boolean);
-    if(alunoIds.length > 0) {
-      let query = supabaseClient.from('frequencia')
-        .select('aluno_id, status')
-        .eq('data', targetDate)
-        .eq('tipo', 'entrada')
-        .in('aluno_id', alunoIds);
-      const { data: fqHoje } = await query;
-      const presentes = (fqHoje || []).filter(f => f.status === 'P').length;
-      const faltas    = (fqHoje || []).filter(f => f.status === 'F' || f.status?.startsWith('FJ')).length;
+    const alunoIdsStr = alunos.map(a => String(a.id));
+
+    if(alunoIdsStr.length > 0) {
+      const { data: fqHoje, error } = await fetchAllRows('frequencia', 'aluno_id, status', q => q.eq('data', targetDate).eq('tipo', 'entrada'));
+      if(error) throw error;
+
+      // Filtra apenas os que pertencem aos alunos do turno/filtro atual
+      const fqValida = (fqHoje || []).filter(f => alunoIdsStr.includes(String(f.aluno_id)));
+
+      const presentes = fqValida.filter(f => f.status === 'P').length;
+      const faltas    = fqValida.filter(f => f.status === 'F' || f.status?.startsWith('FJ')).length;
+      
       if(el('dash-presentes')) el('dash-presentes').textContent = presentes;
       if(el('dash-faltas'))    el('dash-faltas').textContent    = faltas;
     } else {
@@ -1121,11 +1123,22 @@ async function renderTurmasTable(){
 function renderDashOcorr(){
   const cont=document.getElementById('dash-ocorr'); if(!cont)return;
   const {turno, dia} = getDashFiltros();
+  
+  // Define targetDate string no padrão DD/MM/YYYY (do filtro ou hoje)
+  const hojeDate = new Date();
+  const targetDateStr = dia ? new Date(dia+'T12:00:00').toLocaleDateString('pt-BR') : hojeDate.toLocaleDateString('pt-BR');
+
   let data=[...OCORR_DATA].reverse();
-  if(turno){const als=ALUNOS_DATA.filter(a=>a.turno===turno).map(a=>a.nome); data=data.filter(o=>als.includes(o.aluno));}
-  if(dia) data=data.filter(o=>o.data===new Date(dia+'T12:00:00').toLocaleDateString('pt-BR'));
+  if(turno){
+    const als=ALUNOS_DATA.filter(a=>a.turno===turno).map(a=>a.nome); 
+    data=data.filter(o=>als.includes(o.aluno));
+  }
+  
+  // As ocorrências no dashboard são espelho do dia letivo (para bater com a frequência)
+  data=data.filter(o=>o.data===targetDateStr);
   data=data.slice(0,5);
-  cont.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Tudo tranquilo');
+  
+  cont.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Tudo tranquilo neste dia');
 }
 
 // ─── TURMAS ───────────────────────────────────────────────────────────────────
