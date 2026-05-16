@@ -472,13 +472,17 @@ async function carregarDados(){
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 async function doLogin(){
-  const email = (document.getElementById('email-input').value||'').trim();
+  let email = (document.getElementById('email-input').value||'').trim();
   const pass  = (document.getElementById('pass-input').value||'');
   const errEl = document.getElementById('login-error');
   const btn   = document.querySelector('#login-screen button');
 
   if(!email || !pass){ errEl.style.display='block'; return; }
   errEl.style.display='none';
+
+  if(!email.includes('@')) {
+    email += '@escola.seduc.pa.gov.br';
+  }
 
   if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
 
@@ -493,18 +497,27 @@ async function doLogin(){
       console.error('[login]', authErr);
       errEl.style.display='block';
       errEl.textContent = 'Credenciais inválidas.';
-      if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
+      if(btn){ btn.disabled=false; btn.textContent='Entrar no Sistema'; }
       return;
     }
 
     // Busca os dados adicionais do usuário na tabela pública
     const { data: userData, error: userErr } = await supabaseClient
       .from('usuarios')
-      .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp')
+      .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo')
       .eq('id', authData.user.id)
       .maybeSingle();
 
     if(userErr) throw userErr;
+
+    // Verifica se está ativo
+    if(userData && userData.ativo === false) {
+      errEl.style.display='block';
+      errEl.textContent = 'Acesso negado: Usuário inativo.';
+      if(btn){ btn.disabled=false; btn.textContent='Entrar no Sistema'; }
+      await supabaseClient.auth.signOut();
+      return;
+    }
 
     // Se userData for nulo, cria um fallback com os dados do Auth
     const user = userData || {
@@ -4682,6 +4695,7 @@ async function salvarUsuario(){
   const turma  = document.getElementById('usr-turma')?.value || '';
   const cargo  = (document.getElementById('usr-cargo')?.value||'').trim();
   const avatar = document.getElementById('usr-avatar-data')?.value || '';
+  const ativo  = document.getElementById('usr-ativo') ? document.getElementById('usr-ativo').checked : true;
   const senha        = (document.getElementById('usr-senha')?.value||'');
   const senhaConfirm = (document.getElementById('usr-senha-confirm')?.value||'');
 
@@ -4709,6 +4723,10 @@ async function salvarUsuario(){
     });
 
     if(!rpcErr && rpcResp?.status === 'success'){
+      // Se usuário for criado como inativo, precisamos dar update logo após a criação
+      if(!ativo && rpcResp.uid) {
+        await supabaseClient.from('usuarios').update({ ativo: false }).eq('id', rpcResp.uid);
+      }
       closeModal('modal-usuario');
       showToast('Usuário cadastrado com segurança!','sucesso');
       await carregarUsuarios();
@@ -4725,7 +4743,8 @@ async function salvarUsuario(){
       perfil: perfil,
       turno: turno,
       cargo: cargo,
-      foto_url: avatar
+      foto_url: avatar,
+      ativo: ativo
     };
     if(senha) payload.senha = senha;
 
@@ -4769,6 +4788,8 @@ function abrirModalUsuario(id){
   if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
   document.getElementById('modal-usuario-title').textContent = '+ Novo Usuário';
   if(senhaInfoEl) senhaInfoEl.style.display = 'none'; // Hide hint for new users
+  const ativoEl = document.getElementById('usr-ativo');
+  if(ativoEl) ativoEl.checked = true;
   popularTurmasUsuario();
 
   if(id){
@@ -4780,6 +4801,7 @@ function abrirModalUsuario(id){
     document.getElementById('usr-perfil').value  = u.perfil||'professor';
     document.getElementById('usr-turno').value   = u.turno||'';
     if(cargoEl) cargoEl.value = u.cargo||'';
+    if(ativoEl) ativoEl.checked = u.ativo !== false;
     popularTurmasUsuario();
     document.getElementById('usr-turma').value   = u.turma_responsavel||'';
     document.getElementById('modal-usuario-title').textContent = '✏️ Editar Usuário';
@@ -4922,6 +4944,9 @@ function renderUsuarios(){
     lista.map(u => {
       const cor = perfilCor[u.perfil]||'#6b7280';
       const initials = (u.nome||'?').split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+      const ativoBadge = u.ativo !== false
+        ? '<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;margin-left:6px;vertical-align:middle;">Ativo</span>'
+        : '<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;margin-left:6px;vertical-align:middle;">Inativo</span>';
       const avatarHtml = u.avatar_url
         ? '<img src="'+u.avatar_url+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid '+cor+'">'
         : '<div style="width:56px;height:56px;border-radius:50%;background:'+cor+';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;border:3px solid '+cor+'">'+initials+'</div>';
@@ -4929,7 +4954,7 @@ function renderUsuarios(){
         '<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">'+
           avatarHtml+
           '<div style="flex:1;min-width:0">'+
-            '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u.nome+'</div>'+
+            '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u.nome+ativoBadge+'</div>'+
             '<div style="font-size:11.5px;color:#6b7280;margin-top:2px">'+u.email+'</div>'+
             '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+cor+'22;color:'+cor+';margin-top:4px;display:inline-block">'+
               (perfilIcon[u.perfil]||'👤')+' '+(perfilLabel[u.perfil]||u.perfil)+
