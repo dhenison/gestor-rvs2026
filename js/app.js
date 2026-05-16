@@ -262,6 +262,22 @@ function salvarDados(){
   }catch(e){ console.warn('Erro ao salvar:',e); }
 }
 
+async function fetchAllRows(tableName, select = '*', builderFn = (q)=>q) {
+  let allData = [];
+  let from = 0;
+  const step = 1000;
+  while(true) {
+    let query = supabaseClient.from(tableName).select(select).range(from, from + step - 1);
+    query = builderFn(query);
+    const { data, error } = await query;
+    if(error) { console.error(`Erro ao buscar ${tableName}:`, error); break; }
+    if(data) allData = allData.concat(data);
+    if(!data || data.length < step) break;
+    from += step;
+  }
+  return { data: allData };
+}
+
 async function carregarDados(){
   try {
     // 1. Acionar rotina de limpeza de mensagens antigas
@@ -278,13 +294,13 @@ async function carregarDados(){
       configResult, // Capture full result instead of destructuring data
       {data: obafogEq}
     ] = await Promise.all([
-      supabaseClient.from('turmas').select('*').limit(5000),
-      supabaseClient.from('alunos').select('*').limit(10000),
-      supabaseClient.from('ocorrencias').select('*').limit(10000),
-      supabaseClient.from('eventos').select('*').limit(5000),
-      supabaseClient.from('rotas').select('*').limit(1000),
+      fetchAllRows('turmas'),
+      fetchAllRows('alunos'),
+      fetchAllRows('ocorrencias'),
+      fetchAllRows('eventos'),
+      fetchAllRows('rotas'),
       supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios']),
-      supabaseClient.from('obafog_equipes').select('*').order('created_at', {ascending:false}).limit(5000)
+      fetchAllRows('obafog_equipes', '*', q => q.order('created_at', {ascending:false}))
     ]);
 
     if (configResult.error) {
@@ -1050,7 +1066,7 @@ async function renderTurmasTable(){
   
   let freqData = {}; // aluno_id → {entrada, saida}
   try{
-    const {data:fq} = await supabaseClient.from('frequencia').select('aluno_id,tipo,status').eq('data',targetDate).limit(10000);
+    const {data:fq} = await fetchAllRows('frequencia', 'aluno_id,tipo,status', q => q.eq('data',targetDate));
     if(fq) fq.forEach(f=>{
       if(!freqData[f.aluno_id]) freqData[f.aluno_id]={};
       freqData[f.aluno_id][f.tipo]=f.status;
