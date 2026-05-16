@@ -459,3 +459,18 @@ textarea.form-input{resize:vertical;min-height:70px}
 .mobile-menu-btn {
   display: none;
 }
+
+/* =======================================================================
+   PRINT STYLES
+   ======================================================================= */
+@media print {
+  @page { size: landscape; margin: 10mm; }
+  body { background: white !important; padding: 0 !important; margin: 0 !important; }
+  .sidebar, .topbar, .tabs, .table-filters, .btn, .notif-bell-wrapper { display: none !important; }
+  .main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+  .content { padding: 0 !important; }
+  .table-card { box-shadow: none !important; border: none !important; padding: 0 !important; }
+  table { page-break-inside: auto; font-size: 10px !important; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  th, td { padding: 4px !important; border: 1px solid #ccc !important; }
+}

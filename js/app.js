@@ -3934,17 +3934,21 @@ function downloadRelPDF(divId, filename){
   if(!el||!el.innerHTML.trim()){showToast('Gere o relatório primeiro','alerta');return;}
   const conteudo=el.innerHTML;
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+filename+'</title>'
-    +'<style>body{font-family:Arial,sans-serif;font-size:11px;padding:20px}'
-    +'table{width:100%;border-collapse:collapse}'
-    +'th,td{border:1px solid #ccc;padding:4px 8px;text-align:left}'
+    +'<style>'
+    +'@page { size: landscape; margin: 10mm; }'
+    +'body{font-family:Arial,sans-serif;font-size:10px;padding:10px}'
+    +'table{width:100%;border-collapse:collapse;page-break-inside:auto}'
+    +'tr{page-break-inside:avoid;page-break-after:auto}'
+    +'th,td{border:1px solid #ccc;padding:4px;text-align:center;word-wrap:break-word}'
+    +'th:first-child,td:first-child{text-align:left;min-width:120px}'
     +'th{background:#f0f0f0;font-weight:bold}'
-    +'.metric-badge{padding:2px 6px;border-radius:4px;font-size:10px}'
+    +'.metric-badge{padding:2px 4px;border-radius:4px;font-size:9px}'
     +'.badge-green{background:#dcfce7;color:#15803d}'
     +'.badge-red{background:#fee2e2;color:#b91c1c}'
     +'.badge-blue{background:#dbeafe;color:#1d4ed8}'
     +'</style></head><body>'+conteudo+'</body></html>';
   const w=window.open('','_blank');
-  w.document.write(html_pdf); w.document.close();
+  w.document.write(html); w.document.close();
   setTimeout(()=>w.print(),500);
 }
 
