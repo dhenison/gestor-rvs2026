@@ -4428,8 +4428,8 @@ function renderSolicitacoes(){
     var badgeLabel = s.status === 'aceita' ? '✅ Aceita' : s.status === 'recusada' ? '🔴 Recusada' : '🟡 Pendente';
     var acoes = '';
     if(s.status === 'pendente'){
-      acoes = '<button class="btn btn-green btn-xs" onclick="atualizarStatusSolicit(' + s.id + ', &quot;aceita&quot;)">&#9989; Aceitar</button>' +
-              '<button class="btn btn-red btn-xs"   onclick="atualizarStatusSolicit(' + s.id + ', &quot;recusada&quot;)">&#10060; Recusar</button>';
+      acoes = '<button class="btn btn-green btn-xs" onclick="atualizarStatusSolicit(\'' + s.id + '\', \'aceita\')">&#9989; Aceitar</button>' +
+              '<button class="btn btn-red btn-xs"   onclick="atualizarStatusSolicit(\'' + s.id + '\', \'recusada\')">&#10060; Recusar</button>';
     }
     var linkBtn = s.linkDrive ? '<a href="' + s.linkDrive + '" target="_blank" class="btn btn-primary btn-xs" style="text-decoration:none">📂 Abrir Drive</a>' : '';
     html += '<div class="table-card" style="padding:16px;margin-bottom:12px;border-left:4px solid ' + borderColor + '">' +
@@ -4444,7 +4444,7 @@ function renderSolicitacoes(){
         linkBtn +
         '<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:' + badgeBg + ';color:' + badgeTxt + '">' + badgeLabel + '</span>' +
         acoes +
-        '<button class="btn btn-gray btn-xs" onclick="excluirSolicit(' + s.id + ')">🗑</button>' +
+        '<button class="btn btn-gray btn-xs" onclick="excluirSolicit(\'' + s.id + '\')">🗑</button>' +
       '</div></div></div>';
   });
   container.innerHTML = html;
