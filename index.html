@@ -51,18 +51,31 @@
     <div class="modal-consulta-header">
       <div class="modal-consulta-icon">🎓</div>
       <h2>Acesso do Aluno</h2>
-      <p>Consulte seu e-mail institucional e senha digitando seu CPF</p>
+      <p>Informe seu <strong>CPF</strong> e <strong>Data de Nascimento</strong> para localizar suas credenciais institucionais.</p>
     </div>
 
     <div class="modal-consulta-body">
       <div class="consulta-field">
-        <label for="cpf-consulta-input">CPF do Aluno</label>
+        <label for="cpf-consulta-input">📌 CPF do Aluno</label>
         <input
           type="text"
           id="cpf-consulta-input"
           placeholder="000.000.000-00"
           maxlength="14"
           oninput="mascaraCPF(this)"
+          onkeydown="if(event.key==='Enter') document.getElementById('dn-consulta-input').focus()"
+          autocomplete="off"
+        >
+      </div>
+
+      <div class="consulta-field">
+        <label for="dn-consulta-input">📅 Data de Nascimento</label>
+        <input
+          type="text"
+          id="dn-consulta-input"
+          placeholder="DD/MM/AAAA"
+          maxlength="10"
+          oninput="mascaraData(this)"
           onkeydown="if(event.key==='Enter') buscarAluno()"
           autocomplete="off"
         >
