@@ -36,77 +36,14 @@
     <p class="login-hint">Desenvolvido por Dhenison Carlos</p><p class="login-hint" style="margin-top:2px">2026</p>
   </div>
 
-  <!-- Botão flutuante Acesso do Aluno -->
-  <button class="aluno-acesso-btn" onclick="abrirConsultaAluno()" title="Acesso do Aluno">
+  <!-- Botão flutuante Acesso do Aluno → abre página dedicada -->
+  <a href="aluno.html" class="aluno-acesso-btn" title="Acesso do Aluno">
     <span class="aluno-acesso-icon">🎓</span>
     <span class="aluno-acesso-label">Verificar E-mail Institucional</span>
-  </button>
+  </a>
 </div>
 
-<!-- MODAL CONSULTA ALUNO -->
-<div id="modal-consulta-aluno" class="modal-consulta-overlay" onclick="fecharConsultaAluno(event)">
-  <div class="modal-consulta-card">
-    <button class="modal-consulta-fechar" onclick="fecharConsultaAluno()" aria-label="Fechar">✕</button>
-
-    <div class="modal-consulta-header">
-      <div class="modal-consulta-icon">🎓</div>
-      <h2>Acesso do Aluno</h2>
-      <p>Informe seu <strong>CPF</strong> e <strong>Data de Nascimento</strong> para localizar suas credenciais institucionais.</p>
-    </div>
-
-    <div class="modal-consulta-body">
-      <div class="consulta-field">
-        <label for="cpf-consulta-input">📌 CPF do Aluno</label>
-        <input
-          type="text"
-          id="cpf-consulta-input"
-          placeholder="000.000.000-00"
-          maxlength="14"
-          oninput="mascaraCPF(this)"
-          onkeydown="if(event.key==='Enter') document.getElementById('dn-consulta-input').focus()"
-          autocomplete="off"
-        >
-      </div>
-
-      <div class="consulta-field">
-        <label for="dn-consulta-input">📅 Data de Nascimento</label>
-        <input
-          type="text"
-          id="dn-consulta-input"
-          placeholder="DD/MM/AAAA"
-          maxlength="10"
-          oninput="mascaraData(this)"
-          onkeydown="if(event.key==='Enter') buscarAluno()"
-          autocomplete="off"
-        >
-      </div>
-
-      <div id="consulta-erro" class="consulta-erro" style="display:none"></div>
-
-      <button class="consulta-btn" id="consulta-btn" onclick="buscarAluno()">
-        <span id="consulta-btn-texto">🔍 Procurar</span>
-      </button>
-
-      <!-- Resultado -->
-      <div id="consulta-resultado" class="consulta-resultado" style="display:none">
-        <div class="consulta-resultado-header">✅ Dados encontrados!</div>
-        <div class="consulta-dado">
-          <span class="consulta-dado-label">👤 Nome Completo</span>
-          <span class="consulta-dado-valor" id="resultado-nome"></span>
-        </div>
-        <div class="consulta-dado">
-          <span class="consulta-dado-label">📧 E-mail Institucional</span>
-          <span class="consulta-dado-valor" id="resultado-email"></span>
-        </div>
-        <div class="consulta-dado">
-          <span class="consulta-dado-label">🔑 Senha</span>
-          <span class="consulta-dado-valor" id="resultado-senha"></span>
-        </div>
-        <p class="consulta-aviso">⚠️ Guarde suas credenciais em local seguro. Não compartilhe com ninguém.</p>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Consulta do aluno movida para aluno.html -->
 
 <div class="toast-container" id="toast-container"></div>
 <div class="alert-bar" id="alert-bar">
