@@ -34,6 +34,10 @@
     <div class="login-field"><label>Senha</label><input type="password" id="pass-input" placeholder="••••••"></div>
     <button class="login-btn" onclick="doLogin()">Entrar no Sistema</button>
     <p class="login-hint">Desenvolvido por Dhenison Carlos</p><p class="login-hint" style="margin-top:2px">2026</p>
+    <button class="btn btn-outline" style="margin-top:20px; width:100%; border:2px solid #4f46e5; color:#4f46e5; font-weight:700; display:flex; justify-content:center; align-items:center; gap:8px" onclick="abrirConsultaAluno()">
+      <i data-lucide="graduation-cap" style="width:20px; height:20px"></i>
+      Acesso do Aluno - Verificar E-mail Institucional
+    </button>
   </div>
 </div>
 
@@ -1857,6 +1861,33 @@
 <script src="js/app.js?v=1.1"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->
+<!-- Modal Consulta Aluno -->
+<div class="modal" id="modal-consulta-aluno">
+  <div class="modal-box">
+    <h3 class="modal-title">Acesso do Aluno</h3>
+    <p style="font-size:14px; color:#6b7280; margin-bottom:16px">Consulte seu e-mail institucional e senha padrão usando seu CPF.</p>
+    
+    <div class="form-group">
+      <label class="form-label">Digite seu CPF</label>
+      <input type="text" id="consulta-cpf-input" class="form-input" placeholder="000.000.000-00" oninput="mascaraCPF(this)">
+    </div>
+
+    <div id="consulta-aluno-result" style="display:none; margin-top:16px; padding:12px; background:#f3f4f6; border-radius:8px; font-size:14px">
+      <div style="margin-bottom:8px"><strong>Nome:</strong> <span id="consulta-nome"></span></div>
+      <div style="margin-bottom:8px"><strong>E-mail:</strong> <span id="consulta-email" style="color:#4f46e5; font-weight:600"></span></div>
+      <div><strong>Senha:</strong> <span id="consulta-senha"></span></div>
+    </div>
+    <div id="consulta-aluno-error" style="display:none; margin-top:16px; padding:12px; background:#fee2e2; color:#991b1b; border-radius:8px; font-size:14px">
+      CPF não encontrado na nossa base de dados.
+    </div>
+
+    <div class="modal-action">
+      <button class="btn btn-outline" onclick="fecharConsultaAluno()">Fechar</button>
+      <button class="btn btn-primary" id="btn-buscar-aluno" onclick="buscarDadosAluno()">Procurar</button>
+    </div>
+  </div>
+</div>
+
 <script>
   lucide.createIcons();
 </script>

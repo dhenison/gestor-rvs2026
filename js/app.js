@@ -470,6 +470,64 @@ async function carregarDados(){
   }
 }
 
+// ─── CONSULTA DO ALUNO (ACESSO PÚBLICO) ───────────────────────────────────────
+window.abrirConsultaAluno = function() {
+  document.getElementById('consulta-cpf-input').value = '';
+  document.getElementById('consulta-aluno-result').style.display = 'none';
+  document.getElementById('consulta-aluno-error').style.display = 'none';
+  document.getElementById('modal-consulta-aluno').classList.add('active');
+};
+
+window.fecharConsultaAluno = function() {
+  document.getElementById('modal-consulta-aluno').classList.remove('active');
+};
+
+window.mascaraCPF = function(i) {
+  let v = i.value.replace(/\D/g, "");
+  v = v.replace(/(\d{3})(\d)/, "$1.$2");
+  v = v.replace(/(\d{3})(\d)/, "$1.$2");
+  v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  i.value = v;
+};
+
+window.buscarDadosAluno = async function() {
+  const cpf = document.getElementById('consulta-cpf-input').value.trim();
+  if (cpf.length < 14) {
+    if(typeof showToast === 'function') showToast('Digite o CPF completo', 'alerta');
+    else alert('Digite o CPF completo no formato 000.000.000-00');
+    return;
+  }
+  
+  const btn = document.getElementById('btn-buscar-aluno');
+  btn.textContent = 'Buscando...';
+  btn.disabled = true;
+  document.getElementById('consulta-aluno-result').style.display = 'none';
+  document.getElementById('consulta-aluno-error').style.display = 'none';
+
+  try {
+    const { data, error } = await supabaseClient.rpc('consultar_acesso_aluno', { p_cpf: cpf });
+    
+    if (error) throw error;
+
+    if (data && data.status === 'success') {
+      document.getElementById('consulta-nome').textContent = data.nome;
+      document.getElementById('consulta-email').textContent = data.email;
+      document.getElementById('consulta-senha').textContent = data.senha;
+      document.getElementById('consulta-aluno-result').style.display = 'block';
+    } else {
+      document.getElementById('consulta-aluno-error').textContent = data?.message || 'CPF não encontrado na nossa base de dados.';
+      document.getElementById('consulta-aluno-error').style.display = 'block';
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('consulta-aluno-error').textContent = 'Erro de conexão. Tente novamente.';
+    document.getElementById('consulta-aluno-error').style.display = 'block';
+  } finally {
+    btn.textContent = 'Procurar';
+    btn.disabled = false;
+  }
+};
+
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 async function doLogin(){
   let email = (document.getElementById('email-input').value||'').trim();
