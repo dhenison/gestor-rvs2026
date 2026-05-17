@@ -470,64 +470,6 @@ async function carregarDados(){
   }
 }
 
-// ─── CONSULTA DO ALUNO (ACESSO PÚBLICO) ───────────────────────────────────────
-window.abrirConsultaAluno = function() {
-  document.getElementById('consulta-cpf-input').value = '';
-  document.getElementById('consulta-aluno-result').style.display = 'none';
-  document.getElementById('consulta-aluno-error').style.display = 'none';
-  document.getElementById('modal-consulta-aluno').classList.add('active');
-};
-
-window.fecharConsultaAluno = function() {
-  document.getElementById('modal-consulta-aluno').classList.remove('active');
-};
-
-window.mascaraCPF = function(i) {
-  let v = i.value.replace(/\D/g, "");
-  v = v.replace(/(\d{3})(\d)/, "$1.$2");
-  v = v.replace(/(\d{3})(\d)/, "$1.$2");
-  v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-  i.value = v;
-};
-
-window.buscarDadosAluno = async function() {
-  const cpf = document.getElementById('consulta-cpf-input').value.trim();
-  if (cpf.length < 14) {
-    if(typeof showToast === 'function') showToast('Digite o CPF completo', 'alerta');
-    else alert('Digite o CPF completo no formato 000.000.000-00');
-    return;
-  }
-  
-  const btn = document.getElementById('btn-buscar-aluno');
-  btn.textContent = 'Buscando...';
-  btn.disabled = true;
-  document.getElementById('consulta-aluno-result').style.display = 'none';
-  document.getElementById('consulta-aluno-error').style.display = 'none';
-
-  try {
-    const { data, error } = await supabaseClient.rpc('consultar_acesso_aluno', { p_cpf: cpf });
-    
-    if (error) throw error;
-
-    if (data && data.status === 'success') {
-      document.getElementById('consulta-nome').textContent = data.nome;
-      document.getElementById('consulta-email').textContent = data.email;
-      document.getElementById('consulta-senha').textContent = data.senha;
-      document.getElementById('consulta-aluno-result').style.display = 'block';
-    } else {
-      document.getElementById('consulta-aluno-error').textContent = data?.message || 'CPF não encontrado na nossa base de dados.';
-      document.getElementById('consulta-aluno-error').style.display = 'block';
-    }
-  } catch (err) {
-    console.error(err);
-    document.getElementById('consulta-aluno-error').textContent = 'Erro de conexão. Tente novamente.';
-    document.getElementById('consulta-aluno-error').style.display = 'block';
-  } finally {
-    btn.textContent = 'Procurar';
-    btn.disabled = false;
-  }
-};
-
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 async function doLogin(){
   let email = (document.getElementById('email-input').value||'').trim();
@@ -5335,4 +5277,79 @@ function downloadObafogXLSX() {
 
   const dataAtual = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `Ranking_OBAFOG_${dataAtual}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  CONSULTA DO ALUNO — Acesso ao e-mail e senha institucional via CPF
+// ══════════════════════════════════════════════════════════════════════════════
+
+function mascaraCPF(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 11);
+  if (v.length > 9)      v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
+  else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
+  else if (v.length > 3) v = v.replace(/^(\d{3})(\d{0,3})/, '$1.$2');
+  input.value = v;
+}
+
+function abrirConsultaAluno() {
+  const overlay = document.getElementById('modal-consulta-aluno');
+  if (!overlay) return;
+  document.getElementById('cpf-consulta-input').value = '';
+  document.getElementById('consulta-erro').style.display = 'none';
+  document.getElementById('consulta-resultado').style.display = 'none';
+  document.getElementById('consulta-btn-texto').textContent = String.fromCodePoint(0x1F50D) + ' Procurar';
+  document.getElementById('consulta-btn').disabled = false;
+  overlay.classList.add('aberto');
+  setTimeout(() => document.getElementById('cpf-consulta-input').focus(), 200);
+}
+
+function fecharConsultaAluno(event) {
+  if (event && event.target !== document.getElementById('modal-consulta-aluno')) return;
+  const overlay = document.getElementById('modal-consulta-aluno');
+  if (overlay) overlay.classList.remove('aberto');
+}
+
+async function buscarAluno() {
+  const input    = document.getElementById('cpf-consulta-input');
+  const erroEl   = document.getElementById('consulta-erro');
+  const resultEl = document.getElementById('consulta-resultado');
+  const btn      = document.getElementById('consulta-btn');
+  const btnTxt   = document.getElementById('consulta-btn-texto');
+
+  erroEl.style.display   = 'none';
+  resultEl.style.display = 'none';
+
+  const cpf = (input.value || '').trim();
+
+  if (cpf.replace(/\D/g, '').length < 11) {
+    erroEl.textContent   = '\u26A0\uFE0F Digite seu CPF completo no formato 000.000.000-00.';
+    erroEl.style.display = 'block';
+    input.focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btnTxt.textContent = '\u23F3 Buscando...';
+
+  try {
+    const { data, error } = await supabaseClient.rpc('consultar_acesso_aluno', { p_cpf: cpf });
+    if (error) throw error;
+
+    if (!data || data.status === 'error') {
+      erroEl.textContent   = (data && data.message) ? data.message : '\u274C CPF n\u00E3o encontrado na base de dados.';
+      erroEl.style.display = 'block';
+    } else {
+      document.getElementById('resultado-nome').textContent  = data.nome  || '\u2014';
+      document.getElementById('resultado-email').textContent = data.email || '\u2014';
+      document.getElementById('resultado-senha').textContent = data.senha || '\u2014';
+      resultEl.style.display = 'block';
+    }
+  } catch (err) {
+    console.error('[buscarAluno]', err);
+    erroEl.textContent   = '\u274C N\u00E3o foi poss\u00EDvel realizar a consulta. Tente novamente.';
+    erroEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btnTxt.textContent = String.fromCodePoint(0x1F50D) + ' Procurar';
+  }
 }

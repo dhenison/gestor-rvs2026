@@ -34,10 +34,64 @@
     <div class="login-field"><label>Senha</label><input type="password" id="pass-input" placeholder="••••••"></div>
     <button class="login-btn" onclick="doLogin()">Entrar no Sistema</button>
     <p class="login-hint">Desenvolvido por Dhenison Carlos</p><p class="login-hint" style="margin-top:2px">2026</p>
-    <button class="btn btn-outline" style="margin-top:20px; width:100%; border:2px solid #4f46e5; color:#4f46e5; font-weight:700; display:flex; justify-content:center; align-items:center; gap:8px" onclick="abrirConsultaAluno()">
-      <i data-lucide="graduation-cap" style="width:20px; height:20px"></i>
-      Acesso do Aluno - Verificar E-mail Institucional
-    </button>
+  </div>
+
+  <!-- Botão flutuante Acesso do Aluno -->
+  <button class="aluno-acesso-btn" onclick="abrirConsultaAluno()" title="Acesso do Aluno">
+    <span class="aluno-acesso-icon">🎓</span>
+    <span class="aluno-acesso-label">Verificar E-mail Institucional</span>
+  </button>
+</div>
+
+<!-- MODAL CONSULTA ALUNO -->
+<div id="modal-consulta-aluno" class="modal-consulta-overlay" onclick="fecharConsultaAluno(event)">
+  <div class="modal-consulta-card">
+    <button class="modal-consulta-fechar" onclick="fecharConsultaAluno()" aria-label="Fechar">✕</button>
+
+    <div class="modal-consulta-header">
+      <div class="modal-consulta-icon">🎓</div>
+      <h2>Acesso do Aluno</h2>
+      <p>Consulte seu e-mail institucional e senha digitando seu CPF</p>
+    </div>
+
+    <div class="modal-consulta-body">
+      <div class="consulta-field">
+        <label for="cpf-consulta-input">CPF do Aluno</label>
+        <input
+          type="text"
+          id="cpf-consulta-input"
+          placeholder="000.000.000-00"
+          maxlength="14"
+          oninput="mascaraCPF(this)"
+          onkeydown="if(event.key==='Enter') buscarAluno()"
+          autocomplete="off"
+        >
+      </div>
+
+      <div id="consulta-erro" class="consulta-erro" style="display:none"></div>
+
+      <button class="consulta-btn" id="consulta-btn" onclick="buscarAluno()">
+        <span id="consulta-btn-texto">🔍 Procurar</span>
+      </button>
+
+      <!-- Resultado -->
+      <div id="consulta-resultado" class="consulta-resultado" style="display:none">
+        <div class="consulta-resultado-header">✅ Dados encontrados!</div>
+        <div class="consulta-dado">
+          <span class="consulta-dado-label">👤 Nome Completo</span>
+          <span class="consulta-dado-valor" id="resultado-nome"></span>
+        </div>
+        <div class="consulta-dado">
+          <span class="consulta-dado-label">📧 E-mail Institucional</span>
+          <span class="consulta-dado-valor" id="resultado-email"></span>
+        </div>
+        <div class="consulta-dado">
+          <span class="consulta-dado-label">🔑 Senha</span>
+          <span class="consulta-dado-valor" id="resultado-senha"></span>
+        </div>
+        <p class="consulta-aviso">⚠️ Guarde suas credenciais em local seguro. Não compartilhe com ninguém.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1861,33 +1915,6 @@
 <script src="js/app.js?v=1.1"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->
-<!-- Modal Consulta Aluno -->
-<div class="modal" id="modal-consulta-aluno">
-  <div class="modal-box">
-    <h3 class="modal-title">Acesso do Aluno</h3>
-    <p style="font-size:14px; color:#6b7280; margin-bottom:16px">Consulte seu e-mail institucional e senha padrão usando seu CPF.</p>
-    
-    <div class="form-group">
-      <label class="form-label">Digite seu CPF</label>
-      <input type="text" id="consulta-cpf-input" class="form-input" placeholder="000.000.000-00" oninput="mascaraCPF(this)">
-    </div>
-
-    <div id="consulta-aluno-result" style="display:none; margin-top:16px; padding:12px; background:#f3f4f6; border-radius:8px; font-size:14px">
-      <div style="margin-bottom:8px"><strong>Nome:</strong> <span id="consulta-nome"></span></div>
-      <div style="margin-bottom:8px"><strong>E-mail:</strong> <span id="consulta-email" style="color:#4f46e5; font-weight:600"></span></div>
-      <div><strong>Senha:</strong> <span id="consulta-senha"></span></div>
-    </div>
-    <div id="consulta-aluno-error" style="display:none; margin-top:16px; padding:12px; background:#fee2e2; color:#991b1b; border-radius:8px; font-size:14px">
-      CPF não encontrado na nossa base de dados.
-    </div>
-
-    <div class="modal-action">
-      <button class="btn btn-outline" onclick="fecharConsultaAluno()">Fechar</button>
-      <button class="btn btn-primary" id="btn-buscar-aluno" onclick="buscarDadosAluno()">Procurar</button>
-    </div>
-  </div>
-</div>
-
 <script>
   lucide.createIcons();
 </script>
