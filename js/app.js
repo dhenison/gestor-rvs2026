@@ -2175,16 +2175,22 @@ function renderChamada(){
     alunos.forEach((_,i)=>{ if(!freq[tipo][i]) freq[tipo][i]='P'; });
     const consolidado=chamadaConsolidada[tipo];
     const bgLista=consolidado?'var(--green-light)':'var(--red-light)';
+    // Apenas admins podem editar chamada já consolidada
+    const userAtual = getCurrentUser();
+    const isAdmin = userAtual?.perfil === 'admin';
+    const podeEditarFreq = isAdmin || !consolidado;
     container.innerHTML=alunos.map((al,i)=>{
       const cur=freq[tipo][i]||'P';
       const evasao=freq.entrada[i]==='P'&&freq.saida[i]==='F';
       const bg=evasao?'#ffe4e4':bgLista;
+      const lockStyle=podeEditarFreq?'':'opacity:0.55;cursor:not-allowed;pointer-events:none';
+      const lockTag=consolidado&&!isAdmin?'<span style="font-size:10px;color:var(--gray5);margin-left:4px">🔒</span>':'';
       return`<div class="aluno-row" style="background:${bg};transition:background .35s">
-        <span class="aluno-name">${i+1}. ${al.nome}</span>
-        <div class="freq-btn-group">
-          <button class="freq-btn P ${cur==='P'?'selected':''}" onclick="markFreq('${tipo}',${i},'P',this)">P</button>
-          <button class="freq-btn F ${cur==='F'?'selected':''}" onclick="markFreq('${tipo}',${i},'F',this)">F</button>
-          <button class="freq-btn FJ ${cur==='FJ'||cur==='FJ-Atestado'||cur==='FJ-Pais'||cur==='FJ-Coord'?'selected':''}" onclick="abrirModalFJ('${tipo}',${i},this)">FJ</button>
+        <span class="aluno-name">${i+1}. ${al.nome}${lockTag}</span>
+        <div class="freq-btn-group" style="${lockStyle}">
+          <button class="freq-btn P ${cur==='P'?'selected':''}" ${podeEditarFreq?`onclick="markFreq('${tipo}',${i},'P',this)"`:''}>P</button>
+          <button class="freq-btn F ${cur==='F'?'selected':''}" ${podeEditarFreq?`onclick="markFreq('${tipo}',${i},'F',this)"`:''}>F</button>
+          <button class="freq-btn FJ ${cur==='FJ'||cur==='FJ-Atestado'||cur==='FJ-Pais'||cur==='FJ-Coord'?'selected':''}" ${podeEditarFreq?`onclick="abrirModalFJ('${tipo}',${i},this)"`:''}>FJ</button>
         </div>
       </div>`;
     }).join('');
@@ -2338,6 +2344,12 @@ async function markFreq(tipo,idx,val,btn){
 
 async function consolidar(tipo){
   if(tipo==='saida'&&!chamadaConsolidada.entrada){showToast('Consolide a Entrada primeiro','alerta');return;}
+  // Bloqueia re-consolidação para não-admins
+  const userConsolidar = getCurrentUser();
+  if(chamadaConsolidada[tipo] && userConsolidar?.perfil !== 'admin'){
+    showToast('Chamada já consolidada. Apenas administradores podem alterar.','alerta');
+    return;
+  }
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual);
   if(!alunos.length){showToast('Nenhum aluno para consolidar','alerta');return;}
   
@@ -3724,10 +3736,16 @@ async function gerarRelFreq(){
   try {
     if(turmaObj) {
       // Usando fetchAllRows para não esbarrar no limite de 1000 da API
+      // IMPORTANTE: datas são salvas sem zero-padding (ex: '2026-4-7'), então usamos .in() para bater exatamente
       const { data: fqRows, error } = await fetchAllRows('frequencia', 'aluno_id, data, tipo, status, consolidado', q => {
         let qFilter = q.eq('turma_id', turmaObj.id).eq('consolidado', true);
-        if(diasIniDb && diasFimDb) {
-          qFilter = qFilter.gte('data', diasIniDb).lte('data', diasFimDb);
+        if(dias && dias.length > 0) {
+          // Garante que as datas no formato sem padding (YYYY-M-D) sejam comparadas corretamente
+          const diasFormatados = dias.map(d => {
+            const [y, m, dd] = d.split('-');
+            return `${y}-${parseInt(m)}-${parseInt(dd)}`;
+          });
+          qFilter = qFilter.in('data', diasFormatados);
         }
         return qFilter;
       });
@@ -4398,7 +4416,7 @@ async function salvarSolicitacao(){
   // ── Salvar solicitação no banco (com link do Drive) ──
   const { data: inserted, error } = await supabaseClient.from('solicitacoes').insert({
     tipo, turno, turmas, data, hora_ini: hIni, hora_fim: hFim,
-    obs, link_drive: linkDrive, status: 'pendente',
+    obs, link_drive: linkDrive, status: 'aceita',
     responsavel: user?.nome || 'Usuário'
   }).select().single();
   
@@ -4412,7 +4430,7 @@ async function salvarSolicitacao(){
   SOLICIT_DATA.unshift({
     id: inserted.id, tipo, turno, turmas, data, hIni, hFim, obs,
     linkDrive,
-    status: 'pendente',
+    status: 'aceita',
     responsavel: user?.nome || 'Usuário',
     criadoEm: new Date().toLocaleDateString('pt-BR')
   });
