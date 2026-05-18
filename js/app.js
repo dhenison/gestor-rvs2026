@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    RVS ESCOLAR â€” app.js â€” versÃ£o definitiva
    ============================================================ */
 
@@ -3361,7 +3361,7 @@ async function salvarPerfil() {
 
     try {
       const base64 = await fileParaBase64(_perfilFotoPendente);
-      const nomeSafe = nome.replace(/[^a-zA-Z0-9Ã€-Ãº\s]/g, '').trim();
+      const nomeSafe = nome.replace(/[^a-zA-Z0-9\u00C0-\u00FA\s]/g, '').trim();
       const ext = (_perfilFotoPendente.name || 'jpg').split('.').pop();
 
       const response = await fetch(DRIVE_FOTO_URL, {
