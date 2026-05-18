@@ -14,6 +14,12 @@ SET provider_id = user_id::text
 WHERE provider = 'email' AND provider_id LIKE '%@%';
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--  2. CORREÇÃO DA TABELA USUÁRIOS (COLUNA ATIVO)
+--  Adiciona a coluna 'ativo' exigida pelo sistema de login.
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALTER TABLE public.usuarios ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT TRUE;
+
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 --  2. CORREÇÃO DA FUNÇÃO DE CRIAÇÃO DE NOVOS USUÁRIOS
 --  Garante que novos usuários inseridos pelo admin também usem UUID.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
