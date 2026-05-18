@@ -1,15 +1,15 @@
 /* ============================================================
-   RVS ESCOLAR â€” app.js â€” versÃ£o definitiva
+   RVS ESCOLAR — app.js — versão definitiva
    ============================================================ */
 
-// â”€â”€â”€ SUPABASE CLIENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── SUPABASE CLIENT ────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://xjtluflzpkkbckkcwagf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdGx1Zmx6cGtrYmNra2N3YWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjMxNzMsImV4cCI6MjA5MzIzOTE3M30.3Fj_xCwTwx0MYWjFx3xM41BP8DQCsRMgGYmZJkHuidE';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// â”€â”€â”€ OFFLINE QUEUE â€” sync automÃ¡tico sem botÃ£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// EstratÃ©gia: online â†’ Supabase direto | offline â†’ IndexedDB fila local
-// Ao reconectar: evento 'online' dispara sincronizaÃ§Ã£o automÃ¡tica
+// ─── OFFLINE QUEUE — sync automático sem botão ───────────────────────────────
+// Estratégia: online → Supabase direto | offline → IndexedDB fila local
+// Ao reconectar: evento 'online' dispara sincronização automática
 
 const OFFLINE_DB_NAME = 'rvs_offline_queue';
 const OFFLINE_DB_VER  = 1;
@@ -66,14 +66,14 @@ async function _removerDaFila(id) {
   });
 }
 
-// Sincroniza fila offline â†’ Supabase (chamado automaticamente ao reconectar)
+// Sincroniza fila offline → Supabase (chamado automaticamente ao reconectar)
 async function sincronizarFilaOffline() {
   if (!navigator.onLine) return;
   let fila;
   try { fila = await _obterFila(); } catch(e) { return; }
   if (!fila || !fila.length) return;
 
-  console.log(`[Sync] ${fila.length} operaÃ§Ã£o(Ãµes) pendente(s) â€” sincronizando...`);
+  console.log(`[Sync] ${fila.length} operação(ões) pendente(s) — sincronizando...`);
   let sucesso = 0;
 
   for (const item of fila) {
@@ -96,7 +96,7 @@ async function sincronizarFilaOffline() {
   }
 
   if (sucesso > 0) {
-    showToast(`âœ… ${sucesso} registro(s) sincronizado(s) automaticamente`, 'sucesso');
+    showToast(`✅ ${sucesso} registro(s) sincronizado(s) automaticamente`, 'sucesso');
     console.log(`[Sync] ${sucesso}/${fila.length} itens sincronizados com sucesso.`);
   }
 }
@@ -110,27 +110,27 @@ async function supabaseSalvar(tabela, dados, conflito = null) {
     if (error) {
       console.error('[Supabase] Erro ao salvar, enfileirando:', error);
       await _enfileirarOp(tabela, 'upsert', dados, conflito);
-      showToast('âš ï¸ Salvo localmente â€” serÃ¡ sincronizado em breve', 'alerta');
+      showToast('⚠️ Salvo localmente — será sincronizado em breve', 'alerta');
     }
   } else {
     await _enfileirarOp(tabela, 'upsert', dados, conflito);
-    showToast('ðŸ“µ Sem internet â€” salvo localmente, sync automÃ¡tico ao conectar', 'alerta');
+    showToast('📵 Sem internet — salvo localmente, sync automático ao conectar', 'alerta');
   }
 }
 
-// Sync automÃ¡tico ao reconectar (sem botÃ£o)
+// Sync automático ao reconectar (sem botão)
 window.addEventListener('online', () => {
-  console.log('[Rede] ConexÃ£o restaurada â€” sincronizando fila offline...');
+  console.log('[Rede] Conexão restaurada — sincronizando fila offline...');
   setTimeout(sincronizarFilaOffline, 1500); // pequeno delay para a rede estabilizar
 });
 
-// Tenta sincronizar itens pendentes ao carregar a pÃ¡gina
+// Tenta sincronizar itens pendentes ao carregar a página
 window.addEventListener('load', () => {
   if (navigator.onLine) setTimeout(sincronizarFilaOffline, 4000);
 });
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
-// â”€â”€â”€ ESTADO GLOBAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
 const ADMIN_SENHA = 'RVS@gestor2026';
 let PERFIL_ATUAL  = 'professor';
 
@@ -152,48 +152,48 @@ let turmaChamadaAtual = '';
 const chamadaConsolidada = { entrada:false, saida:false };
 
 const LIVROS = [
-  {nome:'LÃ­ngua Portuguesa',icon:'ðŸ“–',entregues:0,total:0},
-  {nome:'MatemÃ¡tica',icon:'ðŸ“',entregues:0,total:0},
-  {nome:'FÃ­sica',icon:'âš¡',entregues:0,total:0},
-  {nome:'QuÃ­mica',icon:'ðŸ§ª',entregues:0,total:0},
-  {nome:'Biologia',icon:'ðŸ§¬',entregues:0,total:0},
-  {nome:'HistÃ³ria',icon:'ðŸ›ï¸',entregues:0,total:0},
-  {nome:'Geografia',icon:'ðŸŒ',entregues:0,total:0},
-  {nome:'InglÃªs',icon:'ðŸ‡ºðŸ‡¸',entregues:0,total:0},
-  {nome:'Artes',icon:'ðŸŽ¨',entregues:0,total:0},
-  {nome:'EducaÃ§Ã£o FÃ­sica',icon:'âš½',entregues:0,total:0},
-  {nome:'Sociologia',icon:'ðŸ‘¥',entregues:0,total:0},
-  {nome:'Filosofia',icon:'ðŸ’­',entregues:0,total:0},
-  {nome:'EducaÃ§Ã£o Ambiental',icon:'ðŸŒ±',entregues:0,total:0},
-  {nome:'Prepara MatemÃ¡tica',icon:'ðŸ”¢',entregues:0,total:0},
-  {nome:'Prepara LÃ­ngua Portuguesa',icon:'ðŸ“',entregues:0,total:0},
+  {nome:'Língua Portuguesa',icon:'📖',entregues:0,total:0},
+  {nome:'Matemática',icon:'📐',entregues:0,total:0},
+  {nome:'Física',icon:'⚡',entregues:0,total:0},
+  {nome:'Química',icon:'🧪',entregues:0,total:0},
+  {nome:'Biologia',icon:'🧬',entregues:0,total:0},
+  {nome:'História',icon:'🏛️',entregues:0,total:0},
+  {nome:'Geografia',icon:'🌍',entregues:0,total:0},
+  {nome:'Inglês',icon:'🇺🇸',entregues:0,total:0},
+  {nome:'Artes',icon:'🎨',entregues:0,total:0},
+  {nome:'Educação Física',icon:'⚽',entregues:0,total:0},
+  {nome:'Sociologia',icon:'👥',entregues:0,total:0},
+  {nome:'Filosofia',icon:'💭',entregues:0,total:0},
+  {nome:'Educação Ambiental',icon:'🌱',entregues:0,total:0},
+  {nome:'Prepara Matemática',icon:'🔢',entregues:0,total:0},
+  {nome:'Prepara Língua Portuguesa',icon:'📝',entregues:0,total:0},
 ];
 
 let PERMS = [
   {func:'Dashboard',                id:'page-dashboard',    coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-  {func:'Agenda PedagÃ³gica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
+  {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
-  {func:'FrequÃªncia',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
-  {func:'SolicitaÃ§Ãµes PedagÃ³gicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+  {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
-  {func:'HorÃ¡rio de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'Horário de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Topo do Saber',            id:'page-topo-saber',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'Transporte',               id:'page-transporte',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'OBAFOG RVS',               id:'page-obafog',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
-  {func:'OcorrÃªncias',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
-  {func:'Livros DidÃ¡ticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-  {func:'RelatÃ³rios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+  {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'Chat RVS',                 id:'page-chat',         coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
-  {func:'PermissÃµes',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
-  {func:'UsuÃ¡rios',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
+  {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
 ];
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
-const TIPO_LABEL = {letivo:'Dia Letivo', feriado:'Feriado', prova:'Prova', evento:'Evento', bimestre:'InÃ­cio de Bimestre', fim_bimestre:'Fim de Bimestre', ferias:'FÃ©rias Escolares'};
-const MONTHS = ['Janeiro','Fevereiro','MarÃ§o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const TIPO_LABEL = {letivo:'Dia Letivo', feriado:'Feriado', prova:'Prova', evento:'Evento', bimestre:'Início de Bimestre', fim_bimestre:'Fim de Bimestre', ferias:'Férias Escolares'};
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-// â”€â”€â”€ PERSISTÃŠNCIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── PERSISTÊNCIA ─────────────────────────────────────────────────────────────
 const DB_KEY = 'rvs_escolar_db';
 const DRAFTS_KEY = 'rvs_form_drafts';
 
@@ -313,16 +313,16 @@ async function carregarDados(){
       console.log('[carregarDados] configData raw:', configData);
       const permsObj = configData.find(c => c.chave === 'permissoes');
       if (permsObj && permsObj.valor) {
-        console.log('[carregarDados] PermissÃµes carregadas do banco:', permsObj.valor.length, 'itens');
+        console.log('[carregarDados] Permissões carregadas do banco:', permsObj.valor.length, 'itens');
         PERMS = permsObj.valor;
       } else {
-        console.warn('[carregarDados] PermissÃµes nÃ£o encontradas no banco, usando padrÃ£o.');
+        console.warn('[carregarDados] Permissões não encontradas no banco, usando padrão.');
       }
       
       const linksObj = configData.find(c => c.chave === 'links_horarios');
       if (linksObj && linksObj.valor) HORARIOS_LINKS = linksObj.valor;
     } else {
-      console.warn('[carregarDados] configData Ã© nulo ou invÃ¡lido:', configData);
+      console.warn('[carregarDados] configData é nulo ou inválido:', configData);
     }
 
     if (turmas) {
@@ -351,7 +351,7 @@ async function carregarDados(){
       ROTAS_DATA = rotas.map(r => ({ id: r.id, nome: r.nome, motorista: r.motorista, veiculo: r.veiculo, cap: r.capacidade }));
     }
 
-    // â”€â”€ OBAFOG: atribuir dados carregados do banco â”€â”€
+    // ── OBAFOG: atribuir dados carregados do banco ──
     if (obafogEq) {
       OBAFOG_DATA = obafogEq;
     }
@@ -370,8 +370,8 @@ async function carregarDados(){
          return {
             id: o.id,
             tipo: tipoView,
-            icon: tipoView === 'evasao' ? 'ðŸš¨' : tipoView === 'indisciplina' ? 'âš ï¸' : tipoView === 'atraso' ? 'â°' : 'âŒ',
-            aluno: o.participante || (al ? al.nome : 'â€”'),
+            icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : '❌',
+            aluno: o.participante || (al ? al.nome : '—'),
             cpf: al ? al.cpf : '',
             turma: tu ? tu.code : '',
             desc: descView,
@@ -422,7 +422,7 @@ async function carregarDados(){
       });
     }
 
-    // â”€â”€ Carregar SolicitaÃ§Ãµes do Supabase â”€â”€
+    // ── Carregar Solicitações do Supabase ──
     const {data: solicits} = await supabaseClient.from('solicitacoes').select('*').order('created_at', {ascending: false});
     if (solicits) {
       SOLICIT_DATA = solicits.map(s => ({
@@ -437,11 +437,11 @@ async function carregarDados(){
         linkDrive: s.link_drive,
         status: s.status,
         responsavel: s.responsavel,
-        criadoEm: s.created_at ? new Date(s.created_at).toLocaleDateString('pt-BR') : 'â€”'
+        criadoEm: s.created_at ? new Date(s.created_at).toLocaleDateString('pt-BR') : '—'
       }));
     }
 
-    // â”€â”€ Carregar Livros DidÃ¡ticos do Supabase â”€â”€
+    // ── Carregar Livros Didáticos do Supabase ──
     const {data: livrosDB} = await supabaseClient.from('livros_alunos').select('*');
     if (livrosDB) {
       livrosDB.forEach(l => {
@@ -454,7 +454,7 @@ async function carregarDados(){
       });
     }
 
-    // â”€â”€ Manter apenas freq temporÃ¡ria do localStorage (nÃ£o migrada) â”€â”€
+    // ── Manter apenas freq temporária do localStorage (não migrada) ──
     const raw = localStorage.getItem(DB_KEY);
     if(raw) {
       try {
@@ -470,7 +470,7 @@ async function carregarDados(){
   }
 }
 
-// â”€â”€â”€ AUTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
 async function doLogin(){
   let email = (document.getElementById('email-input').value||'').trim();
   const pass  = (document.getElementById('pass-input').value||'');
@@ -487,7 +487,7 @@ async function doLogin(){
   if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
 
   try {
-    // AutenticaÃ§Ã£o oficial via Supabase Auth
+    // Autenticação oficial via Supabase Auth
     const { data: authData, error: authErr } = await supabaseClient.auth.signInWithPassword({
       email: email,
       password: pass,
@@ -496,12 +496,12 @@ async function doLogin(){
     if(authErr) {
       console.error('[login]', authErr);
       errEl.style.display='block';
-      errEl.textContent = 'Credenciais invÃ¡lidas.';
+      errEl.textContent = 'Credenciais inválidas.';
       if(btn){ btn.disabled=false; btn.textContent='Entrar no Sistema'; }
       return;
     }
 
-    // Busca os dados adicionais do usuÃ¡rio na tabela pÃºblica
+    // Busca os dados adicionais do usuário na tabela pública
     const { data: userData, error: userErr } = await supabaseClient
       .from('usuarios')
       .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo')
@@ -510,10 +510,10 @@ async function doLogin(){
 
     if(userErr) throw userErr;
 
-    // Verifica se estÃ¡ ativo
+    // Verifica se está ativo
     if(userData && userData.ativo === false) {
       errEl.style.display='block';
-      errEl.textContent = 'Acesso negado: UsuÃ¡rio inativo.';
+      errEl.textContent = 'Acesso negado: Usuário inativo.';
       if(btn){ btn.disabled=false; btn.textContent='Entrar no Sistema'; }
       await supabaseClient.auth.signOut();
       return;
@@ -522,7 +522,7 @@ async function doLogin(){
     // Se userData for nulo, cria um fallback com os dados do Auth
     const user = userData || {
       id: authData.user.id,
-      nome: authData.user.user_metadata?.nome || 'UsuÃ¡rio',
+      nome: authData.user.user_metadata?.nome || 'Usuário',
       perfil: authData.user.user_metadata?.perfil || 'professor',
       email: authData.user.email
     };
@@ -531,17 +531,17 @@ async function doLogin(){
   } catch(err){
     console.error('[login exception]', err);
     errEl.style.display='block';
-    errEl.textContent = 'Erro de conexÃ£o. Tente novamente.';
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
   }
 
   if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
 }
 
 async function _entrarNoSistema(usuario){
-  // Atualiza variÃ¡vel global de perfil
+  // Atualiza variável global de perfil
   PERFIL_ATUAL = usuario.perfil || 'professor';
   
-  // Guarda usuÃ¡rio logado na sessÃ£o
+  // Guarda usuário logado na sessão
   try { sessionStorage.setItem('rvs_user', JSON.stringify(usuario)); } catch(_){}
   
   const ls = document.getElementById('login-screen');
@@ -550,10 +550,10 @@ async function _entrarNoSistema(usuario){
   document.getElementById('app').classList.add('visible');
   
   updateSidebarProfile();
-  await initApp(); // Agora espera carregar permissÃµes do banco
+  await initApp(); // Agora espera carregar permissões do banco
   initChatRealtime();
   initPresenceRealtime();
-  initOcorrenciaRealtime(); // NotificaÃ§Ãµes em tempo real de ocorrÃªncias
+  initOcorrenciaRealtime(); // Notificações em tempo real de ocorrências
 }
 
 function getCurrentUser() {
@@ -570,7 +570,7 @@ function updateSidebarProfile() {
   const roleEl  = document.getElementById('sidebar-user-role');
   const avatarEl = document.getElementById('sidebar-user-avatar');
 
-  if(nameEl) nameEl.textContent = user.nome || 'UsuÃ¡rio';
+  if(nameEl) nameEl.textContent = user.nome || 'Usuário';
   if(roleEl) {
     const pLabel = {admin:'Administrador',coordenador:'Coordenador',secretaria:'Secretaria',professor:'Professor'};
     roleEl.textContent = pLabel[user.perfil] || 'Membro';
@@ -595,10 +595,10 @@ async function doLogout(){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Ao recarregar a pÃ¡gina, verifica a sessÃ£o ativa do Supabase
+  // Ao recarregar a página, verifica a sessão ativa do Supabase
   supabaseClient.auth.getSession().then(({ data: { session } }) => {
     if (session && session.user) {
-      // Rebusca dados adicionais na tabela pÃºblica
+      // Rebusca dados adicionais na tabela pública
       supabaseClient
         .from('usuarios')
         .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
@@ -608,10 +608,10 @@ document.addEventListener('DOMContentLoaded', () => {
           if (data) {
             _entrarNoSistema(data);
           } else {
-            // Se falhar na pÃºblica, usa metadados
+            // Se falhar na pública, usa metadados
             _entrarNoSistema({
               id: session.user.id,
-              nome: session.user.user_metadata?.nome || 'UsuÃ¡rio',
+              nome: session.user.user_metadata?.nome || 'Usuário',
               perfil: session.user.user_metadata?.perfil || 'professor',
               email: session.user.email
             });
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// â”€â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 async function initApp(){
   await carregarDados();
   initAutoSave();
@@ -645,20 +645,20 @@ async function initApp(){
   renderCalendar();
   
   aplicarPermissoesUI(); 
-  console.log('[initApp] UI de permissÃµes aplicada.');
+  console.log('[initApp] UI de permissões aplicada.');
 }
 
-// â”€â”€â”€ NAVEGAÃ‡ÃƒO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
 function showPage(p, el) {
   const user = getCurrentUser();
   const rKey = user ? getRoleKey(user.perfil) : 'prof';
 
-  // VerificaÃ§Ã£o de seguranÃ§a â€” bloqueia acesso direto mesmo que o menu esteja oculto
+  // Verificação de segurança — bloqueia acesso direto mesmo que o menu esteja oculto
   if (rKey !== 'admin' && p !== 'perfil') {
     const perm = PERMS.find(item => item.id === 'page-' + p);
     if (perm && !perm[rKey]) {
-      console.warn(`[showPage] Acesso NEGADO: perfil="${user?.perfil}" rKey="${rKey}" pÃ¡gina="${p}"`);
-      showToast('VocÃª nÃ£o tem permissÃ£o para acessar esta pÃ¡gina.', 'alerta');
+      console.warn(`[showPage] Acesso NEGADO: perfil="${user?.perfil}" rKey="${rKey}" página="${p}"`);
+      showToast('Você não tem permissão para acessar esta página.', 'alerta');
       return;
     }
   }
@@ -668,13 +668,13 @@ function showPage(p, el) {
   document.getElementById('page-' + p)?.classList.add('active');
 
   const titles = {
-    dashboard: 'Dashboard', agenda: 'Agenda PedagÃ³gica', turmas: 'Turmas', alunos: 'Alunos',
-    frequencia: 'FrequÃªncia Escolar', solicitacoes: 'SolicitaÃ§Ãµes PedagÃ³gicas', transporte: 'Transporte Escolar', ocorrencias: 'OcorrÃªncias',
-    livros: 'Livros DidÃ¡ticos', chat: 'Chat RVS', permissoes: 'PermissÃµes', usuarios: 'UsuÃ¡rios do Sistema', perfil: 'Meu Perfil'
+    dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos',
+    frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
+    livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
-  // Se nÃ£o passou o elemento, tenta achar o item no menu lateral para ativar
+  // Se não passou o elemento, tenta achar o item no menu lateral para ativar
   if (!el) {
     const selector = `.nav-item[onclick*="showPage('${p}'"]`;
     el = document.querySelector(selector);
@@ -694,12 +694,12 @@ function showPage(p, el) {
   if(p==='permissoes') renderPermissoes();
   if(p==='perfil') renderPerfil();
   if(p==='frequencia'){
-    // Sempre mostra etapa1 se nÃ£o houver chamada em andamento
+    // Sempre mostra etapa1 se não houver chamada em andamento
     if(!turmaChamadaAtual){
       document.getElementById('freq-etapa1')?.classList.remove('hidden');
       document.getElementById('freq-etapa2')?.classList.add('hidden');
     }
-    // Popula select de turma com dados jÃ¡ carregados
+    // Popula select de turma com dados já carregados
     popularSelectTurmaFreq();
   }
 }
@@ -720,8 +720,8 @@ function renderDashCompleto(){
   renderDashOcorr();
 }
 
-// â”€â”€â”€ SISTEMA DE NOTIFICAÃ‡Ã•ES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const NOTIFICATIONS = []; // store em memÃ³ria
+// ─── SISTEMA DE NOTIFICAÇÕES ─────────────────────────────────────────────────
+const NOTIFICATIONS = []; // store em memória
 let notifPanelOpen = false;
 let ocorrenciaRealtimeSubscription = null;
 
@@ -731,7 +731,7 @@ function addNotification({ type, title, body, action }) {
     type,       // 'chat' | 'ocorrencia' | 'alerta'
     title,
     body,
-    action,     // funÃ§Ã£o chamada ao clicar
+    action,     // função chamada ao clicar
     time: new Date(),
     read: false
   };
@@ -795,34 +795,34 @@ function renderNotifPanel() {
     wrapper.appendChild(panel);
   }
 
-  const typeIcons = { chat: 'ðŸ’¬', ocorrencia: 'ðŸ“‹', alerta: 'ðŸš¨' };
-  const typeLabels = { chat: 'Chat RVS', ocorrencia: 'OcorrÃªncia', alerta: 'Alerta CrÃ­tico' };
+  const typeIcons = { chat: '💬', ocorrencia: '📋', alerta: '🚨' };
+  const typeLabels = { chat: 'Chat RVS', ocorrencia: 'Ocorrência', alerta: 'Alerta Crítico' };
   const typeIconClass = { chat: 'notif-icon-chat', ocorrencia: 'notif-icon-ocorrencia', alerta: 'notif-icon-alerta' };
 
   const formatTime = (date) => {
     const diff = Math.floor((Date.now() - date.getTime()) / 1000);
     if (diff < 60) return 'agora';
-    if (diff < 3600) return `${Math.floor(diff/60)}min atrÃ¡s`;
-    if (diff < 86400) return `${Math.floor(diff/3600)}h atrÃ¡s`;
+    if (diff < 3600) return `${Math.floor(diff/60)}min atrás`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h atrás`;
     return date.toLocaleDateString('pt-BR');
   };
 
   const items = NOTIFICATIONS.slice(0, 30);
   panel.innerHTML = `
     <div class="notif-panel-header">
-      <h4>ðŸ”” NotificaÃ§Ãµes <span style="font-weight:400;color:var(--gray4);font-size:12px">(${items.length})</span></h4>
+      <h4>🔔 Notificações <span style="font-weight:400;color:var(--gray4);font-size:12px">(${items.length})</span></h4>
       <button class="notif-clear-btn" onclick="clearAllNotifs()">Limpar tudo</button>
     </div>
     <div class="notif-list" id="notif-list">
       ${items.length === 0 ? `
         <div class="notif-empty">
-          <span>ðŸ”•</span>
-          Nenhuma notificaÃ§Ã£o ainda
+          <span>🔕</span>
+          Nenhuma notificação ainda
         </div>
       ` : items.map(n => `
         <div class="notif-item ${n.read ? '' : 'unread'}" onclick="handleNotifClick('${n.id}')">
           <div class="notif-item-icon ${typeIconClass[n.type] || 'notif-icon-alerta'}">
-            ${typeIcons[n.type] || 'ðŸ“Œ'}
+            ${typeIcons[n.type] || '📌'}
           </div>
           <div class="notif-item-body">
             <h5>${n.title}</h5>
@@ -850,7 +850,7 @@ function clearAllNotifs() {
   renderNotifPanel();
 }
 
-// â”€â”€ Realtime: escuta novas ocorrÃªncias inseridas por qualquer usuÃ¡rio â”€â”€
+// ── Realtime: escuta novas ocorrências inseridas por qualquer usuário ──
 function initOcorrenciaRealtime() {
   if (ocorrenciaRealtimeSubscription) return;
   ocorrenciaRealtimeSubscription = supabaseClient
@@ -859,8 +859,8 @@ function initOcorrenciaRealtime() {
       const o = payload.new;
       const aluno = ALUNOS_DATA.find(a => a.id === o.aluno_id);
       const nomeAluno = aluno ? aluno.nome : 'Aluno';
-      const titulo = `Nova OcorrÃªncia: ${nomeAluno}`;
-      const corpo = o.descricao ? o.descricao.substring(0, 60) + (o.descricao.length > 60 ? '...' : '') : 'Sem descriÃ§Ã£o';
+      const titulo = `Nova Ocorrência: ${nomeAluno}`;
+      const corpo = o.descricao ? o.descricao.substring(0, 60) + (o.descricao.length > 60 ? '...' : '') : 'Sem descrição';
 
       addNotification({
         type: 'ocorrencia',
@@ -869,14 +869,14 @@ function initOcorrenciaRealtime() {
         action: () => showPage('ocorrencias', document.querySelector(".nav-item[onclick*=\"'ocorrencias'\"]"))
       });
 
-      showToast(`ðŸ“‹ ${titulo}`, 'ocorrencia', () => {
+      showToast(`📋 ${titulo}`, 'ocorrencia', () => {
         showPage('ocorrencias', document.querySelector(".nav-item[onclick*=\"'ocorrencias'\"]"));
       });
     })
     .subscribe();
 }
 
-// â”€â”€â”€ TOASTS / ALERTAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TOASTS / ALERTAS ────────────────────────────────────────────────────────
 function showToast(msg, type='alerta', onClickAction=null) {
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -892,11 +892,11 @@ function showToast(msg, type='alerta', onClickAction=null) {
     };
   }
 
-  const icons  = { evasao:'ðŸš¨', alerta:'â„¹ï¸', sucesso:'âœ…', chat:'ðŸ’¬', ocorrencia:'ðŸ“‹' };
-  const labels = { evasao:'Alerta de EvasÃ£o', alerta:'NotificaÃ§Ã£o', sucesso:'Sucesso', chat:'Chat RVS', ocorrencia:'OcorrÃªncia' };
-  t.innerHTML = `<span class="toast-icon">${icons[type]||'â„¹ï¸'}</span>
+  const icons  = { evasao:'🚨', alerta:'ℹ️', sucesso:'✅', chat:'💬', ocorrencia:'📋' };
+  const labels = { evasao:'Alerta de Evasão', alerta:'Notificação', sucesso:'Sucesso', chat:'Chat RVS', ocorrencia:'Ocorrência' };
+  t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span>
     <div class="toast-body"><h4>${labels[type]||'Aviso'}</h4><p>${msg}</p></div>
-    <button class="toast-close" onclick="this.parentElement.remove()">âœ•</button>`;
+    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
   c.appendChild(t);
 
   // auto-dismiss depois de 6s com fade-out
@@ -910,24 +910,24 @@ function showToast(msg, type='alerta', onClickAction=null) {
 function triggerAlert(){ document.getElementById('alert-bar').classList.add('show'); showToast('Aluno fora da sala detectado','evasao'); }
 function dismissAlert(){ document.getElementById('alert-bar').classList.remove('show'); }
 
-// â”€â”€â”€ MODAIS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── MODAIS ───────────────────────────────────────────────────────────────────
 function openModal(id){ document.getElementById(id)?.classList.add('open'); }
 function closeModal(id){ document.getElementById(id)?.classList.remove('open'); }
 function confirmarSenhaAdmin(cb){
-  const s=prompt('âš ï¸ AÃ§Ã£o restrita ao Administrador.\nDigite a senha:');
+  const s=prompt('⚠️ Ação restrita ao Administrador.\nDigite a senha:');
   if(s===ADMIN_SENHA){ cb(); } else { showToast('Senha incorreta. Acesso negado.','evasao'); }
 }
 
 function normalizeTurno(t) {
   if(!t) return '';
   const s = t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  if(s.includes('manha')) return 'ManhÃ£';
+  if(s.includes('manha')) return 'Manhã';
   if(s.includes('tarde')) return 'Tarde';
   if(s.includes('noite')) return 'Noite';
   return t.trim();
 }
 
-// â”€â”€â”€ EMPTY STATES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── EMPTY STATES ────────────────────────────────────────────────────────────
 function emptyState(icon,titulo,sub){
   return`<div class="empty-state"><div class="empty-icon">${icon}</div><h4>${titulo}</h4><p>${sub}</p></div>`;
 }
@@ -935,14 +935,14 @@ function emptyTr(icon,titulo,sub,cols=8){
   return`<tr><td colspan="${cols}">${emptyState(icon,titulo,sub)}</td></tr>`;
 }
 
-// â”€â”€â”€ SELECTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── SELECTS ─────────────────────────────────────────────────────────────────
 function abrirExcluirAluno(){
-  const s=prompt('ðŸ” Excluir aluno requer senha do administrador:');
+  const s=prompt('🔐 Excluir aluno requer senha do administrador:');
   if(s!==ADMIN_SENHA){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
   const sel=document.getElementById('select-excluir-aluno');
   if(sel){
-    sel.innerHTML='<option value="">â€” Selecione o aluno â€”</option>'+
-      ALUNOS_DATA.map(a=>`<option value="${a.cpf}">${a.nome} â€” ${a.turma}</option>`).join('');
+    sel.innerHTML='<option value="">— Selecione o aluno —</option>'+
+      ALUNOS_DATA.map(a=>`<option value="${a.cpf}">${a.nome} — ${a.turma}</option>`).join('');
   }
   openModal('modal-excluir-aluno');
 }
@@ -951,7 +951,7 @@ async function excluirAluno(){
   const cpf=document.getElementById('select-excluir-aluno')?.value;
   if(!cpf){ showToast('Selecione um aluno','alerta'); return; }
   const al=ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf);
-  if(!al || !al.id){ showToast('Aluno nÃ£o encontrado no banco de dados.', 'alerta'); return; }
+  if(!al || !al.id){ showToast('Aluno não encontrado no banco de dados.', 'alerta'); return; }
   
   const { error } = await supabaseClient.from('alunos').delete().eq('id', al.id);
   if (error) {
@@ -961,7 +961,7 @@ async function excluirAluno(){
   }
   
   closeModal('modal-excluir-aluno');
-  showToast(al.nome+' excluÃ­do do sistema.','sucesso');
+  showToast(al.nome+' excluído do sistema.','sucesso');
   
   await carregarDados();
   renderAlunos(); renderMetricasDash(); renderTurmasTable(); renderTurmaGrid();
@@ -972,22 +972,22 @@ function atualizarSelectTurmas(){
   document.querySelectorAll('.select-turmas').forEach(sel=>{
     const val=sel.value;
     sel.innerHTML=TURMAS_DATA.length===0
-      ?'<option value="">â€” Cadastre turmas primeiro â€”</option>'
-      :['<option value="">Selecione a turma</option>',...TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`)].join('');
+      ?'<option value="">— Cadastre turmas primeiro —</option>'
+      :['<option value="">Selecione a turma</option>',...TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`)].join('');
     if(val) sel.value=val;
   });
   // Select excluir turma
   const se=document.getElementById('select-excluir-turma');
   if(se) se.innerHTML=TURMAS_DATA.length===0
-    ?'<option value="">â€” Nenhuma turma â€”</option>'
-    :TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`).join('');
-  // Select frequÃªncia etapa1 (pode nÃ£o ter classe select-turmas)
+    ?'<option value="">— Nenhuma turma —</option>'
+    :TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
+  // Select frequência etapa1 (pode não ter classe select-turmas)
   popularSelectTurmaFreq();
   // Select filtro alunos
   const fa=document.getElementById('filtro-turma-alunos');
   if(fa){
     const v=fa.value;
-    fa.innerHTML='<option value="">Todas as turmas</option>'+TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`).join('');
+    fa.innerHTML='<option value="">Todas as turmas</option>'+TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
     if(v) fa.value=v;
   }
   // Select rota alunos
@@ -1020,7 +1020,7 @@ function onTurnoFreqChange(){
   popularSelectTurmaFreq();
 }
 
-// â”€â”€â”€ DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function getDashFiltros(){
   const dia = document.getElementById('dash-filtro-dia')?.value || '';
   return { turno: dashTurnoAtual, dia };
@@ -1041,7 +1041,7 @@ async function renderMetricasDash(){
   if(el('dash-turmas')) el('dash-turmas').textContent = turmas.length;
   if(el('dash-faltas')) el('dash-faltas').textContent = ocorrs.filter(o=>o.tipo==='evasao'&&!o.tratada).length;
 
-  // Busca presentes de hoje direto do Supabase via fetchAllRows para nÃ£o esbarrar em limite (ex: 1500 alunos)
+  // Busca presentes de hoje direto do Supabase via fetchAllRows para não esbarrar em limite (ex: 1500 alunos)
   try {
     const hoje = new Date().toISOString().split('T')[0];
     const targetDate = dia || hoje;
@@ -1072,14 +1072,14 @@ async function renderTurmasTable(){
   const b=document.getElementById('turmas-table-body'); if(!b)return;
   const {turno} = getDashFiltros();
   let turmas = turno ? TURMAS_DATA.filter(t=>t.turno===turno) : TURMAS_DATA;
-  if(!turmas.length){b.innerHTML=emptyTr('ðŸ·ï¸','Nenhuma turma encontrada','Cadastre turmas ou altere o filtro',8);return;}
+  if(!turmas.length){b.innerHTML=emptyTr('🏷️','Nenhuma turma encontrada','Cadastre turmas ou altere o filtro',8);return;}
 
-  // Busca frequÃªncia do Supabase respeitando o filtro de data (ou hoje)
+  // Busca frequência do Supabase respeitando o filtro de data (ou hoje)
   const {dia} = getDashFiltros();
   const hoje = new Date().toISOString().split('T')[0];
   const targetDate = dia || hoje;
   
-  let freqData = {}; // aluno_id â†’ {entrada, saida}
+  let freqData = {}; // aluno_id → {entrada, saida}
   try{
     const {data:fq} = await fetchAllRows('frequencia', 'aluno_id,tipo,status', q => q.eq('data',targetDate));
     if(fq) fq.forEach(f=>{
@@ -1094,7 +1094,7 @@ async function renderTurmasTable(){
     
     // Conta por freq real
     let entP=0,saiP=0,evasoes=0;
-    let entTotal=0, saiTotal=0; // Total de registros para saber se jÃ¡ foi lanÃ§ada
+    let entTotal=0, saiTotal=0; // Total de registros para saber se já foi lançada
     
     alunosTurma.forEach(a=>{
       const fq=freqData[a.id]||{};
@@ -1106,7 +1106,7 @@ async function renderTurmasTable(){
       if(fq.entrada==='P'&&fq.saida==='F') evasoes++;
     });
     
-    // Fallback: usa chamada em memÃ³ria se nÃ£o hÃ¡ dados no Supabase e a data Ã© hoje
+    // Fallback: usa chamada em memória se não há dados no Supabase e a data é hoje
     if(total>0 && entTotal===0 && saiTotal===0 && targetDate === hoje){
       entP=t.entradaQtd||0;
       saiP=t.saidaQtd||0;
@@ -1120,9 +1120,9 @@ async function renderTurmasTable(){
     
     const stEnt=entTotal>0?`<span class="metric-badge badge-green">${entPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
     const stSai=saiTotal>0?`<span class="metric-badge badge-green">${saiPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
-    const evasBadge=evasoes>0?`<span class="metric-badge badge-red">âš  ${evasoes}</span>`:'';
+    const evasBadge=evasoes>0?`<span class="metric-badge badge-red">⚠ ${evasoes}</span>`:'';
     return`<tr>
-      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar">${t.code} âœï¸</strong></td>
+      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar">${t.code} ✏️</strong></td>
       <td>${t.turno}</td>
       <td>${total}</td>
       <td><span class="metric-badge badge-blue">${entPct}%</span></td>
@@ -1137,7 +1137,7 @@ function renderDashOcorr(){
   const cont=document.getElementById('dash-ocorr'); if(!cont)return;
   const {turno, dia} = getDashFiltros();
   
-  // Define targetDate string no padrÃ£o DD/MM/YYYY (do filtro ou hoje)
+  // Define targetDate string no padrão DD/MM/YYYY (do filtro ou hoje)
   const hojeDate = new Date();
   const targetDateStr = dia ? new Date(dia+'T12:00:00').toLocaleDateString('pt-BR') : hojeDate.toLocaleDateString('pt-BR');
 
@@ -1147,31 +1147,31 @@ function renderDashOcorr(){
     data=data.filter(o=>als.includes(o.aluno));
   }
   
-  // As ocorrÃªncias no dashboard sÃ£o espelho do dia letivo (para bater com a frequÃªncia)
+  // As ocorrências no dashboard são espelho do dia letivo (para bater com a frequência)
   data=data.filter(o=>o.data===targetDateStr);
   data=data.slice(0,5);
   
-  cont.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('âœ…','Nenhuma ocorrÃªncia','Tudo tranquilo neste dia');
+  cont.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Tudo tranquilo neste dia');
 }
 
-// â”€â”€â”€ TURMAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TURMAS ───────────────────────────────────────────────────────────────────
 function renderTurmaGrid(){
   const g=document.getElementById('turma-grid'); if(!g)return;
-  if(!TURMAS_DATA.length){g.innerHTML=emptyState('ðŸ·ï¸','Nenhuma turma cadastrada','Clique em "+ Nova Turma"');return;}
+  if(!TURMAS_DATA.length){g.innerHTML=emptyState('🏷️','Nenhuma turma cadastrada','Clique em "+ Nova Turma"');return;}
   g.innerHTML=TURMAS_DATA.map(t=>{
     const total=ALUNOS_DATA.filter(a=>a.turma===t.code).length;
     const pres=t.presentes||0, pct=total>0?Math.round(pres/total*100):0;
     const color=pct>=90?'var(--green)':pct>=75?'var(--yellow)':'var(--red)';
     return`<div class="turma-card" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar a turma" style="cursor:pointer;transition:box-shadow 0.2s" onmouseenter="this.style.boxShadow='0 4px 18px rgba(0,0,0,0.13)'" onmouseleave="this.style.boxShadow=''">
       <div class="turma-code">${t.code}</div>
-      <div class="turma-info">${t.serie} â€” ${t.turno}</div>
+      <div class="turma-info">${t.serie} — ${t.turno}</div>
       <div class="turma-progress"><div class="turma-progress-bar" style="width:${pct}%;background:${color}"></div></div>
       <div class="turma-stats">
-        <span style="color:var(--gray5)">ðŸ‘¥ ${total}</span>
-        <span style="color:var(--green-dark)">âœ“ ${pres}</span>
-        <span style="color:var(--red)">âœ— ${total-pres}</span>
+        <span style="color:var(--gray5)">👥 ${total}</span>
+        <span style="color:var(--green-dark)">✓ ${pres}</span>
+        <span style="color:var(--red)">✗ ${total-pres}</span>
       </div>
-      <div style="font-size:10px;color:var(--gray4);text-align:center;margin-top:4px">âœï¸ clique para editar</div>
+      <div style="font-size:10px;color:var(--gray4);text-align:center;margin-top:4px">✏️ clique para editar</div>
     </div>`;
   }).join('');
 }
@@ -1180,8 +1180,8 @@ function abrirEditarTurma(id){
   const t=TURMAS_DATA.find(x=>x.id===id); if(!t)return;
   document.getElementById('edit-turma-id').value=t.id;
   document.getElementById('edit-turma-code').value=t.code;
-  document.getElementById('edit-turma-turno').value=t.turno||'ManhÃ£';
-  // Tenta setar a sÃ©rie corretamente
+  document.getElementById('edit-turma-turno').value=t.turno||'Manhã';
+  // Tenta setar a série corretamente
   const serieEl=document.getElementById('edit-turma-serie');
   if(serieEl){
     const opts=Array.from(serieEl.options).map(o=>o.value);
@@ -1194,10 +1194,10 @@ function abrirEditarTurma(id){
 async function salvarEdicaoTurma(){
   const id=document.getElementById('edit-turma-id')?.value;
   const code=(document.getElementById('edit-turma-code')?.value||'').trim().toUpperCase();
-  const turno=document.getElementById('edit-turma-turno')?.value||'ManhÃ£';
+  const turno=document.getElementById('edit-turma-turno')?.value||'Manhã';
   const serie=document.getElementById('edit-turma-serie')?.value||'';
   const professor=(document.getElementById('edit-turma-professor')?.value||'').trim();
-  if(!id||!code){showToast('Preencha o cÃ³digo da turma','alerta');return;}
+  if(!id||!code){showToast('Preencha o código da turma','alerta');return;}
   const {error}=await supabaseClient.from('turmas').update({code,turno,serie,professor}).eq('id',id);
   if(error){showToast('Erro ao salvar: '+error.message,'evasao');return;}
   closeModal('modal-editar-turma');
@@ -1211,13 +1211,13 @@ async function saveTurma(){
   const code  = document.getElementById('input-turma-code')?.value.trim().toUpperCase();
   const turno = document.getElementById('input-turma-turno')?.value;
   const serie = document.getElementById('input-turma-serie')?.value;
-  if(!code){ showToast('Informe o cÃ³digo da turma!','alerta'); return; }
-  if(TURMAS_DATA.find(t=>t.code===code)){ showToast('Turma '+code+' jÃ¡ existe!','alerta'); return; }
+  if(!code){ showToast('Informe o código da turma!','alerta'); return; }
+  if(TURMAS_DATA.find(t=>t.code===code)){ showToast('Turma '+code+' já existe!','alerta'); return; }
   
   const {error} = await supabaseClient.from('turmas').insert({
       code: code,
       serie: serie || code,
-      turno: turno || 'ManhÃ£',
+      turno: turno || 'Manhã',
       professor: 'A Definir'
   });
   
@@ -1247,13 +1247,13 @@ async function excluirTurma(){
   }
   
   closeModal('modal-excluir-turma');
-  showToast('Turma '+code+' excluÃ­da.','sucesso');
+  showToast('Turma '+code+' excluída.','sucesso');
   await carregarDados();
   atualizarSelectTurmas();
   renderTurmaGrid(); renderTurmasTable(); renderMetricasDash();
 }
 
-// â”€â”€â”€ ALUNOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ALUNOS ───────────────────────────────────────────────────────────────────
 function renderAlunos(filter=''){
   const b=document.getElementById('alunos-tbody'); if(!b)return;
   let data=filter
@@ -1261,16 +1261,16 @@ function renderAlunos(filter=''){
     :ALUNOS_DATA;
   const tf=document.getElementById('filtro-turma-alunos')?.value;
   if(tf) data=data.filter(a=>a.turma===tf);
-  if(!data.length){b.innerHTML=emptyTr('ðŸ‘¥','Nenhum aluno encontrado','Ajuste filtros ou cadastre alunos',8);return;}
+  if(!data.length){b.innerHTML=emptyTr('👥','Nenhum aluno encontrado','Ajuste filtros ou cadastre alunos',8);return;}
   b.innerHTML=data.map(a=>`<tr>
     <td><code>${a.cpf}</code></td>
     <td><strong>${a.nome}</strong></td>
     <td><span class="metric-badge badge-blue">${a.turma}</span></td>
     <td>${a.turno}</td>
     <td>${a.rota||'Sem transporte'}</td>
-    <td>${a.resp||'â€”'}</td>
+    <td>${a.resp||'—'}</td>
     <td><span class="metric-badge ${a.status==='ativo'?'badge-green':'badge-yellow'}">${a.status}</span></td>
-    <td><button class="btn btn-outline btn-xs" onclick="verFicha('${a.cpf}')">ðŸ“‹ Ficha</button></td>
+    <td><button class="btn btn-outline btn-xs" onclick="verFicha('${a.cpf}')">📋 Ficha</button></td>
   </tr>`).join('');
 }
 function filterAlunos(v){ renderAlunos(v); }
@@ -1283,7 +1283,7 @@ function calcularIdade(){
   let idade=hoje.getFullYear()-nascDate.getFullYear();
   const m=hoje.getMonth()-nascDate.getMonth();
   if(m<0||(m===0&&hoje.getDate()<nascDate.getDate())) idade--;
-  idadeEl.value=idade>0?idade+' anos':'â€”';
+  idadeEl.value=idade>0?idade+' anos':'—';
 }
 
 function abrirModalNovoAluno() {
@@ -1291,11 +1291,11 @@ function abrirModalNovoAluno() {
   const prev = document.getElementById('aluno-avatar-preview');
   if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
   const st = document.getElementById('aluno-foto-status');
-  if(st) { st.style.color='var(--gray4)'; st.textContent='MÃ­nimo 5MB. Arquivo serÃ¡ salvo no Drive.'; }
+  if(st) { st.style.color='var(--gray4)'; st.textContent='Mínimo 5MB. Arquivo será salvo no Drive.'; }
   openModal('modal-aluno');
 }
 
-// â”€â”€â”€ CÃ‚MERA E FOTO DO ALUNO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── CÂMERA E FOTO DO ALUNO ────────────────────────────────────────────────────────
 async function abrirCameraAluno() {
   const erroEl = document.getElementById('camera-aluno-erro');
   if (erroEl) erroEl.style.display = 'none';
@@ -1307,7 +1307,7 @@ async function abrirCameraAluno() {
     openModal('modal-camera-aluno');
   } catch (err) {
     console.error('[Camera Aluno] Erro:', err);
-    if (err.name === 'NotAllowedError') showToast('PermissÃ£o de cÃ¢mera negada. Selecione da galeria.', 'alerta');
+    if (err.name === 'NotAllowedError') showToast('Permissão de câmera negada. Selecione da galeria.', 'alerta');
     else document.getElementById('aluno-foto-input')?.click();
   }
 }
@@ -1338,7 +1338,7 @@ function tirarFotoAluno() {
 function selecionarFotoAluno(input) {
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { showToast('Foto muito grande! MÃ¡ximo 5MB.', 'alerta'); input.value = ''; return; }
+  if (file.size > 5 * 1024 * 1024) { showToast('Foto muito grande! Máximo 5MB.', 'alerta'); input.value = ''; return; }
   _alunoFotoPendente = file;
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -1347,7 +1347,7 @@ function selecionarFotoAluno(input) {
   };
   reader.readAsDataURL(file);
   const status = document.getElementById('aluno-foto-status');
-  if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = 'ðŸ“Ž Foto selecionada.'; }
+  if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '📎 Foto selecionada.'; }
 }
 
 async function saveAluno(){
@@ -1363,15 +1363,15 @@ async function saveAluno(){
   const idade  =document.getElementById('input-aluno-idade')?.value;
   
   if(!nome||!cpf||!turmaCode){ showToast('Preencha nome, CPF e turma!','alerta'); return; }
-  if(ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf)){ showToast('CPF/MatrÃ­cula jÃ¡ cadastrado!','alerta'); return; }
+  if(ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf)){ showToast('CPF/Matrícula já cadastrado!','alerta'); return; }
   
   const tObj = TURMAS_DATA.find(t => t.code === turmaCode);
-  if (!tObj) { showToast('Turma nÃ£o encontrada no sistema.', 'alerta'); return; }
+  if (!tObj) { showToast('Turma não encontrada no sistema.', 'alerta'); return; }
 
   let fotoUrl = null;
   if (_alunoFotoPendente) {
     const status = document.getElementById('aluno-foto-status');
-    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = 'â³ Enviando foto ao Google Drive...'; }
+    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '⏳ Enviando foto ao Google Drive...'; }
     try {
       const base64 = await new Promise((resolve) => {
         const reader = new FileReader();
@@ -1389,10 +1389,10 @@ async function saveAluno(){
         const match = fotoUrl.match(/id=([^&]+)/) || fotoUrl.match(/d\/([a-zA-Z0-9_-]+)/);
         if(match && match[1]) fotoUrl = 'https://drive.google.com/uc?id=' + match[1] + '&export=view';
       }
-      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = 'âœ… Foto salva no Drive!'; }
+      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = '✅ Foto salva no Drive!'; }
     } catch(err) {
       console.error('[Drive Upload Aluno]', err);
-      showToast('Aviso: Foto falhou, mas aluno serÃ¡ salvo. ' + err.message, 'evasao');
+      showToast('Aviso: Foto falhou, mas aluno será salvo. ' + err.message, 'evasao');
     }
   }
 
@@ -1429,12 +1429,12 @@ function verFicha(cpf){
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   document.getElementById('ficha-nome').textContent=a.nome;
   document.getElementById('ficha-cpf').textContent=a.cpf;
-  document.getElementById('ficha-turma').textContent=a.turma+' â€” '+a.turno;
-  document.getElementById('ficha-resp').textContent=a.resp||'â€”';
+  document.getElementById('ficha-turma').textContent=a.turma+' — '+a.turno;
+  document.getElementById('ficha-resp').textContent=a.resp||'—';
   document.getElementById('ficha-rota').textContent=a.rota||'Sem transporte';
   document.getElementById('ficha-faltas').textContent=(a.historico||[]).filter(h=>h.tipo==='falta').length+' faltas';
-  document.getElementById('ficha-nasc').textContent=a.nasc?new Date(a.nasc).toLocaleDateString('pt-BR'):'â€”';
-  document.getElementById('ficha-idade').textContent=a.idade||'â€”';
+  document.getElementById('ficha-nasc').textContent=a.nasc?new Date(a.nasc).toLocaleDateString('pt-BR'):'—';
+  document.getElementById('ficha-idade').textContent=a.idade||'—';
   
   const imgEl = document.getElementById('ficha-avatar');
   const fallbackEl = document.getElementById('ficha-avatar-fallback');
@@ -1457,30 +1457,30 @@ function verFicha(cpf){
 
 function renderFichaOcorrencias(a){
   const el=document.getElementById('ficha-ocorrencias'); if(!el)return;
-  // Filtra ocorrÃªncias onde o aluno Ã© envolvido (pelo nome ou cpf)
+  // Filtra ocorrências onde o aluno é envolvido (pelo nome ou cpf)
   const ocorrs=OCORR_DATA.filter(o=>
     o.aluno===a.nome || o.aluno===a.cpf ||
     o.aluno.includes(a.nome) || (a.cpf && o.cpf===a.cpf)
   );
   if(!ocorrs.length){
-    el.innerHTML='<div style="font-size:12.5px;color:var(--gray4);padding:8px 0">Nenhuma ocorrÃªncia registrada.</div>';
+    el.innerHTML='<div style="font-size:12.5px;color:var(--gray4);padding:8px 0">Nenhuma ocorrência registrada.</div>';
     return;
   }
   el.innerHTML=ocorrs.map(o=>{
-    const label={evasao:'EvasÃ£o',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'AgressÃ£o',atraso:'Atraso'}[o.tipo]||o.tipo;
+    const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso'}[o.tipo]||o.tipo;
     const cor=o.tratada?'var(--green-light)':'var(--red-light)';
     const txt=o.tratada?'var(--green-dark)':'var(--red-dark)';
     return`<div style="background:${cor};border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px">
-      <strong style="color:${txt}">${label}</strong> â€” ${o.data} ${o.hora}
+      <strong style="color:${txt}">${label}</strong> — ${o.data} ${o.hora}
       <div style="color:var(--gray6);margin-top:2px">${o.desc}</div>
-      ${o.tratada?'<div style="color:var(--green-dark);font-size:11px;margin-top:2px">âœ“ Tratada'+( o.justificativa?' â€” '+o.justificativa:'')+'</div>':''}
+      ${o.tratada?'<div style="color:var(--green-dark);font-size:11px;margin-top:2px">✓ Tratada'+( o.justificativa?' — '+o.justificativa:'')+'</div>':''}
     </div>`;
   }).join('');
 }
 
 function renderTimeline(a){
   const tl=document.getElementById('ficha-timeline'); if(!tl)return;
-  if(!(a.historico||[]).length){tl.innerHTML=emptyState('ðŸ“‹','Sem histÃ³rico','Nenhuma movimentaÃ§Ã£o');return;}
+  if(!(a.historico||[]).length){tl.innerHTML=emptyState('📋','Sem histórico','Nenhuma movimentação');return;}
   const cores={presenca:'var(--green)',falta:'var(--red)',ocorrencia:'var(--yellow)',mudanca:'var(--blue)'};
   tl.innerHTML=a.historico.map((h,i)=>`
     <div class="tl-item">
@@ -1521,7 +1521,7 @@ function abrirOcorrDaFicha(){
   const cpf=document.getElementById('modal-ficha').dataset.cpf;
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   envolvidos=[{nome:a.nome}];
-  document.getElementById('envolvidos-list-ocorr').innerHTML=`<div class="envolvido-tag"><span>ðŸ‘¤ ${a.nome}</span></div>`;
+  document.getElementById('envolvidos-list-ocorr').innerHTML=`<div class="envolvido-tag"><span>👤 ${a.nome}</span></div>`;
   if(document.getElementById('input-ocorr-turma')) document.getElementById('input-ocorr-turma').value=a.turma;
   atualizarAlunosPorTurmaOcorr();
   closeModal('modal-ficha'); openModal('modal-ocorr');
@@ -1530,12 +1530,12 @@ function abrirOcorrDaFicha(){
 function abrirEditarFicha(){
   const cpf=document.getElementById('modal-ficha').dataset.cpf;
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
-  const s=prompt('ðŸ” EdiÃ§Ã£o de dados requer senha do administrador:');
+  const s=prompt('🔐 Edição de dados requer senha do administrador:');
   if(s!==ADMIN_SENHA){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
-  // Preenche o modal de ediÃ§Ã£o
+  // Preenche o modal de edição
   document.getElementById('edit-aluno-nome').value=a.nome||'';
   document.getElementById('edit-aluno-cpf').value=a.cpf||'';
-  document.getElementById('edit-aluno-turno').value=a.turno||'ManhÃ£';
+  document.getElementById('edit-aluno-turno').value=a.turno||'Manhã';
   document.getElementById('edit-aluno-nasc').value=a.nasc||'';
   document.getElementById('edit-aluno-resp').value=a.resp||'';
   document.getElementById('edit-aluno-contato').value=a.contato||'';
@@ -1559,7 +1559,7 @@ function calcularIdadeEdit(){
   let idade=hoje.getFullYear()-nascDate.getFullYear();
   const m=hoje.getMonth()-nascDate.getMonth();
   if(m<0||(m===0&&hoje.getDate()<nascDate.getDate())) idade--;
-  idadeEl.value=idade>0?idade+' anos':'â€”';
+  idadeEl.value=idade>0?idade+' anos':'—';
 }
 
 async function salvarEdicaoFicha(){
@@ -1573,7 +1573,7 @@ async function salvarEdicaoFicha(){
   a.email  =document.getElementById('edit-aluno-email')?.value.trim()||a.email;
   a.rota   =document.getElementById('edit-aluno-rota')?.value||a.rota;
   a.idade  =document.getElementById('edit-aluno-idade')?.value||a.idade;
-  (a.historico=a.historico||[]).push({tipo:'mudanca',titulo:'Dados editados',desc:'InformaÃ§Ãµes do cadastro atualizadas pelo administrador.',data:new Date().toLocaleDateString('pt-BR')});
+  (a.historico=a.historico||[]).push({tipo:'mudanca',titulo:'Dados editados',desc:'Informações do cadastro atualizadas pelo administrador.',data:new Date().toLocaleDateString('pt-BR')});
   
   if (a.id) {
      let dataNasc = null;
@@ -1601,7 +1601,7 @@ async function salvarEdicaoFicha(){
   verFicha(cpf); renderAlunos(); salvarDados();
 }
 
-// IMPORTAÃ‡ÃƒO
+// IMPORTAÇÃO
 function carregarSheetJS(cb){
   if(window.XLSX){cb();return;}
   const s=document.createElement('script');
@@ -1612,8 +1612,8 @@ function carregarSheetJS(cb){
 function downloadModelo(){
   carregarSheetJS(()=>{
     const dados=[
-      ['Nome Completo','CPF','Data de Nascimento','Idade','Turma','Turno','ResponsÃ¡vel','Contato','Rota','Email Institucional'],
-      ['Maria da Silva','111.222.333-44','15/03/2008','17 anos','1A','ManhÃ£','JosÃ© da Silva','(91) 99999-0001','Sem transporte','maria@escola.seduc.pa.gov.br'],
+      ['Nome Completo','CPF','Data de Nascimento','Idade','Turma','Turno','Responsável','Contato','Rota','Email Institucional'],
+      ['Maria da Silva','111.222.333-44','15/03/2008','17 anos','1A','Manhã','José da Silva','(91) 99999-0001','Sem transporte','maria@escola.seduc.pa.gov.br'],
     ];
     const wb=XLSX.utils.book_new();
     const ws=XLSX.utils.aoa_to_sheet(dados);
@@ -1643,7 +1643,7 @@ function importarAlunos(){
         console.log('[importarAlunos] Colunas encontradas:', colunas);
         console.log('[importarAlunos] Primeira linha:', rows[0]);
 
-        // FunÃ§Ã£o auxiliar: encontra a primeira chave que bata com o padrÃ£o
+        // Função auxiliar: encontra a primeira chave que bata com o padrão
         const col = (r, ...patterns) => {
           const key = Object.keys(r).find(k => patterns.some(p => p.test(k)));
           return key ? r[key].toString().trim() : '';
@@ -1659,7 +1659,7 @@ function importarAlunos(){
         const novasTurmasDB = [];
         turmasNoExcel.forEach(tName => {
            if(tName && !TURMAS_DATA.find(t => t.code === tName)) {
-               novasTurmasDB.push({ code: tName, serie: tName, turno: 'ManhÃ£', professor: 'A Definir' });
+               novasTurmasDB.push({ code: tName, serie: tName, turno: 'Manhã', professor: 'A Definir' });
            }
         });
 
@@ -1714,10 +1714,10 @@ function importarAlunos(){
            seen.add(a.matricula); return true;
         });
 
-        console.log('[importarAlunos] ApÃ³s deduplicaÃ§Ã£o:', alunosFinal.length, '| Ignorados total:', erros);
+        console.log('[importarAlunos] Após deduplicação:', alunosFinal.length, '| Ignorados total:', erros);
 
         if (alunosFinal.length === 0) {
-           showToast('Nenhum aluno vÃ¡lido encontrado! ('+erros+' ignorados) â€” Verifique as colunas da planilha.', 'evasao');
+           showToast('Nenhum aluno válido encontrado! ('+erros+' ignorados) — Verifique as colunas da planilha.', 'evasao');
            return;
         }
 
@@ -1748,9 +1748,9 @@ function downloadModeloTurmas(){
   carregarSheetJS(()=>{
     // Modelo simples com colunas diretas
     const ws = XLSX.utils.json_to_sheet([
-      { 'Codigo': 'EM-1A', 'Serie': '1Âº Ano - Ensino MÃ©dio', 'Turno': 'ManhÃ£' },
-      { 'Codigo': 'EM-2A', 'Serie': '2Âº Ano - Ensino MÃ©dio', 'Turno': 'ManhÃ£' },
-      { 'Codigo': 'EJA-1', 'Serie': 'EJA - 1Âª Etapa', 'Turno': 'Noite' },
+      { 'Codigo': 'EM-1A', 'Serie': '1º Ano - Ensino Médio', 'Turno': 'Manhã' },
+      { 'Codigo': 'EM-2A', 'Serie': '2º Ano - Ensino Médio', 'Turno': 'Manhã' },
+      { 'Codigo': 'EJA-1', 'Serie': 'EJA - 1ª Etapa', 'Turno': 'Noite' },
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Turmas");
@@ -1799,7 +1799,7 @@ function importarTurmas(){
           novasTurmasDB.push({
              code: code,
              serie: serie || code,
-             turno: turno || 'ManhÃ£',
+             turno: turno || 'Manhã',
              professor: 'A Definir'
           });
           count++;
@@ -1808,7 +1808,7 @@ function importarTurmas(){
         console.log('[importarTurmas] Para inserir:', novasTurmasDB);
 
         if(novasTurmasDB.length === 0){
-           showToast('Nenhuma turma nova encontrada. ('+erros+' jÃ¡ existiam ou invÃ¡lidas)', 'alerta');
+           showToast('Nenhuma turma nova encontrada. ('+erros+' já existiam ou inválidas)', 'alerta');
            return;
         }
 
@@ -1834,7 +1834,7 @@ function importarTurmas(){
 }
 
 
-// â”€â”€â”€ CALENDÃRIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── CALENDÁRIO ───────────────────────────────────────────────────────────────
 function calKey(y,m,d){ return`${y}-${m+1}-${d}`; }
 function formatarDataKey(k){
   const [y,m,d]=k.split('-').map(Number);
@@ -1870,7 +1870,7 @@ function renderCalendar(){
 }
 
 async function calClick(key){
-  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendÃ¡rio','evasao'); return; }
+  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendário','evasao'); return; }
 
   if(CALENDARIO[key]?.tipo==='letivo'){
     // Desmarcar: deletar do Supabase se tiver ID
@@ -1892,22 +1892,22 @@ async function calClick(key){
     }).select().single();
     if(error){ console.error(error); showToast('Erro ao salvar no banco','evasao'); return; }
     CALENDARIO[key] = {id: data.id, tipo:'letivo', label:'Dia Letivo', turno:'Geral'};
-    showToast('Dia marcado como Letivo âœ…','sucesso');
+    showToast('Dia marcado como Letivo ✅','sucesso');
   }
   renderCalendar(); renderFiltrosDiaFreq();
 }
 
 function calDblClick(key){
-  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendÃ¡rio','evasao'); return; }
+  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendário','evasao'); return; }
   document.getElementById('modal-cal-key').value=key;
   const [y,m,d]=key.split('-').map(Number);
   document.getElementById('modal-cal-d').textContent=`Dia ${d} de ${MONTHS[m-1]} de ${y}`;
-  // PrÃ©-preenche se jÃ¡ tiver tipo
+  // Pré-preenche se já tiver tipo
   if(CALENDARIO[key]){
     document.getElementById('input-cal-tipo').value=CALENDARIO[key].tipo||'letivo';
     document.getElementById('input-cal-turno').value=CALENDARIO[key].turno||'Geral';
     document.getElementById('input-cal-label').value=CALENDARIO[key].label||'';
-    document.getElementById('input-cal-bimestre').value=CALENDARIO[key].bimestre||'1Âº Bimestre';
+    document.getElementById('input-cal-bimestre').value=CALENDARIO[key].bimestre||'1º Bimestre';
   }
   toggleBimestreSelect();
   openModal('modal-cal-tipo');
@@ -1926,9 +1926,9 @@ async function salvarTipoCal(){
   const [y,m,d] = key.split('-').map(Number);
   const dataISO = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
-  // Mapear tipos que nÃ£o existem no constraint do banco
-  // fim_bimestre â†’ bimestre | ferias â†’ feriado
-  // O tipo real Ã© guardado em observacoes com prefixo 'subtipo:'
+  // Mapear tipos que não existem no constraint do banco
+  // fim_bimestre → bimestre | ferias → feriado
+  // O tipo real é guardado em observacoes com prefixo 'subtipo:'
   const tipoMap = { fim_bimestre: 'bimestre', ferias: 'feriado' };
   const tipoDB = tipoMap[tipo] || tipo;
   const obsReal = (tipoMap[tipo] ? `subtipo:${tipo}` : null);
@@ -1955,15 +1955,15 @@ async function salvarTipoCal(){
     savedId = data.id;
   }
 
-  CALENDARIO[key] = {id: savedId, tipo, turno, label: labelFinal, bimestre, hIni, hFim, responsavel: getCurrentUser()?.nome || 'GestÃ£o'};
+  CALENDARIO[key] = {id: savedId, tipo, turno, label: labelFinal, bimestre, hIni, hFim, responsavel: getCurrentUser()?.nome || 'Gestão'};
   closeModal('modal-cal-tipo');
   renderCalendar(); renderFiltrosDiaFreq();
-  showToast('CalendÃ¡rio atualizado e salvo no banco!','sucesso');
+  showToast('Calendário atualizado e salvo no banco!','sucesso');
 }
 
 function toggleBimestreSelect(){
   const tipo=document.getElementById('input-cal-tipo')?.value;
-  // Mostrar o select de bimestre para InÃ­cio E Fim de Bimestre
+  // Mostrar o select de bimestre para Início E Fim de Bimestre
   document.getElementById('row-bimestre')?.classList.toggle('hidden', tipo!=='bimestre' && tipo!=='fim_bimestre');
   document.getElementById('row-evento-label')?.classList.toggle('hidden',tipo!=='evento');
   document.getElementById('row-horario')?.classList.toggle('hidden',tipo==='letivo'||tipo==='feriado'||tipo==='ferias'||tipo==='bimestre'||tipo==='fim_bimestre');
@@ -1974,13 +1974,13 @@ function renderEventosMes(){
   const eventos=Object.entries(CALENDARIO)
     .filter(([k])=>{ const[y,m]=k.split('-').map(Number); return y===calYear&&m===calMonth+1; })
     .sort(([a],[b])=>Number(a.split('-')[2])-Number(b.split('-')[2]));
-  if(!eventos.length){sb.innerHTML=emptyState('ðŸ“…','Sem eventos neste mÃªs','Clique nos dias para marcar');return;}
+  if(!eventos.length){sb.innerHTML=emptyState('📅','Sem eventos neste mês','Clique nos dias para marcar');return;}
   sb.innerHTML=eventos.map(([k,ev])=>{
     const d=String(k.split('-')[2]).padStart(2,'0');
     const m=String(calMonth+1).padStart(2,'0');
     return`<div class="event-item event-${ev.tipo}">
-      <div class="event-title">${d}/${m} â€” ${ev.label||TIPO_LABEL[ev.tipo]}</div>
-      <div class="event-desc">${ev.turno}${ev.hIni?' | '+ev.hIni+' Ã s '+ev.hFim:''}${ev.responsavel?' | '+ev.responsavel:''}</div>
+      <div class="event-title">${d}/${m} — ${ev.label||TIPO_LABEL[ev.tipo]}</div>
+      <div class="event-desc">${ev.turno}${ev.hIni?' | '+ev.hIni+' às '+ev.hFim:''}${ev.responsavel?' | '+ev.responsavel:''}</div>
     </div>`;
   }).join('');
 }
@@ -2000,32 +2000,32 @@ function salvarAgendamento(){
   const hIni=document.getElementById('input-ag-hini')?.value;
   const hFim=document.getElementById('input-ag-hfim')?.value;
   const obs=document.getElementById('input-ag-obs')?.value.trim();
-  if(!titulo||!data){ showToast('Informe tÃ­tulo e data','alerta'); return; }
+  if(!titulo||!data){ showToast('Informe título e data','alerta'); return; }
   const [y,m,d]=data.split('-').map(Number);
   const key=`${y}-${m}-${d}`;
   if(!CALENDARIO[key]||!TIPO_LETIVO_FLAG[CALENDARIO[key].tipo]){
-    showToast('SÃ³ Ã© possÃ­vel agendar em dias letivos jÃ¡ cadastrados','evasao'); return;
+    showToast('Só é possível agendar em dias letivos já cadastrados','evasao'); return;
   }
-  CALENDARIO[key].agendamento={titulo,tipo,turno,hIni,hFim,obs,responsavel: getCurrentUser()?.nome || 'GestÃ£o'};
+  CALENDARIO[key].agendamento={titulo,tipo,turno,hIni,hFim,obs,responsavel: getCurrentUser()?.nome || 'Gestão'};
   closeModal('modal-event');
-  showToast('Agendamento registrado! â€” '+titulo,'sucesso');
+  showToast('Agendamento registrado! — '+titulo,'sucesso');
   renderCalendar(); salvarDados();
 }
 
-// â”€â”€â”€ FREQUÃŠNCIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── FREQUÊNCIA ───────────────────────────────────────────────────────────────
 function renderFiltrosDiaFreq(){
   const sel=document.getElementById('sel-dia-freq'); if(!sel)return;
   const valAtual=sel.value;
   const dias=diasLetivosDisponiveis();
   if(!dias.length){
-    sel.innerHTML='<option value="">â€” Cadastre dias letivos na Agenda â€”</option>';
+    sel.innerHTML='<option value="">— Cadastre dias letivos na Agenda —</option>';
     return;
   }
   sel.innerHTML='<option value="">Selecione o dia letivo</option>'+
     dias.map(k=>{
       const ev=CALENDARIO[k];
       const label=ev?.label||TIPO_LABEL[ev?.tipo]||'Letivo';
-      return`<option value="${k}">${formatarDataKey(k)} â€” ${label}</option>`;
+      return`<option value="${k}">${formatarDataKey(k)} — ${label}</option>`;
     }).join('');
   if(valAtual&&dias.includes(valAtual)) sel.value=valAtual;
 }
@@ -2066,7 +2066,7 @@ async function carregarDadosFrequencia(turmaSel, diaSel) {
 }
 
 async function carregarChamada(){
-  // ForÃ§a popular o select antes de ler o valor
+  // Força popular o select antes de ler o valor
   popularSelectTurmaFreq();
 
   const sel=document.getElementById('turma-select-freq');
@@ -2074,14 +2074,14 @@ async function carregarChamada(){
   const turnoSel=document.getElementById('sel-turno-freq')?.value||'';
 
   if(!TURMAS_DATA.length){
-    showToast('Nenhuma turma cadastrada. VÃ¡ em Turmas e cadastre primeiro.','evasao'); return;
+    showToast('Nenhuma turma cadastrada. Vá em Turmas e cadastre primeiro.','evasao'); return;
   }
   if(!turmaSel){
     showToast('Selecione uma turma para continuar','alerta'); return;
   }
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaSel);
   if(!alunos.length){
-    showToast('Nenhum aluno nesta turma. VÃ¡ em Alunos e cadastre primeiro.','alerta'); return;
+    showToast('Nenhum aluno nesta turma. Vá em Alunos e cadastre primeiro.','alerta'); return;
   }
 
   turmaChamadaAtual=turmaSel;
@@ -2091,11 +2091,11 @@ async function carregarChamada(){
   freq.entrada={}; freq.saida={};
   chamadaConsolidada.entrada=false; chamadaConsolidada.saida=false;
 
-  // TÃ­tulos
+  // Títulos
   const titulo=document.getElementById('freq-titulo-turma');
   const sub=document.getElementById('freq-subtitulo');
-  if(titulo) titulo.textContent=`FrequÃªncia â€” Turma ${turmaSel}`;
-  if(sub) sub.textContent=`${turmaObj?.serie||''} â€” ${turmaObj?.turno||turnoSel||''}  â€¢  ${alunos.length} alunos`;
+  if(titulo) titulo.textContent=`Frequência — Turma ${turmaSel}`;
+  if(sub) sub.textContent=`${turmaObj?.serie||''} — ${turmaObj?.turno||turnoSel||''}  •  ${alunos.length} alunos`;
 
   // Status badges
   const ent=document.getElementById('entrada-status');
@@ -2114,7 +2114,7 @@ async function carregarChamada(){
   // Mostra estado inicial das listas
   ['entrada','saida'].forEach(tipo=>{
     const cont=document.getElementById('chamada-'+tipo);
-    if(cont) cont.innerHTML=msgVazia('ðŸ“…','Selecione o dia letivo acima');
+    if(cont) cont.innerHTML=msgVazia('📅','Selecione o dia letivo acima');
   });
   updateConsolidado();
   atualizarBloqueioSaida();
@@ -2154,7 +2154,7 @@ function renderChamada(){
   if(badge){
     if(diaSel&&CALENDARIO[diaSel]){
       const ev=CALENDARIO[diaSel];
-      badge.textContent='ðŸ“… '+formatarDataKey(diaSel)+' â€” '+(ev.label||TIPO_LABEL[ev.tipo]||'Letivo');
+      badge.textContent='📅 '+formatarDataKey(diaSel)+' — '+(ev.label||TIPO_LABEL[ev.tipo]||'Letivo');
       badge.style.display='inline-block';
     } else { badge.style.display='none'; }
   }
@@ -2163,15 +2163,15 @@ function renderChamada(){
     const container=document.getElementById('chamada-'+tipo); if(!container)return;
     if(tipo==='saida'&&!chamadaConsolidada.entrada){
       container.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--gray5)">
-        <div style="font-size:36px;margin-bottom:10px">ðŸ”’</div>
-        <div style="font-size:14px;font-weight:700;color:var(--gray6)">SaÃ­da bloqueada</div>
+        <div style="font-size:36px;margin-bottom:10px">🔒</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gray6)">Saída bloqueada</div>
         <div style="font-size:12px;margin-top:6px;color:var(--gray4)">Consolide a <strong>Entrada</strong> primeiro</div>
       </div>`;
       atualizarBloqueioSaida(); return;
     }
-    if(!diaSel){container.innerHTML=msgVazia('ðŸ“…','Selecione o dia letivo acima');return;}
-    if(!alunos.length){container.innerHTML=msgVazia('ðŸ‘¥','Nenhum aluno nesta turma');return;}
-    // PrÃ©-marca P para todos
+    if(!diaSel){container.innerHTML=msgVazia('📅','Selecione o dia letivo acima');return;}
+    if(!alunos.length){container.innerHTML=msgVazia('👥','Nenhum aluno nesta turma');return;}
+    // Pré-marca P para todos
     alunos.forEach((_,i)=>{ if(!freq[tipo][i]) freq[tipo][i]='P'; });
     const consolidado=chamadaConsolidada[tipo];
     const bgLista=consolidado?'var(--green-light)':'var(--red-light)';
@@ -2206,7 +2206,7 @@ function atualizarBloqueioSaida(){
   const bloqueado=!chamadaConsolidada.entrada;
   btn.disabled=bloqueado;
   btn.style.opacity=bloqueado?'0.4':'1';
-  btn.title=bloqueado?'Consolide a Entrada primeiro':'Consolidar SaÃ­da';
+  btn.title=bloqueado?'Consolide a Entrada primeiro':'Consolidar Saída';
 }
 
 async function presencaTodos(tipo){
@@ -2238,11 +2238,11 @@ async function presencaTodos(tipo){
   }));
   await supabaseSalvar('frequencia', payload, 'aluno_id,data,tipo');
 
-  showToast('Todos marcados como Presentes âœ…','sucesso');
+  showToast('Todos marcados como Presentes ✅','sucesso');
   updateConsolidado();
 }
 
-// Armazena referÃªncia ao botÃ£o FJ pendente
+// Armazena referência ao botão FJ pendente
 let fjBtnRef=null;
 
 function abrirModalFJ(tipo,idx,btn){
@@ -2271,7 +2271,7 @@ async function markFreq(tipo,idx,val,btn){
   
   let fjLabel=rowEl.querySelector('.fj-label');
   if(val.startsWith('FJ')){
-    const labels={'FJ-Atestado':'ðŸ¥ Atestado','FJ-Pais':'ðŸ‘¨â€ðŸ‘©â€ðŸ‘§ Pais','FJ-Coord':'ðŸ« CoordenaÃ§Ã£o','FJ':'FJ'};
+    const labels={'FJ-Atestado':'🏥 Atestado','FJ-Pais':'👨‍👩‍👧 Pais','FJ-Coord':'🏫 Coordenação','FJ':'FJ'};
     if(!fjLabel){ fjLabel=document.createElement('span'); fjLabel.className='fj-label'; fjLabel.style.cssText='font-size:10.5px;color:var(--yellow-dark);font-weight:600;white-space:nowrap'; rowEl.insertBefore(fjLabel,rowEl.querySelector('.freq-btn-group')); }
     fjLabel.textContent=labels[val]||'FJ';
   } else if(fjLabel){ fjLabel.remove(); }
@@ -2294,16 +2294,16 @@ async function markFreq(tipo,idx,val,btn){
   }
 
   if(evasao){
-    showToast('âš ï¸ EvasÃ£o: '+(aluno?.nome||'Aluno'),'evasao');
+    showToast('⚠️ Evasão: '+(aluno?.nome||'Aluno'),'evasao');
     const agora = new Date();
     const novaOcorr = {
       id: Date.now(),
       tipo: 'evasao',
-      icon: 'ðŸš¨',
-      aluno: aluno?.nome||'â€”',
+      icon: '🚨',
+      aluno: aluno?.nome||'—',
       cpf: aluno?.cpf||'',
       turma: aluno?.turma||'',
-      desc: 'Presente na entrada, ausente na saÃ­da â€” gerado automaticamente pela frequÃªncia',
+      desc: 'Presente na entrada, ausente na saída — gerado automaticamente pela frequência',
       hora: agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
       data: agora.toLocaleDateString('pt-BR'),
       tratada: false,
@@ -2312,12 +2312,12 @@ async function markFreq(tipo,idx,val,btn){
       auto_gerada: true
     };
     OCORR_DATA.push(novaOcorr);
-    // Adiciona ao histÃ³rico do aluno em memÃ³ria
+    // Adiciona ao histórico do aluno em memória
     if(aluno){
       (aluno.historico=aluno.historico||[]).unshift({
         tipo:'ocorrencia',
-        titulo:'âš ï¸ EvasÃ£o detectada',
-        desc:'Presente na entrada, ausente na saÃ­da â€” '+agora.toLocaleDateString('pt-BR'),
+        titulo:'⚠️ Evasão detectada',
+        desc:'Presente na entrada, ausente na saída — '+agora.toLocaleDateString('pt-BR'),
         data:agora.toLocaleDateString('pt-BR')
       });
     }
@@ -2358,7 +2358,7 @@ async function consolidar(tipo){
   chamadaConsolidada[tipo]=true;
   const s=document.getElementById(tipo+'-status');
   if(s){s.textContent='Consolidado';s.className='chamada-status status-consolidado';}
-  showToast('Chamada de '+tipo+' consolidada! âœ…','sucesso');
+  showToast('Chamada de '+tipo+' consolidada! ✅','sucesso');
   const container=document.getElementById('chamada-'+tipo);
   if(container){
     container.querySelectorAll('.aluno-row').forEach((row,i)=>{
@@ -2369,7 +2369,7 @@ async function consolidar(tipo){
   if(tipo==='entrada') renderChamada();
   atualizarBloqueioSaida();
   updateConsolidado();
-  // Atualiza o Dashboard em tempo real apÃ³s consolidaÃ§Ã£o
+  // Atualiza o Dashboard em tempo real após consolidação
   renderTurmasTable();
   renderMetricasDash();
 }
@@ -2377,13 +2377,13 @@ async function consolidar(tipo){
 function updateConsolidado(){
   const b=document.getElementById('consolidado-tbody'); if(!b)return;
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual);
-  if(!alunos.length){b.innerHTML=emptyTr('ðŸ‘¥','Selecione turma e dia','',5);return;}
+  if(!alunos.length){b.innerHTML=emptyTr('👥','Selecione turma e dia','',5);return;}
   b.innerHTML=alunos.map((al,i)=>{
-    const e=freq.entrada[i]||'â€”',s=freq.saida[i]||'â€”';
+    const e=freq.entrada[i]||'—',s=freq.saida[i]||'—';
     let res='Aguardando',rc='',obs='';
-    if(e!=='â€”'&&s!=='â€”'){
+    if(e!=='—'&&s!=='—'){
       if(e==='P'&&s==='P'){res='Presente';rc='badge-green';}
-      else if(e==='P'&&s==='F'){res='EvasÃ£o';rc='badge-red';obs='âš  Verificar';}
+      else if(e==='P'&&s==='F'){res='Evasão';rc='badge-red';obs='⚠ Verificar';}
       else if(e==='F'||s==='F'){res='Falta';rc='badge-red';}
       else{res='F.Justificada';rc='badge-yellow';}
     }
@@ -2399,24 +2399,24 @@ function updateConsolidado(){
   }).join('');
 }
 
-// â”€â”€â”€ OCORRÃŠNCIAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── OCORRÊNCIAS ──────────────────────────────────────────────────────────────
 function ocorrItemHTML(o){
   const cls=o.tratada?'tratada':o.aguardandoPais?'aguardando-pais':'nao-tratada';
-  const label={evasao:'EvasÃ£o',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'AgressÃ£o',atraso:'Atraso'}[o.tipo]||o.tipo;
+  const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso'}[o.tipo]||o.tipo;
   const clicavel=o.cpf?`onclick="verFicha('${o.cpf}')" style="cursor:pointer" title="Ver ficha de ${o.aluno}"`:
-                 `onclick="showPage('ocorrencias',null)" style="cursor:pointer" title="Ver todas as ocorrÃªncias"`;
+                 `onclick="showPage('ocorrencias',null)" style="cursor:pointer" title="Ver todas as ocorrências"`;
   return`<div class="ocorr-item ${cls}" ${clicavel}>
-    <div class="ocorr-icon ocorr-${o.tipo}">${o.icon||'âš ï¸'}</div>
+    <div class="ocorr-icon ocorr-${o.tipo}">${o.icon||'⚠️'}</div>
     <div class="ocorr-content">
-      <h4>${label} â€” ${o.aluno}${o.turma?' ('+o.turma+')':''}</h4>
+      <h4>${label} — ${o.aluno}${o.turma?' ('+o.turma+')':''}</h4>
       <p>${o.desc}</p>
       ${o.aguardandoPais?'<span class="metric-badge badge-yellow" style="margin-top:4px">Aguardando pais</span>':''}
-      ${o.origem==='frequencia'?'<span class="metric-badge badge-red" style="margin-top:4px">Originada na FrequÃªncia</span>':''}
+      ${o.origem==='frequencia'?'<span class="metric-badge badge-red" style="margin-top:4px">Originada na Frequência</span>':''}
     </div>
     <div class="ocorr-time">
       <div>${o.hora}</div><div style="margin-top:4px">${o.data||''}</div>
       ${!o.tratada?`<button class="btn btn-xs btn-outline" style="margin-top:6px" onclick="event.stopPropagation();abrirTratarOcorr('${o.id}')">Tratar</button>`
-        :'<span style="color:var(--green-dark);font-size:11px;font-weight:600">âœ“ Tratada</span>'}
+        :'<span style="color:var(--green-dark);font-size:11px;font-weight:600">✓ Tratada</span>'}
     </div>
   </div>`;
 }
@@ -2431,7 +2431,7 @@ function renderOcorrencias(){
   if(diaF) data=data.filter(o=>o.data===diaF);
   if(statusF==='tratada') data=data.filter(o=>o.tratada);
   if(statusF==='nao-tratada') data=data.filter(o=>!o.tratada);
-  c.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('âœ…','Nenhuma ocorrÃªncia','Sem registros');
+  c.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Sem registros');
 }
 
 async function saveOcorrencia(){
@@ -2439,7 +2439,7 @@ async function saveOcorrencia(){
   const turma=document.getElementById('input-ocorr-turma')?.value;
   const desc=document.getElementById('input-ocorr-desc')?.value.trim();
   const comunicarPais=document.querySelector('input[name="comunicar-pais"]:checked')?.value==='sim';
-  const icons={evasao:'ðŸš¨',indisciplina:'ðŸ“µ',bullying:'âš¡',agressao:'ðŸ‘Š',atraso:'â°'};
+  const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰'};
   const alunoSel=document.getElementById('sel-aluno-principal')?.value;
   const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
   const user = getCurrentUser();
@@ -2457,7 +2457,7 @@ async function saveOcorrencia(){
 
   const descFinal = prefixoAtraso + desc + 
     (comunicarPais ? '\n[AGUARDANDO PAIS]' : '') + 
-    '\nResponsÃ¡vel: ' + (user?.nome || 'UsuÃ¡rio');
+    '\nResponsável: ' + (user?.nome || 'Usuário');
 
   const payload = {
     tipo: tipoDb,
@@ -2472,7 +2472,7 @@ async function saveOcorrencia(){
   
   if (error) {
     console.error('[saveOcorrencia] Erro:', error);
-    showToast('Erro ao salvar ocorrÃªncia: ' + error.message, 'evasao');
+    showToast('Erro ao salvar ocorrência: ' + error.message, 'evasao');
     return;
   }
   
@@ -2481,7 +2481,7 @@ async function saveOcorrencia(){
   const oHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
   OCORR_DATA.push({
     id: insertedOcorr?.id || Date.now(),
-    tipo, icon: icons[tipo]||'âš ï¸', aluno: nomes||'â€”', turma,
+    tipo, icon: icons[tipo]||'⚠️', aluno: nomes||'—', turma,
     desc: descFinal, hora: oHora, data: oData,
     tratada: false, aguardandoPais: comunicarPais, origem: 'manual'
   });
@@ -2490,7 +2490,7 @@ async function saveOcorrencia(){
   const el=document.getElementById('envolvidos-list-ocorr');
   if(el) el.innerHTML='';
   closeModal('modal-ocorr');
-  showToast('OcorrÃªncia registrada! âœ…','sucesso');
+  showToast('Ocorrência registrada! ✅','sucesso');
   renderOcorrencias(); renderDashOcorr();
 }
 
@@ -2510,9 +2510,9 @@ async function salvarTratamento(manter){
     o.tratada = true;
     o.justificativa = just;
     
-    // Anexa a tag [TRATADA] e a justificativa Ã  descriÃ§Ã£o original
+    // Anexa a tag [TRATADA] e a justificativa à descrição original
     const novaDesc = o.desc + '\n[TRATADA] ' + just;
-    o.desc = novaDesc; // atualiza na memÃ³ria
+    o.desc = novaDesc; // atualiza na memória
     
     // Persiste no Supabase
     const { error } = await supabaseClient
@@ -2522,9 +2522,9 @@ async function salvarTratamento(manter){
     
     if(error) {
       console.error('[salvarTratamento] Erro:', error);
-      showToast('Aviso: tratamento salvo localmente, mas nÃ£o sincronizado.', 'alerta');
+      showToast('Aviso: tratamento salvo localmente, mas não sincronizado.', 'alerta');
     } else {
-      showToast('OcorrÃªncia tratada âœ…','sucesso');
+      showToast('Ocorrência tratada ✅','sucesso');
     }
   } else {
     showToast('Mantida sem tratamento','alerta');
@@ -2563,13 +2563,13 @@ function abrirAddEnvolvido(listId){
 function confirmarEnvolvido(){
   const nome=document.getElementById('sel-envolvido-aluno')?.value;
   if(!nome){showToast('Selecione um aluno','alerta');return;}
-  if(envolvidos.find(e=>e.nome===nome)){showToast('JÃ¡ adicionado','alerta');return;}
+  if(envolvidos.find(e=>e.nome===nome)){showToast('Já adicionado','alerta');return;}
   envolvidos.push({nome});
   const listId=document.getElementById('modal-env-lista-id')?.value;
   const ul=document.getElementById(listId);
   if(ul){
     const li=document.createElement('div'); li.className='envolvido-tag';
-    li.innerHTML=`<span>ðŸ‘¤ ${nome}</span><button onclick="removerEnvolvido('${nome}',this)">âœ•</button>`;
+    li.innerHTML=`<span>👤 ${nome}</span><button onclick="removerEnvolvido('${nome}',this)">✕</button>`;
     ul.appendChild(li);
   }
   closeModal('modal-add-envolvido');
@@ -2579,16 +2579,16 @@ function removerEnvolvido(nome,btn){
   btn.parentElement.remove();
 }
 
-// â”€â”€â”€ TRANSPORTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// FrequÃªncia de transporte por rota
-const freqTransp = {}; // cpf â†’ {vinda, ida}
-const transpConsolidado = {}; // rotaNome â†’ {vinda:bool, ida:bool}
+// ─── TRANSPORTE ───────────────────────────────────────────────────────────────
+// Frequência de transporte por rota
+const freqTransp = {}; // cpf → {vinda, ida}
+const transpConsolidado = {}; // rotaNome → {vinda:bool, ida:bool}
 
 function popularDiasFiltroTransp(){
   const sel=document.getElementById('filtro-transp-dia'); if(!sel)return;
   const dias=diasLetivosDisponiveis();
   sel.innerHTML='<option value="">Selecione o dia letivo</option>'+
-    dias.map(k=>`<option value="${k}">${formatarDataKey(k)} â€” ${(CALENDARIO[k]?.label||'Letivo')}</option>`).join('');
+    dias.map(k=>`<option value="${k}">${formatarDataKey(k)} — ${(CALENDARIO[k]?.label||'Letivo')}</option>`).join('');
 }
 
 function renderTransporte(){
@@ -2609,7 +2609,7 @@ function renderTransporte(){
 
   let rotas=ROTAS_DATA;
   if(rotaF) rotas=rotas.filter(r=>r.nome===rotaF);
-  if(!rotas.length){cont.innerHTML=emptyState('ðŸšŒ','Nenhuma rota cadastrada','Clique em "+ Nova Rota"');return;}
+  if(!rotas.length){cont.innerHTML=emptyState('🚌','Nenhuma rota cadastrada','Clique em "+ Nova Rota"');return;}
 
   cont.innerHTML=rotas.map(r=>{
     let alunos=ALUNOS_DATA.filter(a=>a.rota===r.nome);
@@ -2617,24 +2617,24 @@ function renderTransporte(){
     const tc=transpConsolidado[r.nome]||{};
     const bgVinda=tc.vinda?'var(--green-light)':'var(--red-light)';
     const bgIda=tc.ida?'var(--green-light)':'var(--red-light)';
-    const monitora=r.monitora||'â€”';
-    const diaLabel=diaF?(' â€” '+formatarDataKey(diaF)):'';
+    const monitora=r.monitora||'—';
+    const diaLabel=diaF?(' — '+formatarDataKey(diaF)):'';
     return`<div class="rota-card">
       <div class="rota-header">
         <div>
-          <span class="rota-title">ðŸšŒ ${r.nome}${diaLabel}</span>
-          <span style="font-size:12px;color:var(--gray5);margin-left:12px">${r.motorista||'â€”'} â€” ${r.veiculo||'â€”'}</span>
+          <span class="rota-title">🚌 ${r.nome}${diaLabel}</span>
+          <span style="font-size:12px;color:var(--gray5);margin-left:12px">${r.motorista||'—'} — ${r.veiculo||'—'}</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="metric-badge badge-blue">${alunos.length} alunos</span>
-          ${diaF?`<span class="metric-badge badge-gray" style="font-size:11px">ðŸ‘©â€ðŸ« Monitora: ${monitora}</span>`:''}
-          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','vinda')">âœ“ Consolidar Vinda</button>
-          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','ida')">âœ“ Consolidar Ida</button>
-          <button class="btn btn-red btn-xs" onclick="excluirRota('${r.id||''}','${r.nome}')">ðŸ—‘ Excluir Rota</button>
+          ${diaF?`<span class="metric-badge badge-gray" style="font-size:11px">👩‍🏫 Monitora: ${monitora}</span>`:''}
+          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','vinda')">✓ Consolidar Vinda</button>
+          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','ida')">✓ Consolidar Ida</button>
+          <button class="btn btn-red btn-xs" onclick="excluirRota('${r.id||''}','${r.nome}')">🗑 Excluir Rota</button>
         </div>
       </div>
       ${diaF?`<div style="padding:6px 16px;background:var(--blue-light);font-size:12px;color:var(--blue-dark);font-weight:600">
-        ðŸ“… FrequÃªncia do dia ${formatarDataKey(diaF)} | ResponsÃ¡vel: ${monitora}
+        📅 Frequência do dia ${formatarDataKey(diaF)} | Responsável: ${monitora}
       </div>`:''}
       <div style="padding:12px 16px">
         ${!alunos.length?'<div style="text-align:center;padding:20px;color:var(--gray4);font-size:13px">Nenhum aluno nesta rota com os filtros selecionados</div>':
@@ -2645,7 +2645,7 @@ function renderTransporte(){
             const evasaoTransp=ft.vinda==='P'&&ft.ida==='F';
             const bgAluno=evasaoTransp?'#ffe4e4':'var(--gray2)';
             return`<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;background:${bgAluno};cursor:pointer" onclick="verFicha('${a.cpf}')" title="Ver ficha de ${a.nome}">
-              <span style="font-size:12.5px;flex:1;font-weight:500">ðŸ‘¤ ${a.nome}${evasaoTransp?' ðŸš¨':''}</span>
+              <span style="font-size:12.5px;flex:1;font-weight:500">👤 ${a.nome}${evasaoTransp?' 🚨':''}</span>
               <span style="font-size:10px;font-weight:700;color:var(--blue-dark)">V</span>
               <div style="display:flex;gap:2px;background:${bgVinda};border-radius:5px;padding:1px">
                 <button class="freq-btn P btn-xs ${ft.vinda==='P'?'selected':''}" onclick="event.stopPropagation();markFreqTransp('${a.cpf}','vinda','P',this,'${r.nome}')">P</button>
@@ -2670,18 +2670,18 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
   btn.closest('div[style*="display:flex;gap:2px"]').querySelectorAll('.freq-btn').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
 
-  // Detecta evasÃ£o no transporte (Vinda P + Ida F)
+  // Detecta evasão no transporte (Vinda P + Ida F)
   const ft=freqTransp[cpf];
   if(ft.vinda==='P' && ft.ida==='F'){
     const aluno=ALUNOS_DATA.find(a=>a.cpf===cpf);
     const diaF=document.getElementById('filtro-transp-dia')?.value||'';
     const rota=ROTAS_DATA.find(r=>r.nome===rotaNome);
-    showToast('ðŸš¨ EvasÃ£o no Transporte: '+(aluno?.nome||'Aluno'),'evasao');
+    showToast('🚨 Evasão no Transporte: '+(aluno?.nome||'Aluno'),'evasao');
     const ocorrId=Date.now();
     OCORR_DATA.push({
-      id:ocorrId, tipo:'evasao', icon:'ðŸšŒ',
-      aluno:aluno?.nome||'â€”', cpf, turma:aluno?.turma||'â€”',
-      desc:`EvasÃ£o no transporte escolar â€” Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'â€”'}`,
+      id:ocorrId, tipo:'evasao', icon:'🚌',
+      aluno:aluno?.nome||'—', cpf, turma:aluno?.turma||'—',
+      desc:`Evasão no transporte escolar — Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'—'}`,
       hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
       data:diaF?formatarDataKey(diaF):new Date().toLocaleDateString('pt-BR'),
       tratada:false, aguardandoPais:false, origem:'transporte', rota:rotaNome
@@ -2689,8 +2689,8 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
     // Registra na ficha do aluno
     if(aluno){
       (aluno.historico=aluno.historico||[]).push({
-        tipo:'ocorrencia', titulo:'EvasÃ£o no Transporte',
-        desc:`Vinda: P â€” Ida: F â€” Rota: ${rotaNome}`,
+        tipo:'ocorrencia', titulo:'Evasão no Transporte',
+        desc:`Vinda: P — Ida: F — Rota: ${rotaNome}`,
         data:new Date().toLocaleDateString('pt-BR')
       });
     }
@@ -2699,7 +2699,7 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
           tipo: 'evasao',
           aluno_id: aluno.id,
           turma_id: aluno.turma_id,
-          descricao: `EvasÃ£o no transporte escolar â€” Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'â€”'}`,
+          descricao: `Evasão no transporte escolar — Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'—'}`,
           hora: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
           data_ocorr: new Date().toISOString().split('T')[0],
           tratada: false,
@@ -2721,7 +2721,7 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
 function consolidarTransp(rotaNome, tipo){
   if(!transpConsolidado[rotaNome]) transpConsolidado[rotaNome]={};
   transpConsolidado[rotaNome][tipo]=true;
-  showToast('FrequÃªncia de '+tipo+' consolidada â€” '+rotaNome+' âœ…','sucesso');
+  showToast('Frequência de '+tipo+' consolidada — '+rotaNome+' ✅','sucesso');
   renderTransporte(); salvarDados();
 }
 
@@ -2753,16 +2753,16 @@ async function saveRota(){
 }
 
 async function excluirRota(id, nome){
-  if(!confirm('Excluir a rota "'+nome+'"? Esta aÃ§Ã£o Ã© irreversÃ­vel.')) return;
+  if(!confirm('Excluir a rota "'+nome+'"? Esta ação é irreversível.')) return;
   const {error} = await supabaseClient.from('rotas').delete().eq('id', id);
   if(error){ showToast('Erro ao excluir: '+error.message,'evasao'); return; }
   ROTAS_DATA = ROTAS_DATA.filter(r => r.id !== id);
-  showToast('Rota "'+nome+'" excluÃ­da!','alerta');
+  showToast('Rota "'+nome+'" excluída!','alerta');
   atualizarSelectTurmas();
   renderTransporte();
 }
 
-// â”€â”€â”€ LIVROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── LIVROS ───────────────────────────────────────────────────────────────────
 function renderLivros(){
   const g=document.getElementById('livros-grid'); if(!g)return;
   const turnoF=document.getElementById('livros-filtro-turno')?.value||'';
@@ -2785,8 +2785,8 @@ function renderLivros(){
       <div class="livro-icon">${l.icon}</div>
       <div class="livro-name">${l.nome}</div>
       <div class="livro-bar"><div class="livro-bar-fill" style="width:${pct}%;background:${color}"></div></div>
-      <div class="livro-info">${entregues}/${totalAlunos} entregues â€” <strong>${pct}%</strong></div>
-      <div style="font-size:11px;color:var(--blue-dark);margin-top:6px">â–¶ Ver lista de alunos</div>
+      <div class="livro-info">${entregues}/${totalAlunos} entregues — <strong>${pct}%</strong></div>
+      <div style="font-size:11px;color:var(--blue-dark);margin-top:6px">▶ Ver lista de alunos</div>
     </div>`;
   }).join('');
 }
@@ -2801,10 +2801,10 @@ function abrirLivroAlunos(liIdx, liNome){
     if(turmaF && a.turma!==turmaF) return false;
     return true;
   });
-  document.getElementById('livros-alunos-titulo').textContent='ðŸ“š '+liNome+' â€” Lista de Alunos';
+  document.getElementById('livros-alunos-titulo').textContent='📚 '+liNome+' — Lista de Alunos';
   const tbody=document.getElementById('livros-alunos-tbody');
   if(!tbody)return;
-  if(!alunos.length){tbody.innerHTML=emptyTr('ðŸ‘¥','Nenhum aluno com os filtros aplicados','',5);
+  if(!alunos.length){tbody.innerHTML=emptyTr('👥','Nenhum aluno com os filtros aplicados','',5);
   } else {
     tbody.innerHTML=alunos.map(a=>{
       const recebeu=(a.livros||{})[liIdx]==='sim';
@@ -2818,7 +2818,7 @@ function abrirLivroAlunos(liIdx, liNome){
             <input type="checkbox" ${recebeu?'checked':''} onchange="toggleLivroAluno('${a.cpf}',${liIdx},this)"
               style="width:16px;height:16px;cursor:pointer">
             <span style="font-size:13px;color:${recebeu?'var(--green-dark)':'var(--gray4)'}">
-              ${recebeu?'âœ“ Recebeu':'NÃ£o recebeu'}
+              ${recebeu?'✓ Recebeu':'Não recebeu'}
             </span>
           </label>
         </td>
@@ -2844,7 +2844,7 @@ async function toggleLivroAluno(cpf, liIdx, checkbox){
     delete a.livros[liIdx+'_data'];
   }
   const span=checkbox.nextElementSibling;
-  if(span){span.style.color=recebeu?'var(--green-dark)':'var(--gray4)';span.textContent=recebeu?'âœ“ Recebeu':'NÃ£o recebeu';}
+  if(span){span.style.color=recebeu?'var(--green-dark)':'var(--gray4)';span.textContent=recebeu?'✓ Recebeu':'Não recebeu';}
   const td=checkbox.closest('td').nextElementSibling;
   if(td) td.textContent=recebeu?new Date().toLocaleDateString('pt-BR'):'';
   
@@ -2867,7 +2867,7 @@ function fecharLivroAlunos(){
   livroAtualIdx=-1;
 }
 
-// â”€â”€â”€ CHAT RVS (Sincronizado Supabase Realtime) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── CHAT RVS (Sincronizado Supabase Realtime) ───────────────────────────────
 let chatSubscription = null;
 let presenceChannel = null;
 let onlineUsers = {};
@@ -2904,9 +2904,9 @@ function renderChatContacts() {
   const el = document.getElementById('chat-contacts');
   if(!el) return;
   
-  const titles = { coord: 'CoordenaÃ§Ã£o', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
+  const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
   let html = `<div class="chat-contact active">
-        <div class="chat-contact-avatar" style="background:var(--primary)">ðŸ‘¥</div>
+        <div class="chat-contact-avatar" style="background:var(--primary)">👥</div>
         <div class="chat-contact-info"><h4>Grupo ${titles[chatSegment] || chatSegment}</h4><p>Chat Coletivo</p></div>
       </div>`;
       
@@ -2921,7 +2921,7 @@ function renderChatContacts() {
   const usersList = Object.values(uniqueUsers).filter(u => u.nome !== myName);
   
   if (usersList.length > 0) {
-      html += `<div style="font-size:11px;font-weight:bold;color:var(--gray5);margin:15px 0 5px 10px;text-transform:uppercase;">UsuÃ¡rios Online</div>`;
+      html += `<div style="font-size:11px;font-weight:bold;color:var(--gray5);margin:15px 0 5px 10px;text-transform:uppercase;">Usuários Online</div>`;
       usersList.forEach(u => {
           const avatar = u.nome.substring(0,2).toUpperCase();
           html += `<div class="chat-contact" style="pointer-events:none;opacity:0.8">
@@ -2951,20 +2951,20 @@ function initChatRealtime() {
       
       const myName = getCurrentUser()?.nome || 'Dhenison Carlos';
       if (novaMsg.remetente !== myName) {
-        const titles = { coord: 'CoordenaÃ§Ã£o', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
+        const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
         const segName = titles[novaMsg.segmento] || novaMsg.segmento;
         const isCurrentlyLooking = document.getElementById('page-chat')?.classList.contains('active') && chatSegment === novaMsg.segmento;
         
         if (!isCurrentlyLooking) {
             let resumoMsg = novaMsg.mensagem.substring(0,50);
             if(novaMsg.mensagem.length>50) resumoMsg += '...';
-            if(novaMsg.tipo === 'image') resumoMsg = 'ðŸ“¸ Imagem recebida';
-            if(novaMsg.tipo === 'alert') resumoMsg = 'ðŸš¨ ALERTA CRÃTICO';
+            if(novaMsg.tipo === 'image') resumoMsg = '📸 Imagem recebida';
+            if(novaMsg.tipo === 'alert') resumoMsg = '🚨 ALERTA CRÍTICO';
 
-            // Adiciona ao painel de notificaÃ§Ãµes
+            // Adiciona ao painel de notificações
             addNotification({
               type: 'chat',
-              title: `${novaMsg.remetente} â€” ${segName}`,
+              title: `${novaMsg.remetente} — ${segName}`,
               body: resumoMsg,
               action: () => {
                 showPage('chat', document.querySelector(".nav-item[onclick*=\'chat\']"));
@@ -3006,7 +3006,7 @@ async function carregarMensagensSegmento() {
 
 function renderChat(seg){
   chatSegment=seg; 
-  const titles = { coord: 'CoordenaÃ§Ã£o', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
+  const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
   document.getElementById('chat-current-name').textContent = 'Grupo ' + titles[seg];
   
   renderChatContacts();
@@ -3023,7 +3023,7 @@ function renderChatMsgsUI(){
   const myName = getCurrentUser()?.nome || 'Dhenison Carlos';
   
   if(!currentChatMessages.length){
-    m.innerHTML=emptyState('ðŸ’¬','Nenhuma mensagem nas Ãºltimas 48h','Comece a conversar!');
+    m.innerHTML=emptyState('💬','Nenhuma mensagem nas últimas 48h','Comece a conversar!');
     return;
   }
   
@@ -3033,9 +3033,9 @@ function renderChatMsgsUI(){
     const timeStr = new Date(msg.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     let content = msg.mensagem;
     
-    // FormataÃ§Ã£o especial se for alerta
+    // Formatação especial se for alerta
     if(msg.tipo === 'alert') {
-      content = `<strong style="color:var(--orange)">ðŸš¨ ALERTA:</strong><br/>${msg.mensagem}`;
+      content = `<strong style="color:var(--orange)">🚨 ALERTA:</strong><br/>${msg.mensagem}`;
     }
     
     return `<div class="msg ${tClass}">
@@ -3061,7 +3061,7 @@ async function sendChatMsg(){
     tipo: 'text'
   };
   
-  // ExibiÃ§Ã£o otimista
+  // Exibição otimista
   currentChatMessages.push({...novaMsg, created_at: new Date().toISOString()});
   renderChatMsgsUI();
   
@@ -3072,7 +3072,7 @@ async function sendChatMsg(){
   }
 }
 
-// â”€â”€â”€ ALERTAS DO CHAT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ALERTAS DO CHAT ──────────────────────────────────────────────────────────
 function toggleAlertaFiltros(){
   const tipo = document.getElementById('alerta-tipo')?.value;
   const filtros = document.getElementById('alerta-fora-sala-filtros');
@@ -3118,7 +3118,7 @@ async function popularAlunosAlerta(){
   }
   
   if (!alunosData || alunosData.length === 0) {
-    showToast('O banco de dados nÃ£o tem alunos vinculados a esta turma.', 'alerta');
+    showToast('O banco de dados não tem alunos vinculados a esta turma.', 'alerta');
     sel.innerHTML = '<option value="">Nenhum aluno (Verifique a aba Alunos)</option>';
     return;
   }
@@ -3140,8 +3140,8 @@ async function enviarAlertaChat(){
   }
   
   let msgFinal = '';
-  if(tipo === 'fora-sala') msgFinal = `Aluno(a) ${aluno} (Turma ${turma}) estÃ¡ fora de sala sem permissÃ£o. `;
-  if(tipo === 'emergencia') msgFinal = `EMERGÃŠNCIA solicitada! `;
+  if(tipo === 'fora-sala') msgFinal = `Aluno(a) ${aluno} (Turma ${turma}) está fora de sala sem permissão. `;
+  if(tipo === 'emergencia') msgFinal = `EMERGÊNCIA solicitada! `;
   if(tipo === 'aviso') msgFinal = `AVISO GERAL: `;
   if(msgExtra) msgFinal += msgExtra;
   
@@ -3162,7 +3162,7 @@ async function enviarAlertaChat(){
     return;
   }
   
-  // 2. Se for fora de sala, registrar nas ocorrÃªncias para ficarem salvas
+  // 2. Se for fora de sala, registrar nas ocorrências para ficarem salvas
   if(tipo === 'fora-sala' && aluno) {
     const oData = new Date().toLocaleDateString('pt-BR');
     const al = ALUNOS_DATA.find(a => a.nome === aluno);
@@ -3170,18 +3170,18 @@ async function enviarAlertaChat(){
       al.historico = al.historico || [];
       al.historico.push({
         tipo: 'ocorrencia',
-        titulo: 'Alerta RÃ¡pido: Fora de Sala',
-        desc: msgExtra || 'Aluno avistado fora de sala sem permissÃ£o.',
+        titulo: 'Alerta Rápido: Fora de Sala',
+        desc: msgExtra || 'Aluno avistado fora de sala sem permissão.',
         data: oData
       });
       OCORR_DATA.push({
-        id: Date.now(), tipo: 'evasao', icon: 'ðŸš¨', aluno: aluno, turma: turma,
+        id: Date.now(), tipo: 'evasao', icon: '🚨', aluno: aluno, turma: turma,
         desc: msgFinal,
         hora: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
         data: oData,
         tratada: false, aguardandoPais: false, origem: 'manual'
       });
-      // Persiste ocorrÃªncia no Supabase
+      // Persiste ocorrência no Supabase
       if(al.id) {
         supabaseClient.from('ocorrencias').insert({
           tipo: 'evasao', aluno_id: al.id, turma_id: al.turma_id,
@@ -3199,18 +3199,18 @@ async function enviarAlertaChat(){
   }
 }
 
-// â”€â”€â”€ PERFIL DO USUÃRIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── PERFIL DO USUÁRIO ────────────────────────────────────────────────────────
 const DRIVE_FOTO_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _perfilFotoPendente = null;
 let _alunoFotoPendente = null;
 let _cameraStream = null; // guarda o stream ativo da webcam
 
-// Abre o modal com a cÃ¢mera (getUserMedia â€” funciona em desktop e celular)
+// Abre o modal com a câmera (getUserMedia — funciona em desktop e celular)
 async function abrirCameraPerfil() {
   const erroEl = document.getElementById('camera-perfil-erro');
   if (erroEl) erroEl.style.display = 'none';
 
-  // Em celular, prefere cÃ¢mera frontal; em desktop, abre a webcam
+  // Em celular, prefere câmera frontal; em desktop, abre a webcam
   const constraints = {
     video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
     audio: false
@@ -3223,11 +3223,11 @@ async function abrirCameraPerfil() {
     openModal('modal-camera-perfil');
   } catch (err) {
     console.error('[Camera] Erro:', err);
-    // Se cÃ¢mera negada/indisponÃ­vel, cai para o seletor de arquivo
+    // Se câmera negada/indisponível, cai para o seletor de arquivo
     if (err.name === 'NotAllowedError') {
-      showToast('PermissÃ£o de cÃ¢mera negada. Selecione da galeria.', 'alerta');
+      showToast('Permissão de câmera negada. Selecione da galeria.', 'alerta');
     } else if (err.name === 'NotFoundError') {
-      showToast('Nenhuma cÃ¢mera encontrada. Use "Da Galeria".', 'alerta');
+      showToast('Nenhuma câmera encontrada. Use "Da Galeria".', 'alerta');
     } else {
       // Fallback: abre o file picker com capture
       document.getElementById('perfil-foto-input')?.click();
@@ -3235,7 +3235,7 @@ async function abrirCameraPerfil() {
   }
 }
 
-// Fecha o modal e para o stream da cÃ¢mera
+// Fecha o modal e para o stream da câmera
 function fecharCameraPerfil() {
   if (_cameraStream) {
     _cameraStream.getTracks().forEach(t => t.stop());
@@ -3246,7 +3246,7 @@ function fecharCameraPerfil() {
   closeModal('modal-camera-perfil');
 }
 
-// Captura o frame atual do vÃ­deo e converte em File
+// Captura o frame atual do vídeo e converte em File
 function tirarFotoPerfil() {
   const video = document.getElementById('camera-perfil-video');
   const canvas = document.getElementById('camera-perfil-canvas');
@@ -3296,7 +3296,7 @@ function renderPerfil() {
     if(iniciaisEl) iniciaisEl.style.display = 'block';
   }
 
-  // Atualiza sidebar tambÃ©m
+  // Atualiza sidebar também
   const sideAvatar = document.getElementById('sidebar-user-avatar');
   if (sideAvatar) {
     if (user.foto_url) {
@@ -3311,7 +3311,7 @@ function perfilSelecionarFoto(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) {
-    showToast('Foto muito grande! MÃ¡ximo 5MB.', 'alerta');
+    showToast('Foto muito grande! Máximo 5MB.', 'alerta');
     input.value = '';
     return;
   }
@@ -3331,13 +3331,13 @@ function perfilSelecionarFoto(input) {
   if (status) {
     status.style.display = 'block';
     status.style.color = 'var(--blue-dark)';
-    status.textContent = 'ðŸ“Ž Foto selecionada â€” clique em "Salvar AlteraÃ§Ãµes" para enviar ao Drive.';
+    status.textContent = '📎 Foto selecionada — clique em "Salvar Alterações" para enviar ao Drive.';
   }
 }
 
 async function salvarPerfil() {
   const user = getCurrentUser();
-  if (!user) { showToast('SessÃ£o expirada. FaÃ§a login novamente.', 'alerta'); return; }
+  if (!user) { showToast('Sessão expirada. Faça login novamente.', 'alerta'); return; }
 
   const nome     = (document.getElementById('perfil-nome')?.value     || '').trim() || user.nome;
   const formacao = (document.getElementById('perfil-formacao')?.value || '').trim();
@@ -3345,19 +3345,19 @@ async function salvarPerfil() {
   const whatsapp = (document.getElementById('perfil-whatsapp')?.value || '').trim();
 
   if (!user.email) {
-    showToast('UsuÃ¡rio sem e-mail na sessÃ£o. FaÃ§a logout e login novamente.', 'alerta');
+    showToast('Usuário sem e-mail na sessão. Faça logout e login novamente.', 'alerta');
     return;
   }
 
   const btn = document.querySelector('#page-perfil .btn-primary');
-  if (btn) { btn.disabled = true; btn.textContent = 'â³ Salvandoâ€¦'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
 
   let fotoUrl = user.foto_url || null;
 
-  // â”€â”€ Upload da foto para o Google Drive (subpasta com nome da pessoa) â”€â”€
+  // ── Upload da foto para o Google Drive (subpasta com nome da pessoa) ──
   if (_perfilFotoPendente) {
     const status = document.getElementById('perfil-foto-status');
-    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = 'â³ Enviando foto ao Google Driveâ€¦'; }
+    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '⏳ Enviando foto ao Google Drive…'; }
 
     try {
       const base64 = await fileParaBase64(_perfilFotoPendente);
@@ -3379,7 +3379,7 @@ async function salvarPerfil() {
 
       fotoUrl = resultado.url;
       
-      // â”€â”€ Corrige links do Google Drive para evitar bloqueio de imagem (CORS/Cookies) â”€â”€
+      // ── Corrige links do Google Drive para evitar bloqueio de imagem (CORS/Cookies) ──
       if(fotoUrl.includes('drive.google.com')){
         const match = fotoUrl.match(/id=([^&]+)/) || fotoUrl.match(/d\/([a-zA-Z0-9_-]+)/);
         if(match && match[1]){
@@ -3388,17 +3388,17 @@ async function salvarPerfil() {
       }
 
       _perfilFotoPendente = null;
-      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = 'âœ… Foto salva no Google Drive!'; }
+      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = '✅ Foto salva no Google Drive!'; }
 
     } catch(err) {
       console.error('[Foto Perfil] Erro:', err);
       showToast('Erro ao enviar foto: ' + err.message, 'evasao');
-      if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Salvar AlteraÃ§Ãµes'; }
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
       return;
     }
   }
 
-  // â”€â”€ Salvar no banco usando update pelo ID â”€â”€
+  // ── Salvar no banco usando update pelo ID ──
   const updateData = {
     nome,
     formacao,
@@ -3414,7 +3414,7 @@ async function salvarPerfil() {
     .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
     .maybeSingle();
 
-  if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Salvar AlteraÃ§Ãµes'; }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
 
   if (dbError) {
     console.error('[salvarPerfil] Erro no banco:', dbError);
@@ -3422,7 +3422,7 @@ async function salvarPerfil() {
     return;
   }
 
-  // Atualiza sessÃ£o com dados devolvidos pelo banco (inclui id gerado)
+  // Atualiza sessão com dados devolvidos pelo banco (inclui id gerado)
   const userAtual = getCurrentUser();
   if (userAtual) {
     const merged = { ...userAtual, ...(savedUser || {}), nome, formacao, bio, whatsapp };
@@ -3432,10 +3432,10 @@ async function salvarPerfil() {
 
   renderPerfil();
   updateSidebarProfile();
-  showToast('Perfil atualizado! âœ…', 'sucesso');
+  showToast('Perfil atualizado! ✅', 'sucesso');
 }
 
-// â”€â”€â”€ PERMISSÃ•ES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── PERMISSÕES ───────────────────────────────────────────────────────────────
 function renderPermissoes(){
   const b=document.getElementById('perm-tbody'); if(!b)return;
   
@@ -3485,17 +3485,17 @@ async function togglePermissao(index, role) {
 
   if (error) {
     console.error('[togglePermissao] Erro:', error);
-    showToast('Erro ao salvar permissÃ£o: ' + error.message, 'alerta');
+    showToast('Erro ao salvar permissão: ' + error.message, 'alerta');
   } else {
-    showToast('PermissÃµes atualizadas!', 'sucesso');
+    showToast('Permissões atualizadas!', 'sucesso');
   }
 }
 
-// â”€â”€â”€ SISTEMA DE PERMISSÃ•ES (reescrito v7) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── SISTEMA DE PERMISSÕES (reescrito v7) ──────────────────────────────────────
 
 /**
- * Normaliza o string do perfil para comparaÃ§Ã£o segura.
- * Converte 'SecretÃ¡ria', 'PROFESSOR', 'Coordenador' â†’ lowercase sem acento.
+ * Normaliza o string do perfil para comparação segura.
+ * Converte 'Secretária', 'PROFESSOR', 'Coordenador' → lowercase sem acento.
  */
 function normalizeRole(role) {
   if (!role) return '';
@@ -3505,7 +3505,7 @@ function normalizeRole(role) {
 }
 
 /**
- * Retorna a chave do PERMS (coord/sec/prof/admin) para o perfil do usuÃ¡rio.
+ * Retorna a chave do PERMS (coord/sec/prof/admin) para o perfil do usuário.
  */
 function getRoleKey(role) {
   const n = normalizeRole(role);
@@ -3513,11 +3513,11 @@ function getRoleKey(role) {
   if (n === 'coordenador') return 'coord';
   if (n === 'secretaria' || n === 'secretario') return 'sec';
   if (n === 'professor') return 'prof';
-  return 'prof'; // default seguro: acesso mÃ­nimo
+  return 'prof'; // default seguro: acesso mínimo
 }
 
 /**
- * Verifica se o usuÃ¡rio atual pode VER uma pÃ¡gina.
+ * Verifica se o usuário atual pode VER uma página.
  */
 function podeVer(pageId) {
   const user = getCurrentUser();
@@ -3533,7 +3533,7 @@ function podeVer(pageId) {
 }
 
 /**
- * Verifica se o usuÃ¡rio atual pode EDITAR em uma pÃ¡gina.
+ * Verifica se o usuário atual pode EDITAR em uma página.
  */
 function podeEditar(pageId) {
   const user = getCurrentUser();
@@ -3547,7 +3547,7 @@ function podeEditar(pageId) {
 }
 
 /**
- * Aplica as permissÃµes na UI: mostra/oculta itens do menu e redireciona se necessÃ¡rio.
+ * Aplica as permissões na UI: mostra/oculta itens do menu e redireciona se necessário.
  * DEVE ser chamado DEPOIS que PERMS foi carregado do banco.
  */
 function aplicarPermissoesUI() {
@@ -3555,7 +3555,7 @@ function aplicarPermissoesUI() {
   if (!user) return;
 
   const rKey = getRoleKey(user.perfil);
-  console.log(`[aplicarPermissoesUI] perfil="${user.perfil}" â†’ rKey="${rKey}" | PERMS.length=${PERMS.length}`);
+  console.log(`[aplicarPermissoesUI] perfil="${user.perfil}" → rKey="${rKey}" | PERMS.length=${PERMS.length}`);
 
   const navItems = document.querySelectorAll('.nav-item[onclick]');
   let firstAllowedNav = null;
@@ -3566,7 +3566,7 @@ function aplicarPermissoesUI() {
     if (!match) return;
     const pID = match[1];
 
-    // 'perfil' sempre visÃ­vel
+    // 'perfil' sempre visível
     if (pID === 'perfil') {
       nav.style.display = '';
       return;
@@ -3591,23 +3591,23 @@ function aplicarPermissoesUI() {
         activePageIsAllowed = true;
       }
     } else {
-      // Garante que page oculta nÃ£o fique active
+      // Garante que page oculta não fique active
       if (nav.classList.contains('active')) {
         nav.classList.remove('active');
       }
     }
   });
 
-  // Se a pÃ¡gina atual nÃ£o Ã© permitida â†’ redireciona para a primeira permitida
+  // Se a página atual não é permitida → redireciona para a primeira permitida
   if (!activePageIsAllowed && firstAllowedNav) {
-    console.log(`[aplicarPermissoesUI] PÃ¡gina ativa nÃ£o permitida. Redirecionando para: ${firstAllowedNav.getAttribute('onclick')}`);
+    console.log(`[aplicarPermissoesUI] Página ativa não permitida. Redirecionando para: ${firstAllowedNav.getAttribute('onclick')}`);
     firstAllowedNav.click();
   }
 }
 
 
 
-// â”€â”€â”€ RELATÃ“RIOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
 let relDadosCache = {};
 
 function setRelTab(tab, el){
@@ -3631,7 +3631,7 @@ function filtrarTurmasRel(tipo){
   const turnoNorm=normalizeTurno(turno);
   const turmas=turnoNorm?TURMAS_DATA.filter(t=>normalizeTurno(t.turno)===turnoNorm):TURMAS_DATA;
   const base=tipo==='livros'?'<option value="">Todas as turmas</option>':'<option value="">Selecione a turma</option>';
-  sel.innerHTML=base+turmas.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`).join('');
+  sel.innerHTML=base+turmas.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
 }
 
 function getDiasLetivos(periodo, prefixo){
@@ -3688,11 +3688,11 @@ async function gerarRelFreq(){
   // Feedback visual de carregamento
   const resultado = document.getElementById('rel-freq-resultado');
   resultado.innerHTML = `<div style="text-align:center;padding:32px;color:var(--gray5)">
-    <div style="font-size:28px;margin-bottom:10px">â³</div>
+    <div style="font-size:28px;margin-bottom:10px">⏳</div>
     <div style="font-size:14px;font-weight:600">Buscando dados consolidados do banco...</div>
   </div>`;
 
-  // Garante ordem cronolÃ³gica para pegar o inÃ­cio e fim reais
+  // Garante ordem cronológica para pegar o início e fim reais
   const diasChronological = [...dias].sort((a, b) => {
     const [yA, mA, dA] = a.split('-').map(Number);
     const [yB, mB, dB] = b.split('-').map(Number);
@@ -3717,13 +3717,13 @@ async function gerarRelFreq(){
     diasFimDb = `${yF}-${pad(mF)}-${pad(dF)}`;
   }
 
-  // Busca TODOS os registros de frequÃªncia consolidados da turma no perÃ­odo
+  // Busca TODOS os registros de frequência consolidados da turma no período
   let freqDB = {};
   let numRegistrosBanco = 0; // Para debug
 
   try {
     if(turmaObj) {
-      // Usando fetchAllRows para nÃ£o esbarrar no limite de 1000 da API
+      // Usando fetchAllRows para não esbarrar no limite de 1000 da API
       const { data: fqRows, error } = await fetchAllRows('frequencia', 'aluno_id, data, tipo, status, consolidado', q => {
         let qFilter = q.eq('turma_id', turmaObj.id).eq('consolidado', true);
         if(diasIniDb && diasFimDb) {
@@ -3736,7 +3736,7 @@ async function gerarRelFreq(){
       
       numRegistrosBanco = fqRows ? fqRows.length : 0;
 
-      // Monta Ã­ndice: freqDB[aluno_id][data_unpadded][tipo] = status
+      // Monta índice: freqDB[aluno_id][data_unpadded][tipo] = status
       (fqRows || []).forEach(f => {
         // Remove padding do Supabase (YYYY-MM-DD -> YYYY-M-D) para bater com 'dias'
         const [y, m, d] = f.data.split('-');
@@ -3760,16 +3760,16 @@ async function gerarRelFreq(){
       const ent = freqDB[al.id]?.[dia]?.['entrada'] || null;
       const sai = freqDB[al.id]?.[dia]?.['saida'] || null;
 
-      let status = 'â€”';
+      let status = '—';
 
       if(ent || sai) {
-        // Regra de negÃ³cio: P = presente nos dois; F = falta em algum; FJ = falta justificada
+        // Regra de negócio: P = presente nos dois; F = falta em algum; FJ = falta justificada
         const evasao = ent === 'P' && sai === 'F';
         if(ent?.startsWith('FJ') || sai?.startsWith('FJ')) status = 'FJ';
         else if(ent === 'F' || evasao) status = 'F';
         else if(ent === 'P' && (sai === 'P' || sai === null)) status = 'P';
         else if(ent === 'P') status = 'P';
-        else status = ent || sai || 'â€”';
+        else status = ent || sai || '—';
       }
 
       porDia[dia] = status;
@@ -3786,22 +3786,22 @@ async function gerarRelFreq(){
 
   relDadosCache.freq = { alunos: dados, dias, turma, periodo };
 
-  // Verifica se hÃ¡ dados consolidados
-  const totalRegistros = dados.reduce((s, d) => s + Object.values(d.porDia).filter(v => v !== 'â€”').length, 0);
+  // Verifica se há dados consolidados
+  const totalRegistros = dados.reduce((s, d) => s + Object.values(d.porDia).filter(v => v !== '—').length, 0);
 
   if(totalRegistros === 0) {
     resultado.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray5)">
-      <div style="font-size:36px;margin-bottom:12px">ðŸ“­</div>
-      <div style="font-size:15px;font-weight:700;color:var(--gray6)">Nenhuma frequÃªncia consolidada encontrada</div>
-      <div style="font-size:12px;margin-top:8px">Certifique-se de que a chamada foi <strong>consolidada</strong> na aba FrequÃªncia.</div>
+      <div style="font-size:36px;margin-bottom:12px">📭</div>
+      <div style="font-size:15px;font-weight:700;color:var(--gray6)">Nenhuma frequência consolidada encontrada</div>
+      <div style="font-size:12px;margin-top:8px">Certifique-se de que a chamada foi <strong>consolidada</strong> na aba Frequência.</div>
       <div style="margin-top:20px;padding:15px;background:#fff3cd;color:#856404;border-radius:6px;font-size:12px;text-align:left;border:1px solid #ffeeba">
-        <strong>Debug TÃ©cnico:</strong><br>
+        <strong>Debug Técnico:</strong><br>
         Turma Code: ${turma}<br>
         Turma ID: ${turmaObj?.id}<br>
         Dias Buscados: ${dias.join(', ')}<br>
         DiasIni: ${diasIni || 'null'}, DiasFim: ${diasFim || 'null'}<br>
         Alunos na Turma: ${alunos.length}<br>
-        Dias letivos encontrados para este perÃ­odo: ${dias.length}<br>
+        Dias letivos encontrados para este período: ${dias.length}<br>
         Registros retornados do Banco: ${numRegistrosBanco} (cru) / ${dados.reduce((s, d) => s + Object.keys(d.porDia).length, 0)} (processados)<br>
         FreqDB Keys (Alunos c/ Freq): ${Object.keys(freqDB).length}<br>
       </div>
@@ -3811,14 +3811,14 @@ async function gerarRelFreq(){
   }
 
   // Renderiza tabela
-  const tHead = `<tr><th>Aluno</th>${dias.map(d => `<th style="font-size:10px;white-space:nowrap">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%P</th><th>%F</th><th>âœ… Pres.</th><th>âŒ Falt.</th><th>ðŸ“ FJ</th></tr>`;
+  const tHead = `<tr><th>Aluno</th>${dias.map(d => `<th style="font-size:10px;white-space:nowrap">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%P</th><th>%F</th><th>✅ Pres.</th><th>❌ Falt.</th><th>📝 FJ</th></tr>`;
   const tBody = dados.map(d => `<tr>
     <td style="font-size:12px;font-weight:600;white-space:nowrap">${d.nome}</td>
     ${dias.map(dia => {
       const v = d.porDia[dia];
       const bg = v === 'P' ? 'var(--green-light)' : v === 'F' ? 'var(--red-light)' : v?.startsWith('FJ') ? 'var(--yellow-light)' : 'var(--gray2)';
       const color = v === 'P' ? 'var(--green-dark)' : v === 'F' ? 'var(--red-dark)' : v?.startsWith('FJ') ? 'var(--yellow-dark)' : 'var(--gray5)';
-      return `<td style="text-align:center;background:${bg};color:${color};font-size:11px;font-weight:700">${v || 'â€”'}</td>`;
+      return `<td style="text-align:center;background:${bg};color:${color};font-size:11px;font-weight:700">${v || '—'}</td>`;
     }).join('')}
     <td style="text-align:center"><span class="metric-badge badge-green">${d.pctP}%</span></td>
     <td style="text-align:center"><span class="metric-badge badge-red">${d.pctF}%</span></td>
@@ -3828,8 +3828,8 @@ async function gerarRelFreq(){
   </tr>`).join('');
 
   const html = `<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:4px">ðŸ“Š RelatÃ³rio de FrequÃªncia â€” Turma ${turma}</div>
-    <div style="font-size:12px;color:var(--gray5);margin-bottom:12px">PerÃ­odo: ${periodo.charAt(0).toUpperCase()+periodo.slice(1)} Â· ${totalRegistros} registro(s) consolidado(s)</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">📊 Relatório de Frequência — Turma ${turma}</div>
+    <div style="font-size:12px;color:var(--gray5);margin-bottom:12px">Período: ${periodo.charAt(0).toUpperCase()+periodo.slice(1)} · ${totalRegistros} registro(s) consolidado(s)</div>
     <div style="overflow:auto">
       <table style="min-width:600px"><thead style="background:var(--gray2)">${tHead}</thead><tbody>${tBody}</tbody></table>
     </div>
@@ -3853,32 +3853,32 @@ function gerarRelTransp(){
     let presencas=0,faltas=0;
     const porDia={};
     dias.forEach(dia=>{
-      // HistÃ³rico salvo ou dados atuais
+      // Histórico salvo ou dados atuais
       const hist=transpHist[al.cpf]?.[dia]||null;
-      let v='â€”';
+      let v='—';
       if(hist){ v=hist; }
       else {
         const ft=freqTransp[al.cpf]||{};
         const diaAtual=document.getElementById('filtro-transp-dia')?.value||'';
-        if(diaAtual===dia) v=(ft.vinda==='P'&&ft.ida==='P')?'P':ft.vinda==='F'||ft.ida==='F'?'F':'â€”';
-        // Verifica ocorrÃªncia de evasÃ£o no transporte
+        if(diaAtual===dia) v=(ft.vinda==='P'&&ft.ida==='P')?'P':ft.vinda==='F'||ft.ida==='F'?'F':'—';
+        // Verifica ocorrência de evasão no transporte
         const dataFmt=formatarDataKey(dia);
-        if(OCORR_DATA.find(o=>o.origem==='transporte'&&o.aluno===al.nome&&o.data===dataFmt)) v='EvasÃ£o';
+        if(OCORR_DATA.find(o=>o.origem==='transporte'&&o.aluno===al.nome&&o.data===dataFmt)) v='Evasão';
       }
       porDia[dia]=v;
-      if(v==='P') presencas++; else if(v==='F'||v==='EvasÃ£o') faltas++;
+      if(v==='P') presencas++; else if(v==='F'||v==='Evasão') faltas++;
     });
     const total=Math.max(presencas+faltas,1);
     const pct=Math.round(presencas/total*100);
     return{nome:al.nome,rota:al.rota,porDia,presencas,faltas,pct};
   });
-  // Inclui evasÃµes de transporte nos dados
+  // Inclui evasões de transporte nos dados
   dados.forEach(d=>{
     const al=ALUNOS_DATA.find(a=>a.nome===d.nome);
     d.evasoesTransp=OCORR_DATA.filter(o=>o.origem==='transporte'&&(o.aluno===d.nome||(al&&o.cpf===al.cpf))).length;
   });
   relDadosCache.transp={alunos:dados,dias,rota,periodo};
-  const tHead=`<tr><th>Aluno</th><th>Rota</th>${dias.map(d=>`<th style="font-size:10px">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%Uso</th><th>PresenÃ§as</th><th>Faltas</th></tr>`;
+  const tHead=`<tr><th>Aluno</th><th>Rota</th>${dias.map(d=>`<th style="font-size:10px">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%Uso</th><th>Presenças</th><th>Faltas</th></tr>`;
   const tBody=dados.map(d=>`<tr>
     <td style="font-size:12px;font-weight:600">${d.nome}</td>
     <td style="font-size:11px">${d.rota}</td>
@@ -3888,7 +3888,7 @@ function gerarRelTransp(){
     <td style="text-align:center;font-weight:700;color:var(--red)">${d.faltas}</td>
   </tr>`).join('');
   const html=`<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px">RelatÃ³rio de Transporte${rota?' â€” '+rota:''} â€” ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Relatório de Transporte${rota?' — '+rota:''} — ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
     <table style="min-width:500px"><thead style="background:var(--gray2)">${tHead}</thead><tbody>${tBody}</tbody></table>
   </div>`;
   document.getElementById('rel-transp-resultado').innerHTML=html;
@@ -3901,18 +3901,18 @@ function gerarRelOcorr(){
   const dias=getDiasLetivos(periodo,'ocorr');
   let ocorrs=[...OCORR_DATA];
   if(turno){ const als=ALUNOS_DATA.filter(a=>a.turno===turno).map(a=>a.nome); ocorrs=ocorrs.filter(o=>als.includes(o.aluno)); }
-  // Filtra pelo perÃ­odo
+  // Filtra pelo período
   if(dias.length){
     const datas=new Set(dias.map(k=>{ const[y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('pt-BR'); }));
     ocorrs=ocorrs.filter(o=>datas.has(o.data));
   }
   relDadosCache.ocorr={ocorrs,turno,periodo};
   if(!ocorrs.length){
-    document.getElementById('rel-ocorr-resultado').innerHTML=emptyState('âœ…','Nenhuma ocorrÃªncia no perÃ­odo','');
+    document.getElementById('rel-ocorr-resultado').innerHTML=emptyState('✅','Nenhuma ocorrência no período','');
     document.getElementById('rel-ocorr-actions').classList.remove('hidden');
     return;
   }
-  const labels={evasao:'EvasÃ£o',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'AgressÃ£o',atraso:'Atraso'};
+  const labels={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso'};
   const rows=ocorrs.map(o=>`<tr>
     <td style="font-size:12px;font-weight:600">${o.aluno}</td>
     <td><span class="metric-badge ${o.tratada?'badge-green':'badge-red'}">${labels[o.tipo]||o.tipo}</span></td>
@@ -3922,8 +3922,8 @@ function gerarRelOcorr(){
     <td><span class="metric-badge ${o.tratada?'badge-green':'badge-red'}">${o.tratada?'Tratada':'Pendente'}</span></td>
   </tr>`).join('');
   const html=`<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px">RelatÃ³rio de OcorrÃªncias${turno?' â€” '+turno:''} â€” ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
-    <table><thead style="background:var(--gray2)"><tr><th>Aluno</th><th>Tipo</th><th>Turma</th><th>Data/Hora</th><th>DescriÃ§Ã£o</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Relatório de Ocorrências${turno?' — '+turno:''} — ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
+    <table><thead style="background:var(--gray2)"><tr><th>Aluno</th><th>Tipo</th><th>Turma</th><th>Data/Hora</th><th>Descrição</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
   </div>`;
   document.getElementById('rel-ocorr-resultado').innerHTML=html;
   document.getElementById('rel-ocorr-actions').classList.remove('hidden');
@@ -3941,13 +3941,13 @@ function gerarRelLivros(){
   const rows=alunos.map(a=>{
     const cells=LIVROS.map((_,li)=>{
       const rec=(a.livros||{})[li]==='sim';
-      return`<td style="text-align:center;background:${rec?'var(--green-light)':'var(--red-light)'}"><span style="font-size:12px">${rec?'âœ“':'âœ—'}</span></td>`;
+      return`<td style="text-align:center;background:${rec?'var(--green-light)':'var(--red-light)'}"><span style="font-size:12px">${rec?'✓':'✗'}</span></td>`;
     }).join('');
     const total=LIVROS.filter((_,li)=>(a.livros||{})[li]==='sim').length;
     return`<tr><td style="font-weight:600;font-size:12px">${a.nome}</td><td><span class="metric-badge badge-blue">${a.turma}</span></td>${cells}<td style="text-align:center;font-weight:700">${total}/${LIVROS.length}</td></tr>`;
   }).join('');
   const html=`<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px">RelatÃ³rio de Livros${turma?' â€” '+turma:''}${turno?' ('+turno+')':''}</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Relatório de Livros${turma?' — '+turma:''}${turno?' ('+turno+')':''}</div>
     <table style="min-width:600px"><thead style="background:var(--gray2)">${head}</thead><tbody>${rows}</tbody></table>
   </div>`;
   document.getElementById('rel-livros-resultado').innerHTML=html;
@@ -3957,7 +3957,7 @@ function gerarRelLivros(){
 // Downloads
 function downloadRelPDF(divId, filename){
   const el=document.getElementById(divId);
-  if(!el||!el.innerHTML.trim()){showToast('Gere o relatÃ³rio primeiro','alerta');return;}
+  if(!el||!el.innerHTML.trim()){showToast('Gere o relatório primeiro','alerta');return;}
   const conteudo=el.innerHTML;
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+filename+'</title>'
     +'<style>'
@@ -3988,8 +3988,8 @@ async function salvarAtividade(){
   const turmas=selT?Array.from(selT.selectedOptions).map(o=>o.value):[];
   if(!tipo||!data){showToast('Informe o tipo e a data','alerta');return;}
 
-  const tipoLabel = {evento:'Evento Especial',prova:'Prova / AvaliaÃ§Ã£o',letivo:'Dia Letivo Especial',
-    feriado:'Feriado / Recesso',bimestre:'InÃ­cio de Bimestre',fim_bimestre:'Fim de Bimestre'};
+  const tipoLabel = {evento:'Evento Especial',prova:'Prova / Avaliação',letivo:'Dia Letivo Especial',
+    feriado:'Feriado / Recesso',bimestre:'Início de Bimestre',fim_bimestre:'Fim de Bimestre'};
   const obsData = JSON.stringify({ hIni, hFim, turmas, desc });
 
   const {error} = await supabaseClient.from('eventos').insert({
@@ -3997,7 +3997,7 @@ async function salvarAtividade(){
      data: data,
      tipo: tipo,
      turno: turmas.length===1 ? turmas[0] : 'Geral',
-     responsavel: 'CoordenaÃ§Ã£o',
+     responsavel: 'Coordenação',
      observacoes: obsData
   });
 
@@ -4006,7 +4006,7 @@ async function salvarAtividade(){
      showToast('Erro ao salvar: '+error.message, 'alerta');
   } else {
      closeModal('modal-nova-atividade');
-     showToast('Atividade incluÃ­da na agenda!','sucesso');
+     showToast('Atividade incluída na agenda!','sucesso');
      await carregarDados();
      renderCalendar();
      renderAgendaMural();
@@ -4030,7 +4030,7 @@ async function excluirAtividade(id){
   RVS_ATIVIDADES = RVS_ATIVIDADES.filter(a => a.id !== id);
   localStorage.setItem('rvs_atividades', JSON.stringify(RVS_ATIVIDADES));
   
-  showToast('Atividade excluÃ­da!', 'sucesso');
+  showToast('Atividade excluída!', 'sucesso');
   await carregarDados();
   renderCalendar();
   renderAgendaMural();
@@ -4070,19 +4070,19 @@ function carregarLinksHorario(){
     const divBotoes = inp.nextElementSibling;
     
     if (isAdm) {
-      // VisÃ£o de Admin
+      // Visão de Admin
       if(labelLink) labelLink.style.display = 'block';
       inp.style.display = 'block';
       if(divBotoes) divBotoes.style.display = 'flex';
       userView.style.display = 'none';
     } else {
-      // VisÃ£o de UsuÃ¡rio Comum
+      // Visão de Usuário Comum
       if(labelLink) labelLink.style.display = 'none';
       inp.style.display = 'none';
       if(divBotoes) divBotoes.style.display = 'none';
       
       const turno = chave.split('-')[1];
-      const emoji = turno === 'manha' ? 'â˜€ï¸' : turno === 'tarde' ? 'ðŸŒ¤ï¸' : 'ðŸŒ™';
+      const emoji = turno === 'manha' ? '☀️' : turno === 'tarde' ? '🌤️' : '🌙';
       
       if (url) {
         userView.innerHTML = `
@@ -4107,7 +4107,7 @@ async function salvarLink(chave){
   const val=inp.value.trim();
   if(!val){showToast('Cole um link antes de salvar','alerta');return;}
   
-  // Atualiza memÃ³ria
+  // Atualiza memória
   HORARIOS_LINKS[chave] = val;
   
   // Salva no banco
@@ -4136,7 +4136,7 @@ function abrirLink(chave){
 // --- WIPE SYSTEM ---
 async function zerarSistema() {
   confirmarSenhaAdmin(async () => {
-      const confirmacao = confirm("CUIDADO: VocÃª estÃ¡ prestes a DELETAR permanentemente TODOS os Alunos, Turmas, FrequÃªncias e OcorrÃªncias. O sistema ficarÃ¡ totalmente vazio. Tem certeza?");
+      const confirmacao = confirm("CUIDADO: Você está prestes a DELETAR permanentemente TODOS os Alunos, Turmas, Frequências e Ocorrências. O sistema ficará totalmente vazio. Tem certeza?");
       if(!confirmacao) return;
       
       showToast('Deletando banco de dados... Por favor, aguarde.', 'sucesso');
@@ -4148,23 +4148,23 @@ async function zerarSistema() {
           await supabaseClient.from('alunos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
           await supabaseClient.from('turmas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
           
-          alert("Sistema zerado com sucesso! A pÃ¡gina serÃ¡ recarregada.");
+          alert("Sistema zerado com sucesso! A página será recarregada.");
           window.location.reload();
       } catch (err) {
           console.error(err);
-          showToast('Erro crÃ­tico ao zerar o banco', 'evasao');
+          showToast('Erro crítico ao zerar o banco', 'evasao');
       }
   });
 }
 
 
-// â”€â”€â”€ RVS AGENDA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── RVS AGENDA ──────────────────────────────────────────────────────────────
 let RVS_ATIVIDADES = JSON.parse(localStorage.getItem('rvs_atividades')||'[]');
 
 function popularDatasAtividade(){
   const sel = document.getElementById('ativ-data');
   if(!sel) return;
-  // Popula com dias letivos do calendÃ¡rio
+  // Popula com dias letivos do calendário
   const hoje = new Date();
   const dias = Object.entries(CALENDARIO)
     .filter(([,ev]) => ev && TIPO_LETIVO_FLAG[ev.tipo])
@@ -4181,7 +4181,7 @@ function popularDatasAtividade(){
       const fmt = dt.toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'});
       return '<option value="'+iso+'">'+fmt+'</option>';
     }).join('');
-  // Alternativa: campo date livre se calendÃ¡rio vazio
+  // Alternativa: campo date livre se calendário vazio
   if(dias.length === 0){
     const parent = sel.parentElement;
     const input = document.createElement('input');
@@ -4194,7 +4194,7 @@ function popularTurmasAtividade(){
   const sel = document.getElementById('ativ-turmas');
   if(!sel) return;
   sel.innerHTML = TURMAS_DATA.map(t =>
-    '<option value="'+t.code+'">'+t.code+' â€” '+t.turno+'</option>'
+    '<option value="'+t.code+'">'+t.code+' — '+t.turno+'</option>'
   ).join('');
 }
 
@@ -4205,7 +4205,7 @@ function renderAgendaMural(){
   const filtroTurno = document.getElementById('filtro-agenda-turno')?.value ||
                       document.querySelector('#page-rvs-agenda .filter-btn.active')?.dataset?.turno || '';
 
-  // Buscar eventos do CALENDARIO que sÃ£o tipo agenda ou evento
+  // Buscar eventos do CALENDARIO que são tipo agenda ou evento
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   
   let eventos = Object.entries(CALENDARIO)
@@ -4216,7 +4216,7 @@ function renderAgendaMural(){
     })
     .sort((a,b) => a.date - b.date);
 
-  // TambÃ©m incluir RVS_ATIVIDADES locais
+  // Também incluir RVS_ATIVIDADES locais
   const atvsLocais = RVS_ATIVIDADES.map(a => ({
     ...a,
     date: a.data ? new Date(a.data+'T00:00:00') : new Date()
@@ -4228,14 +4228,14 @@ function renderAgendaMural(){
 
   if(todos.length === 0){
     mural.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af">'+
-      '<div style="font-size:48px;margin-bottom:12px">ðŸ—“ï¸</div>'+
+      '<div style="font-size:48px;margin-bottom:12px">🗓️</div>'+
       '<div style="font-size:16px;font-weight:700">Nenhuma atividade agendada</div>'+
-      '<div style="font-size:13px;margin-top:6px">Adicione eventos no CalendÃ¡rio ou clique em "+ Nova Atividade"</div></div>';
+      '<div style="font-size:13px;margin-top:6px">Adicione eventos no Calendário ou clique em "+ Nova Atividade"</div></div>';
     return;
   }
 
-  const tipoIcon = {evento:'ðŸŸ ',prova:'ðŸ”µ',bimestre:'âš«',fim_bimestre:'ðŸŸ£',letivo:'ðŸŸ¢',ferias:'ðŸ–ï¸',feriado:'ðŸ”´'};
-  const tipoLabel = {evento:'Evento',prova:'Prova',bimestre:'InÃ­cio de Bimestre',fim_bimestre:'Fim de Bimestre',letivo:'Dia Letivo',ferias:'FÃ©rias',feriado:'Feriado'};
+  const tipoIcon = {evento:'🟠',prova:'🔵',bimestre:'⚫',fim_bimestre:'🟣',letivo:'🟢',ferias:'🏖️',feriado:'🔴'};
+  const tipoLabel = {evento:'Evento',prova:'Prova',bimestre:'Início de Bimestre',fim_bimestre:'Fim de Bimestre',letivo:'Dia Letivo',ferias:'Férias',feriado:'Feriado'};
 
   let lastMonth = '';
   let html = '';
@@ -4251,13 +4251,13 @@ function renderAgendaMural(){
     html += '<div class="table-card" style="padding:14px 18px;margin-bottom:10px;border-left:4px solid '+(urgente?'#ef4444':'#3b82f6')+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
         '<div>'+
-          '<div style="font-size:14px;font-weight:700">'+(tipoIcon[ev.tipo]||'ðŸ“…')+' '+(ev.label||ev.titulo||ev.tipo||'Evento')+'</div>'+
-          '<div style="font-size:12px;color:#6b7280;margin-top:3px">'+dtFmt+(ev.turmas?' Â· '+ev.turmas:'')+'</div>'+
+          '<div style="font-size:14px;font-weight:700">'+(tipoIcon[ev.tipo]||'📅')+' '+(ev.label||ev.titulo||ev.tipo||'Evento')+'</div>'+
+          '<div style="font-size:12px;color:#6b7280;margin-top:3px">'+dtFmt+(ev.turmas?' · '+ev.turmas:'')+'</div>'+
           (ev.desc||ev.obs?'<div style="font-size:11.5px;color:#9ca3af;margin-top:3px">'+(ev.desc||ev.obs)+'</div>':'')+ 
         '</div>'+
         '<div style="display:flex;align-items:center;gap:8px">'+
           '<div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:'+(urgente?'#fee2e2':'#dbeafe')+';color:'+(urgente?'#991b1b':'#1d4ed8')+'">'+
-            (diasRestantes===0?'Hoje':diasRestantes===1?'AmanhÃ£':diasRestantes+' dias')+
+            (diasRestantes===0?'Hoje':diasRestantes===1?'Amanhã':diasRestantes+' dias')+
           '</div>'+
           (ev.isRVS || (ev.id && !ev.id.includes('-')) ? `<button class="btn btn-outline btn-sm" style="margin:0;padding:2px 8px;font-size:11px;color:#ef4444;border-color:#ef4444" onclick="excluirAtividade('${ev.id}')">Excluir</button>` : '') +
         '</div>'+
@@ -4274,7 +4274,7 @@ function setAgendaTurno(el, turno){
   renderAgendaMural();
 }
 
-// â”€â”€â”€ SOLICITAÃ‡Ã•ES PEDAGÃ“GICAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── SOLICITAÇÕES PEDAGÓGICAS ────────────────────────────────────────────────
 let SOLICIT_DATA = [];
 
 function popularTurmasSolicit(){
@@ -4283,10 +4283,10 @@ function popularTurmasSolicit(){
   if(!sel) return;
   const lista = (turno && turno !== 'Geral') ? TURMAS_DATA.filter(t => t.turno === turno) : TURMAS_DATA;
   const prefix = turno === 'Geral' ? '<option value="Geral">Todas as Turmas</option>' : '';
-  sel.innerHTML = prefix + lista.map(t => '<option value="' + t.code + '">' + t.code + ' â€” ' + t.serie + '</option>').join('');
+  sel.innerHTML = prefix + lista.map(t => '<option value="' + t.code + '">' + t.code + ' — ' + t.serie + '</option>').join('');
 }
 
-// â”€â”€â”€ UPLOAD GOOGLE DRIVE via Apps Script â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── UPLOAD GOOGLE DRIVE via Apps Script ─────────────────────────────────────
 const DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _solicitArquivoPendente = null; // guarda o File selecionado
 
@@ -4294,7 +4294,7 @@ function solicitPreviewArquivo(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 10 * 1024 * 1024) {
-    showToast('Arquivo muito grande! MÃ¡ximo 10MB.', 'alerta');
+    showToast('Arquivo muito grande! Máximo 10MB.', 'alerta');
     input.value = '';
     return;
   }
@@ -4329,7 +4329,7 @@ function fileParaBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      // Remove o prefixo "data:...;base64," para enviar sÃ³ o base64 puro
+      // Remove o prefixo "data:...;base64," para enviar só o base64 puro
       const base64 = reader.result.split(',')[1];
       resolve(base64);
     };
@@ -4352,16 +4352,16 @@ async function salvarSolicitacao(){
   const user = getCurrentUser();
   let linkDrive = '';
 
-  // â”€â”€ Upload para o Google Drive via Apps Script â”€â”€
+  // ── Upload para o Google Drive via Apps Script ──
   if (_solicitArquivoPendente) {
     const file = _solicitArquivoPendente;
     
-    // Mudar botÃ£o para estado de carregamento
+    // Mudar botão para estado de carregamento
     const btnEnviar = document.querySelector('#modal-nova-solicit .btn-primary');
-    if(btnEnviar){ btnEnviar.disabled = true; btnEnviar.textContent = 'â³ Enviando arquivoâ€¦'; }
+    if(btnEnviar){ btnEnviar.disabled = true; btnEnviar.textContent = '⏳ Enviando arquivo…'; }
     
     try {
-      showToast('Enviando arquivo para o Google Driveâ€¦ â³', 'alerta');
+      showToast('Enviando arquivo para o Google Drive… ⏳', 'alerta');
       
       const base64 = await fileParaBase64(file);
       
@@ -4377,34 +4377,34 @@ async function salvarSolicitacao(){
       const resultado = await response.json();
       
       if (!resultado.ok) {
-        throw new Error(resultado.erro || 'Resposta invÃ¡lida do servidor');
+        throw new Error(resultado.erro || 'Resposta inválida do servidor');
       }
       
       linkDrive = resultado.url;
-      showToast('Arquivo enviado ao Drive! âœ…', 'sucesso');
+      showToast('Arquivo enviado ao Drive! ✅', 'sucesso');
       
     } catch(err) {
       console.error('[Drive Upload] Erro:', err);
       showToast('Erro ao enviar para o Drive: ' + err.message, 'evasao');
       const btnEnviar = document.querySelector('#modal-nova-solicit .btn-primary');
-      if(btnEnviar){ btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar SolicitaÃ§Ã£o'; }
+      if(btnEnviar){ btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar Solicitação'; }
       return;
     }
     
     const btnEnviar2 = document.querySelector('#modal-nova-solicit .btn-primary');
-    if(btnEnviar2){ btnEnviar2.disabled = false; btnEnviar2.textContent = 'Enviar SolicitaÃ§Ã£o'; }
+    if(btnEnviar2){ btnEnviar2.disabled = false; btnEnviar2.textContent = 'Enviar Solicitação'; }
   }
 
-  // â”€â”€ Salvar solicitaÃ§Ã£o no banco (com link do Drive) â”€â”€
+  // ── Salvar solicitação no banco (com link do Drive) ──
   const { data: inserted, error } = await supabaseClient.from('solicitacoes').insert({
     tipo, turno, turmas, data, hora_ini: hIni, hora_fim: hFim,
     obs, link_drive: linkDrive, status: 'pendente',
-    responsavel: user?.nome || 'UsuÃ¡rio'
+    responsavel: user?.nome || 'Usuário'
   }).select().single();
   
   if (error) {
     console.error('[salvarSolicitacao] Erro:', error);
-    showToast('Erro ao salvar solicitaÃ§Ã£o: ' + error.message, 'evasao');
+    showToast('Erro ao salvar solicitação: ' + error.message, 'evasao');
     return;
   }
   
@@ -4413,13 +4413,13 @@ async function salvarSolicitacao(){
     id: inserted.id, tipo, turno, turmas, data, hIni, hFim, obs,
     linkDrive,
     status: 'pendente',
-    responsavel: user?.nome || 'UsuÃ¡rio',
+    responsavel: user?.nome || 'Usuário',
     criadoEm: new Date().toLocaleDateString('pt-BR')
   });
 
   solicitRemoverArquivo();
   closeModal('modal-nova-solicit');
-  showToast('SolicitaÃ§Ã£o enviada! âœ…','sucesso');
+  showToast('Solicitação enviada! ✅','sucesso');
   renderSolicitacoes();
 }
 
@@ -4438,39 +4438,39 @@ function renderSolicitacoes(){
 
   if(lista.length === 0){
     container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af">' +
-      '<div style="font-size:48px;margin-bottom:12px">ðŸ“‹</div>' +
-      '<div style="font-size:16px;font-weight:700">Nenhuma solicitaÃ§Ã£o encontrada</div>' +
-      '<div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova SolicitaÃ§Ã£o&quot; para criar</div></div>';
+      '<div style="font-size:48px;margin-bottom:12px">📋</div>' +
+      '<div style="font-size:16px;font-weight:700">Nenhuma solicitação encontrada</div>' +
+      '<div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova Solicitação&quot; para criar</div></div>';
     return;
   }
 
   var html = '';
   lista.forEach(function(s){
-    var dataFmt = s.data ? s.data.split('-').reverse().join('/') : 'â€”';
-    var horario = s.hIni ? ' Â· â° ' + s.hIni + (s.hFim ? ' â€“ ' + s.hFim : '') : '';
+    var dataFmt = s.data ? s.data.split('-').reverse().join('/') : '—';
+    var horario = s.hIni ? ' · ⏰ ' + s.hIni + (s.hFim ? ' – ' + s.hFim : '') : '';
     var borderColor = s.status === 'aceita' ? '#22c55e' : s.status === 'recusada' ? '#ef4444' : '#f97316';
     var badgeBg  = s.status === 'aceita' ? '#dcfce7' : s.status === 'recusada' ? '#fee2e2' : '#fff3cd';
     var badgeTxt = s.status === 'aceita' ? '#166534' : s.status === 'recusada' ? '#991b1b' : '#856404';
-    var badgeLabel = s.status === 'aceita' ? 'âœ… Aceita' : s.status === 'recusada' ? 'ðŸ”´ Recusada' : 'ðŸŸ¡ Pendente';
+    var badgeLabel = s.status === 'aceita' ? '✅ Aceita' : s.status === 'recusada' ? '🔴 Recusada' : '🟡 Pendente';
     var acoes = '';
     if(s.status === 'pendente'){
       acoes = '<button class="btn btn-green btn-xs" onclick="atualizarStatusSolicit(\'' + s.id + '\', \'aceita\')">&#9989; Aceitar</button>' +
               '<button class="btn btn-red btn-xs"   onclick="atualizarStatusSolicit(\'' + s.id + '\', \'recusada\')">&#10060; Recusar</button>';
     }
-    var linkBtn = s.linkDrive ? '<a href="' + s.linkDrive + '" target="_blank" class="btn btn-primary btn-xs" style="text-decoration:none">ðŸ“‚ Abrir Drive</a>' : '';
+    var linkBtn = s.linkDrive ? '<a href="' + s.linkDrive + '" target="_blank" class="btn btn-primary btn-xs" style="text-decoration:none">📂 Abrir Drive</a>' : '';
     html += '<div class="table-card" style="padding:16px;margin-bottom:12px;border-left:4px solid ' + borderColor + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
       '<div>' +
         '<div style="font-size:15px;font-weight:700">' + s.tipo + '</div>' +
-        '<div style="font-size:12.5px;color:#6b7280;margin-top:3px">ðŸ“… ' + dataFmt + horario + ' Â· ðŸ« ' + s.turno + (s.turmas ? ' Â· ' + s.turmas : '') + '</div>' +
+        '<div style="font-size:12.5px;color:#6b7280;margin-top:3px">📅 ' + dataFmt + horario + ' · 🏫 ' + s.turno + (s.turmas ? ' · ' + s.turmas : '') + '</div>' +
         (s.obs ? '<div style="font-size:12px;color:#6b7280;margin-top:6px;font-style:italic">&quot;' + s.obs + '&quot;</div>' : '') +
-        '<div style="font-size:11px;color:#9ca3af;margin-top:4px">Por: ' + s.responsavel + ' Â· ' + s.criadoEm + '</div>' +
+        '<div style="font-size:11px;color:#9ca3af;margin-top:4px">Por: ' + s.responsavel + ' · ' + s.criadoEm + '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
         linkBtn +
         '<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:' + badgeBg + ';color:' + badgeTxt + '">' + badgeLabel + '</span>' +
         acoes +
-        '<button class="btn btn-gray btn-xs" onclick="excluirSolicit(\'' + s.id + '\')">ðŸ—‘</button>' +
+        '<button class="btn btn-gray btn-xs" onclick="excluirSolicit(\'' + s.id + '\')">🗑</button>' +
       '</div></div></div>';
   });
   container.innerHTML = html;
@@ -4492,27 +4492,27 @@ async function atualizarStatusSolicit(id, novoStatus){
 }
 
 async function excluirSolicit(id){
-  if(!confirm('Excluir esta solicitaÃ§Ã£o?')) return;
+  if(!confirm('Excluir esta solicitação?')) return;
   
   const { error } = await supabaseClient.from('solicitacoes').delete().eq('id', id);
   if(error) {
     console.error('[excluirSolicit] Erro:', error);
-    showToast('Erro ao excluir solicitaÃ§Ã£o.', 'evasao');
+    showToast('Erro ao excluir solicitação.', 'evasao');
     return;
   }
   SOLICIT_DATA = SOLICIT_DATA.filter(function(s){ return s.id !== id; });
   renderSolicitacoes();
-  showToast('SolicitaÃ§Ã£o excluÃ­da','alerta');
+  showToast('Solicitação excluída','alerta');
 }
 
 
-// â”€â”€â”€ OLIMPÃADAS (TOPO DO SABER) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── OLIMPÍADAS (TOPO DO SABER) ──────────────────────────────────────────────
 let OLIMPIADAS_DATA = [];
 
 async function carregarOlimpiadas(){
   try {
     const {data, error} = await supabaseClient.from('olimpiadas').select('*').order('dia_prova', {ascending: true});
-    if(error) { console.error('Erro ao carregar olimpÃ­adas:', error); return; }
+    if(error) { console.error('Erro ao carregar olimpíadas:', error); return; }
     OLIMPIADAS_DATA = data || [];
   } catch(e){ console.warn(e); }
 }
@@ -4529,7 +4529,7 @@ async function salvarOlimpiada(){
 
   const flyerData = (document.getElementById('ol-flyer-data')?.value||'').trim();
 
-  if(!nome || !area || !diaProva){ showToast('Preencha Nome, Ãrea e Dia da Prova!','alerta'); return; }
+  if(!nome || !area || !diaProva){ showToast('Preencha Nome, Área e Dia da Prova!','alerta'); return; }
 
   const payload = { nome, area, insc_inicio: inscIni, insc_fim: inscFim, dia_prova: diaProva,
                     qtd_alunos: qtdAlunos, link_edital: linkEdital, inscrita,
@@ -4547,13 +4547,13 @@ async function salvarOlimpiada(){
 
   await carregarOlimpiadas();
   closeModal('modal-olimpiada');
-  showToast('OlimpÃ­ada salva com sucesso!','sucesso');
+  showToast('Olimpíada salva com sucesso!','sucesso');
   renderTopoSaber();
 }
 
 function handleFlyerUpload(input){
   const file = input.files[0]; if(!file) return;
-  if(file.size > 2*1024*1024){ showToast('Imagem muito grande (mÃ¡x 2MB)','alerta'); return; }
+  if(file.size > 2*1024*1024){ showToast('Imagem muito grande (máx 2MB)','alerta'); return; }
   const reader = new FileReader();
   reader.onload = function(e){
     const b64 = e.target.result;
@@ -4566,12 +4566,12 @@ function handleFlyerUpload(input){
 }
 
 async function excluirOlimpiada(id){
-  if(!confirm('Excluir esta olimpÃ­ada?')) return;
+  if(!confirm('Excluir esta olimpíada?')) return;
   const {error} = await supabaseClient.from('olimpiadas').delete().eq('id', id);
   if(error){ showToast('Erro: '+error.message,'evasao'); return; }
   await carregarOlimpiadas();
   renderTopoSaber();
-  showToast('OlimpÃ­ada removida.','alerta');
+  showToast('Olimpíada removida.','alerta');
 }
 
 function abrirModalOlimpiada(id){
@@ -4584,7 +4584,7 @@ function abrirModalOlimpiada(id){
   document.getElementById('ol-qtd-alunos').value = '0';
   document.getElementById('ol-link-edital').value = '';
   document.getElementById('ol-inscrita').value = 'nao';
-  document.getElementById('modal-olimpiada-title').textContent = '+ Nova OlimpÃ­ada';
+  document.getElementById('modal-olimpiada-title').textContent = '+ Nova Olimpíada';
 
   if(id){
     const ol = OLIMPIADAS_DATA.find(o => o.id === id);
@@ -4598,7 +4598,7 @@ function abrirModalOlimpiada(id){
     document.getElementById('ol-qtd-alunos').value  = ol.qtd_alunos||0;
     document.getElementById('ol-link-edital').value = ol.link_edital||'';
     document.getElementById('ol-inscrita').value    = ol.inscrita||'nao';
-    document.getElementById('modal-olimpiada-title').textContent = 'âœï¸ Editar OlimpÃ­ada';
+    document.getElementById('modal-olimpiada-title').textContent = '✏️ Editar Olimpíada';
   }
   openModal('modal-olimpiada');
 }
@@ -4619,32 +4619,32 @@ function renderTopoSaber(){
   if(filtroInscr) lista = lista.filter(o => o.inscrita === filtroInscr);
 
   if(lista.length === 0){
-    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:56px;margin-bottom:12px">ðŸ†</div><div style="font-size:17px;font-weight:700">Nenhuma olimpÃ­ada cadastrada</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova OlimpÃ­ada&quot; para adicionar</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:56px;margin-bottom:12px">🏆</div><div style="font-size:17px;font-weight:700">Nenhuma olimpíada cadastrada</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova Olimpíada&quot; para adicionar</div></div>';
     return;
   }
 
-  const areaCor = { 'Linguagens':'#3b82f6', 'Natureza':'#22c55e', 'MatemÃ¡tica':'#f97316', 'Humanas':'#8b5cf6' };
-  const areaIcon = { 'Linguagens':'ðŸ“–', 'Natureza':'ðŸ”¬', 'MatemÃ¡tica':'ðŸ“', 'Humanas':'ðŸŒ' };
+  const areaCor = { 'Linguagens':'#3b82f6', 'Natureza':'#22c55e', 'Matemática':'#f97316', 'Humanas':'#8b5cf6' };
+  const areaIcon = { 'Linguagens':'📖', 'Natureza':'🔬', 'Matemática':'📐', 'Humanas':'🌍' };
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
   container.innerHTML = lista.map(ol => {
     const cor = areaCor[ol.area] || '#6b7280';
-    const icon = areaIcon[ol.area] || 'ðŸ†';
-    const fmtDate = d => d ? d.split('-').reverse().join('/') : 'â€”';
+    const icon = areaIcon[ol.area] || '🏆';
+    const fmtDate = d => d ? d.split('-').reverse().join('/') : '—';
     const diaProva = ol.dia_prova ? new Date(ol.dia_prova+'T00:00:00') : null;
     const diasRestantes = diaProva ? Math.ceil((diaProva - hoje)/(1000*60*60*24)) : null;
     const passou = diasRestantes !== null && diasRestantes < 0;
     const urgente = diasRestantes !== null && diasRestantes >= 0 && diasRestantes <= 30;
 
     let badge = '';
-    if(passou) badge = '<span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âœ“ Realizada</span>';
-    else if(urgente) badge = '<span style="background:#fff3cd;color:#856404;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âš¡ '+diasRestantes+' dias</span>';
-    else if(diasRestantes !== null) badge = '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">ðŸ“… '+diasRestantes+' dias</span>';
+    if(passou) badge = '<span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">✓ Realizada</span>';
+    else if(urgente) badge = '<span style="background:#fff3cd;color:#856404;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">⚡ '+diasRestantes+' dias</span>';
+    else if(diasRestantes !== null) badge = '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">📅 '+diasRestantes+' dias</span>';
 
     const inscritaBadge = ol.inscrita === 'sim'
-      ? '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âœ… Inscrita</span>'
-      : '<span style="background:#f3f4f6;color:#6b7280;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âŒ NÃ£o inscrita</span>';
+      ? '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">✅ Inscrita</span>'
+      : '<span style="background:#f3f4f6;color:#6b7280;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">❌ Não inscrita</span>';
 
     return '<div class="table-card" style="padding:0;margin-bottom:16px;overflow:hidden;border-top:4px solid '+cor+';opacity:'+(passou?'0.7':'1')+'">' +
       '<div style="padding:16px 20px">' +
@@ -4659,15 +4659,15 @@ function renderTopoSaber(){
               inscritaBadge + badge +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;font-size:12.5px;color:#6b7280">' +
-              '<div>ðŸ“‹ <b>InscriÃ§Ãµes:</b><br>'+fmtDate(ol.insc_inicio)+' a '+fmtDate(ol.insc_fim)+'</div>' +
-              '<div>ðŸ“… <b>Dia da Prova:</b><br>'+fmtDate(ol.dia_prova)+'</div>' +
-              '<div>ðŸ‘¥ <b>Alunos Inscritos:</b><br>'+( ol.qtd_alunos||0 )+'</div>' +
-              (ol.link_edital ? '<div>ðŸ”— <a href="'+ol.link_edital+'" target="_blank" style="color:#3b82f6;font-weight:600">Ver Edital</a></div>' : '') +
+              '<div>📋 <b>Inscrições:</b><br>'+fmtDate(ol.insc_inicio)+' a '+fmtDate(ol.insc_fim)+'</div>' +
+              '<div>📅 <b>Dia da Prova:</b><br>'+fmtDate(ol.dia_prova)+'</div>' +
+              '<div>👥 <b>Alunos Inscritos:</b><br>'+( ol.qtd_alunos||0 )+'</div>' +
+              (ol.link_edital ? '<div>🔗 <a href="'+ol.link_edital+'" target="_blank" style="color:#3b82f6;font-weight:600">Ver Edital</a></div>' : '') +
             '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px">' +
-            '<button class="btn btn-outline btn-xs" onclick="abrirModalOlimpiada(\'' + ol.id + '\')">âœï¸</button>' +
-            '<button class="btn btn-red btn-xs" onclick="excluirOlimpiada(\'' + ol.id + '\')">ðŸ—‘</button>' +
+            '<button class="btn btn-outline btn-xs" onclick="abrirModalOlimpiada(\'' + ol.id + '\')">✏️</button>' +
+            '<button class="btn btn-red btn-xs" onclick="excluirOlimpiada(\'' + ol.id + '\')">🗑</button>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -4676,12 +4676,12 @@ function renderTopoSaber(){
 }
 
 
-// â”€â”€â”€ USUÃRIOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
 let USUARIOS_DATA = [];
 
 async function carregarUsuarios(){
   const {data, error} = await supabaseClient.from('usuarios').select('*').order('nome');
-  if(error){ console.error('Erro ao carregar usuÃ¡rios:', error); return; }
+  if(error){ console.error('Erro ao carregar usuários:', error); return; }
   USUARIOS_DATA = data || [];
   renderUsuarios();
 }
@@ -4701,17 +4701,17 @@ async function salvarUsuario(){
 
   if(!nome || !email){ showToast('Preencha Nome e E-mail!','alerta'); return; }
 
-  // ValidaÃ§Ã£o de senha
+  // Validação de senha
   if(!id){
-    if(!senha){ showToast('Defina uma senha para o novo usuÃ¡rio!','alerta'); return; }
+    if(!senha){ showToast('Defina uma senha para o novo usuário!','alerta'); return; }
     if(senha.length < 6){ showToast('A senha deve ter ao menos 6 caracteres.','alerta'); return; }
-    if(senha !== senhaConfirm){ showToast('As senhas nÃ£o coincidem!','alerta'); return; }
+    if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
   } else if(senha){
     if(senha.length < 6){ showToast('A nova senha deve ter ao menos 6 caracteres.','alerta'); return; }
-    if(senha !== senhaConfirm){ showToast('As senhas nÃ£o coincidem!','alerta'); return; }
+    if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
   }
 
-  // â”€â”€ Se for NOVO USUÃRIO, usa o RPC seguro para Supabase Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Se for NOVO USUÁRIO, usa o RPC seguro para Supabase Auth ─────────
   if (!id) {
     const { data: rpcResp, error: rpcErr } = await supabaseClient.rpc('admin_criar_usuario', {
       p_nome:   nome,
@@ -4723,19 +4723,19 @@ async function salvarUsuario(){
     });
 
     if(!rpcErr && rpcResp?.status === 'success'){
-      // Se usuÃ¡rio for criado como inativo, precisamos dar update logo apÃ³s a criaÃ§Ã£o
+      // Se usuário for criado como inativo, precisamos dar update logo após a criação
       if(!ativo && rpcResp.uid) {
         await supabaseClient.from('usuarios').update({ ativo: false }).eq('id', rpcResp.uid);
       }
       closeModal('modal-usuario');
-      showToast('UsuÃ¡rio cadastrado com seguranÃ§a!','sucesso');
+      showToast('Usuário cadastrado com segurança!','sucesso');
       await carregarUsuarios();
       return;
     }
     console.error('[RPC admin_criar_usuario]', rpcErr || rpcResp);
-    showToast('Erro ao criar usuÃ¡rio: ' + (rpcErr?.message || rpcResp?.message || 'Verifique o console.'), 'evasao');
+    showToast('Erro ao criar usuário: ' + (rpcErr?.message || rpcResp?.message || 'Verifique o console.'), 'evasao');
   } 
-  // â”€â”€ Se for EDIÃ‡ÃƒO, atualiza a tabela pÃºblica normalmente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Se for EDIÇÃO, atualiza a tabela pública normalmente ──────────────
   else {
     const payload = {
       nome: nome,
@@ -4751,7 +4751,7 @@ async function salvarUsuario(){
     const { error } = await supabaseClient.from('usuarios').update(payload).eq('id', id);
     if (!error) {
       closeModal('modal-usuario');
-      showToast('UsuÃ¡rio atualizado!','sucesso');
+      showToast('Usuário atualizado!','sucesso');
       await carregarUsuarios();
     } else {
       console.error('[Update Usuario]', error);
@@ -4761,12 +4761,12 @@ async function salvarUsuario(){
 }
 
 async function excluirUsuario(id, nome){
-  if(!confirm('Excluir o usuÃ¡rio "'+nome+'"?')) return;
+  if(!confirm('Excluir o usuário "'+nome+'"?')) return;
   const {error} = await supabaseClient.from('usuarios').delete().eq('id', id);
   if(error){ showToast('Erro: '+error.message,'evasao'); return; }
   USUARIOS_DATA = USUARIOS_DATA.filter(u => u.id !== id);
   renderUsuarios();
-  showToast('UsuÃ¡rio excluÃ­do.','alerta');
+  showToast('Usuário excluído.','alerta');
 }
 
 function abrirModalUsuario(id){
@@ -4786,7 +4786,7 @@ function abrirModalUsuario(id){
   if(senhaConfirmEl) senhaConfirmEl.value = '';
   const prev = document.getElementById('usr-avatar-preview');
   if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
-  document.getElementById('modal-usuario-title').textContent = '+ Novo UsuÃ¡rio';
+  document.getElementById('modal-usuario-title').textContent = '+ Novo Usuário';
   if(senhaInfoEl) senhaInfoEl.style.display = 'none'; // Hide hint for new users
   const ativoEl = document.getElementById('usr-ativo');
   if(ativoEl) ativoEl.checked = true;
@@ -4804,7 +4804,7 @@ function abrirModalUsuario(id){
     if(ativoEl) ativoEl.checked = u.ativo !== false;
     popularTurmasUsuario();
     document.getElementById('usr-turma').value   = u.turma_responsavel||'';
-    document.getElementById('modal-usuario-title').textContent = 'âœï¸ Editar UsuÃ¡rio';
+    document.getElementById('modal-usuario-title').textContent = '✏️ Editar Usuário';
     if(senhaInfoEl) senhaInfoEl.style.display = 'block'; // Show 'leave blank' hint when editing
     if(u.avatar_url){
       document.getElementById('usr-avatar-data').value = u.avatar_url;
@@ -4818,7 +4818,7 @@ function popularTurmasUsuario(){
   const sel = document.getElementById('usr-turma');
   if(!sel) return;
   sel.innerHTML = '<option value="">Nenhuma (turma geral)</option>' +
-    TURMAS_DATA.map(t => '<option value="'+t.code+'">'+t.code+' â€” '+t.turno+'</option>').join('');
+    TURMAS_DATA.map(t => '<option value="'+t.code+'">'+t.code+' — '+t.turno+'</option>').join('');
 }
 
 function baixarModeloUsuarios(){
@@ -4899,7 +4899,7 @@ function importarPlanilhaUsuarios(input){
 function handleAvatarUpload(input){
   const file = input.files[0];
   if(!file) return;
-  if(file.size > 2*1024*1024){ showToast('Foto muito grande (mÃ¡x. 2MB)','alerta'); return; }
+  if(file.size > 2*1024*1024){ showToast('Foto muito grande (máx. 2MB)','alerta'); return; }
   const reader = new FileReader();
   reader.onload = function(e){
     const base64 = e.target.result;
@@ -4932,12 +4932,12 @@ function renderUsuarios(){
   if(busca)   lista = lista.filter(u => (u.nome||'').toLowerCase().includes(busca) || (u.email||'').toLowerCase().includes(busca));
 
   if(lista.length === 0){
-    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:48px;margin-bottom:12px">ðŸ‘¥</div><div style="font-size:16px;font-weight:700">Nenhum usuÃ¡rio encontrado</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Novo UsuÃ¡rio&quot; para adicionar</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:48px;margin-bottom:12px">👥</div><div style="font-size:16px;font-weight:700">Nenhum usuário encontrado</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Novo Usuário&quot; para adicionar</div></div>';
     return;
   }
 
   const perfilCor  = {admin:'#7c3aed',coordenador:'#2563eb',secretaria:'#059669',professor:'#d97706'};
-  const perfilIcon = {admin:'ðŸ‘‘',coordenador:'ðŸŽ“',secretaria:'ðŸ“‹',professor:'ðŸ“š'};
+  const perfilIcon = {admin:'👑',coordenador:'🎓',secretaria:'📋',professor:'📚'};
   const perfilLabel= {admin:'Administrador',coordenador:'Coordenador',secretaria:'Secretaria',professor:'Professor'};
 
   container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">' +
@@ -4957,15 +4957,15 @@ function renderUsuarios(){
             '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u.nome+ativoBadge+'</div>'+
             '<div style="font-size:11.5px;color:#6b7280;margin-top:2px">'+u.email+'</div>'+
             '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+cor+'22;color:'+cor+';margin-top:4px;display:inline-block">'+
-              (perfilIcon[u.perfil]||'ðŸ‘¤')+' '+(perfilLabel[u.perfil]||u.perfil)+
+              (perfilIcon[u.perfil]||'👤')+' '+(perfilLabel[u.perfil]||u.perfil)+
             '</span>'+
           '</div>'+
         '</div>'+
         '<div style="font-size:11.5px;color:#6b7280;margin-bottom:10px">'+
-          (u.turno ? 'ðŸ• '+u.turno : '')+(u.turma_responsavel ? ' Â· ðŸ« '+u.turma_responsavel : '')+
+          (u.turno ? '🕐 '+u.turno : '')+(u.turma_responsavel ? ' · 🏫 '+u.turma_responsavel : '')+
         '</div>'+
         '<div style="display:flex;gap:6px;justify-content:flex-end">'+
-          '<button class="btn btn-outline btn-xs" onclick="abrirModalUsuario(\'' + u.id + '\')">âœï¸ Editar</button>'+
+          '<button class="btn btn-outline btn-xs" onclick="abrirModalUsuario(\'' + u.id + '\')">✏️ Editar</button>'+
           '<button class="btn btn-red btn-xs" onclick="excluirUsuario(\'' + u.id + '\',\'' + u.nome.replace(/'/g,'') + '\')">&#128465;</button>'+
         '</div>'+
       '</div>';
@@ -4997,7 +4997,7 @@ function importarPlanilhaUsuarios(input){
       if(error) erros++;
       else count++;
     }
-    showToast(count+' usuÃ¡rios importados'+(erros?' ('+erros+' erros)':''),'sucesso');
+    showToast(count+' usuários importados'+(erros?' ('+erros+' erros)':''),'sucesso');
     await carregarUsuarios();
   };
   reader.readAsText(file);
@@ -5035,11 +5035,11 @@ function buscarAlunoObafog(term){
 
 function addAlunoObafog(id, nome, turma){
   if(obafogAlunosSelecionados.length >= 3) {
-    showToast('MÃ¡ximo de 3 alunos por equipe!', 'alerta');
+    showToast('Máximo de 3 alunos por equipe!', 'alerta');
     return;
   }
   if(obafogAlunosSelecionados.some(a => a.id === id)){
-    showToast('Aluno jÃ¡ adicionado na equipe!', 'alerta');
+    showToast('Aluno já adicionado na equipe!', 'alerta');
     return;
   }
   
@@ -5067,7 +5067,7 @@ function renderObafogSelecionados(){
   div.innerHTML = obafogAlunosSelecionados.map(a => `
     <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px 10px; border-radius:4px; border:1px solid var(--gray3)">
       <div style="font-size:13px"><b>${a.nome}</b> <span class="badge">${a.turma}</span></div>
-      <button class="btn btn-sm" style="color:var(--red); padding:2px 6px" onclick="removeAlunoObafog('${a.id}')">âœ•</button>
+      <button class="btn btn-sm" style="color:var(--red); padding:2px 6px" onclick="removeAlunoObafog('${a.id}')">✕</button>
     </div>
   `).join('');
 }
@@ -5126,9 +5126,9 @@ async function renderObafog(){
     const numTag = eq.numero ? ` Eq. ${eq.numero} - ` : ' ';
     return `
     <div onclick="abrirMetragemObafog('${eq.id}')" style="cursor:pointer; background:var(--white); border:1px solid #fca5a5; border-radius:8px; padding:15px; box-shadow:0 2px 5px rgba(220,38,38,0.1); transition:transform 0.2s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-      <div style="font-weight:700; color:var(--red); font-size:15px; margin-bottom:10px">ðŸš€${numTag}${eq.nome}</div>
+      <div style="font-weight:700; color:var(--red); font-size:15px; margin-bottom:10px">🚀${numTag}${eq.nome}</div>
       <div style="font-size:12px; color:var(--gray6); margin-bottom:12px">
-        ${(eq.alunos||[]).map(a => `<div>â€¢ ${a.nome.split(' ')[0]} (${a.turma})</div>`).join('')}
+        ${(eq.alunos||[]).map(a => `<div>• ${a.nome.split(' ')[0]} (${a.turma})</div>`).join('')}
       </div>
       <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--gray5)">
         <div>L1: <b>${l1}m</b></div>
@@ -5158,7 +5158,7 @@ function renderRankingObafog(){
   
   rankingDiv.innerHTML = rankeado.map((eq, i) => {
     const best = Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2);
-    let medal = i === 0 ? 'ðŸ¥‡' : i === 1 ? 'ðŸ¥ˆ' : i === 2 ? 'ðŸ¥‰' : (i+1)+'Âº';
+    let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'º';
     const numTag = eq.numero ? ` (Eq. ${eq.numero})` : '';
     return `
     <div style="display:flex; justify-content:space-between; align-items:center; background:var(--white); padding:10px 15px; border-radius:6px; border:1px solid #fde68a">
@@ -5198,7 +5198,7 @@ async function salvarMetragemObafog(){
     return;
   }
   
-  // Atualiza memÃ³ria
+  // Atualiza memória
   const eq = OBAFOG_DATA.find(e => e.id === id);
   if(eq) {
     eq.lancamento1 = l1;
@@ -5218,7 +5218,7 @@ function toggleMobileMenu() {
 // [OBAFOG] Download Excel
 function downloadObafogXLSX() {
   if (typeof XLSX === 'undefined') {
-    showToast('A biblioteca Excel ainda estÃ¡ carregando. Tente novamente em alguns segundos.', 'alerta');
+    showToast('A biblioteca Excel ainda está carregando. Tente novamente em alguns segundos.', 'alerta');
     return;
   }
   if (!OBAFOG_DATA || OBAFOG_DATA.length === 0) {
@@ -5226,7 +5226,7 @@ function downloadObafogXLSX() {
     return;
   }
 
-  // Ordena os dados pelo melhor lanÃ§amento
+  // Ordena os dados pelo melhor lançamento
   const rankeado = [...OBAFOG_DATA].sort((a,b) => {
     const bestA = Math.max(a.lancamento1||0, a.lancamento2||0);
     const bestB = Math.max(b.lancamento1||0, b.lancamento2||0);
@@ -5238,20 +5238,20 @@ function downloadObafogXLSX() {
     const al2 = eq.alunos[1] ? eq.alunos[1].nome : '';
     const al3 = eq.alunos[2] ? eq.alunos[2].nome : '';
     
-    // Obter as turmas Ãºnicas dos alunos envolvidos
+    // Obter as turmas únicas dos alunos envolvidos
     const turmasArray = eq.alunos.map(a => a.turma).filter(Boolean);
     const turmasUnicas = [...new Set(turmasArray)].join(', ');
 
     return {
-      "ColocaÃ§Ã£o": (index + 1) + 'Âº',
+      "Colocação": (index + 1) + 'º',
       "Nome da Equipe": eq.nome || '',
-      "NÃºmero da Equipe": eq.numero || '',
+      "Número da Equipe": eq.numero || '',
       "Turma(s)": turmasUnicas,
       "Aluno 1": al1,
       "Aluno 2": al2,
       "Aluno 3": al3,
-      "LanÃ§amento 1 (m)": parseFloat(eq.lancamento1||0).toFixed(2).replace('.', ','),
-      "LanÃ§amento 2 (m)": parseFloat(eq.lancamento2||0).toFixed(2).replace('.', ','),
+      "Lançamento 1 (m)": parseFloat(eq.lancamento1||0).toFixed(2).replace('.', ','),
+      "Lançamento 2 (m)": parseFloat(eq.lancamento2||0).toFixed(2).replace('.', ','),
       "Melhor Marca (m)": Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2).replace('.', ',')
     };
   });
@@ -5262,15 +5262,15 @@ function downloadObafogXLSX() {
 
   // Ajustar a largura das colunas
   const colWidths = [
-    { wch: 12 }, // ColocaÃ§Ã£o
+    { wch: 12 }, // Colocação
     { wch: 25 }, // Equipe
-    { wch: 18 }, // NÃºmero
+    { wch: 18 }, // Número
     { wch: 15 }, // Turma(s)
     { wch: 30 }, // Aluno 1
     { wch: 30 }, // Aluno 2
     { wch: 30 }, // Aluno 3
-    { wch: 18 }, // LanÃ§amento 1
-    { wch: 18 }, // LanÃ§amento 2
+    { wch: 18 }, // Lançamento 1
+    { wch: 18 }, // Lançamento 2
     { wch: 18 }  // Melhor Marca
   ];
   ws['!cols'] = colWidths;
@@ -5280,11 +5280,11 @@ function downloadObafogXLSX() {
 }
 
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  CONSULTA DO ALUNO — Acesso ao e-mail e senha institucional via CPF + DN
-// ══════════════════════════════════════════════════════════════════════════════
+// PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
+//  CONSULTA DO ALUNO � Acesso ao e-mail e senha institucional via CPF + DN
+// PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 
-/** Máscara CPF: 000.000.000-00 */
+/** M�scara CPF: 000.000.000-00 */
 function mascaraCPF(input) {
   let v = input.value.replace(/\D/g, '').slice(0, 11);
   if (v.length > 9)      v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
@@ -5293,7 +5293,7 @@ function mascaraCPF(input) {
   input.value = v;
 }
 
-/** Máscara Data de Nascimento: DD/MM/AAAA */
+/** M�scara Data de Nascimento: DD/MM/AAAA */
 function mascaraData(input) {
   let v = input.value.replace(/\D/g, '').slice(0, 8);
   if (v.length > 4)      v = v.replace(/^(\d{2})(\d{2})(\d{0,4})/, '$1/$2/$3');
@@ -5316,7 +5316,7 @@ function abrirConsultaAluno() {
   setTimeout(() => document.getElementById('cpf-consulta-input').focus(), 200);
 }
 
-/** Fecha o modal (só ao clicar no overlay externo) */
+/** Fecha o modal (s� ao clicar no overlay externo) */
 function fecharConsultaAluno(event) {
   if (event && event.target !== document.getElementById('modal-consulta-aluno')) return;
   const overlay = document.getElementById('modal-consulta-aluno');
@@ -5338,7 +5338,7 @@ async function buscarAluno() {
   const cpf = (input.value || '').trim();
   const dn  = (dnInput ? dnInput.value : '').trim();
 
-  // Validação CPF
+  // Valida��o CPF
   if (cpf.replace(/\D/g, '').length < 11) {
     erroEl.textContent   = '\u26A0\uFE0F Preencha seu CPF completo (000.000.000-00).';
     erroEl.style.display = 'block';
@@ -5346,7 +5346,7 @@ async function buscarAluno() {
     return;
   }
 
-  // Validação Data de Nascimento (DD/MM/AAAA = 10 caracteres)
+  // Valida��o Data de Nascimento (DD/MM/AAAA = 10 caracteres)
   if (dn.replace(/\D/g, '').length < 8) {
     erroEl.textContent   = '\u26A0\uFE0F Preencha a Data de Nascimento completa (DD/MM/AAAA).';
     erroEl.style.display = 'block';
