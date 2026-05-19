@@ -321,7 +321,8 @@
               </div>
               <div id="chamada-entrada"></div>
               <div style="padding:12px 16px;border-top:1px solid var(--gray3)">
-                <button class="btn btn-green btn-sm" onclick="consolidar('entrada')">✓ Consolidar Entrada</button>
+                <button class="btn btn-green btn-sm" onclick="consolidar('entrada')" id="btn-consolidar-entrada">✓ Consolidar Entrada</button>
+                <button class="btn btn-outline btn-sm" id="btn-desbloquear-entrada" onclick="desbloquearFrequencia('entrada')" style="margin-left:8px;display:none;color:var(--gray6)">🔓 Desbloquear (Requer Senha)</button>
               </div>
             </div>
             <div class="chamada-card">
@@ -333,6 +334,7 @@
               <div id="chamada-saida"></div>
               <div style="padding:12px 16px;border-top:1px solid var(--gray3)">
                 <button class="btn btn-green btn-sm" id="btn-consolidar-saida" onclick="consolidar('saida')" disabled style="opacity:0.4" title="Consolide a Entrada primeiro">✓ Consolidar Saída</button>
+                <button class="btn btn-outline btn-sm" id="btn-desbloquear-saida" onclick="desbloquearFrequencia('saida')" style="margin-left:8px;display:none;color:var(--gray6)">🔓 Desbloquear (Requer Senha)</button>
               </div>
             </div>
           </div>
@@ -1295,6 +1297,7 @@
           <option value="bullying">⚡ Bullying</option>
           <option value="agressao">👊 Agressão Física</option>
           <option value="atraso">⏰ Atraso</option>
+          <option value="liberado_coord">🟢 Liberado pela Coordenação</option>
         </select>
       </div>
       <div class="form-group"><label class="form-label">Turma</label>

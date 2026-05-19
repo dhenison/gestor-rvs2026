@@ -150,6 +150,7 @@ let calYear = 2026, calMonth = 4;
 let clickTimer = null;
 let turmaChamadaAtual = '';
 const chamadaConsolidada = { entrada:false, saida:false };
+let chamadaDesbloqueadaTemporaria = { entrada:false, saida:false };
 
 const LIVROS = [
   {nome:'Língua Portuguesa',icon:'📖',entregues:0,total:0},
@@ -494,9 +495,18 @@ async function doLogin(){
     });
 
     if(authErr) {
-      console.error('[login]', authErr);
+      console.error('[login] authErr:', authErr.message, authErr.status, authErr);
       errEl.style.display='block';
-      errEl.textContent = 'Credenciais inválidas.';
+      // Diferencia os tipos de erro para facilitar diagnóstico
+      if (authErr.message && authErr.message.toLowerCase().includes('invalid login')) {
+        errEl.textContent = 'E-mail ou senha incorretos. Verifique e tente novamente.';
+      } else if (authErr.message && authErr.message.toLowerCase().includes('email not confirmed')) {
+        errEl.textContent = 'E-mail não confirmado. Contate o administrador do sistema.';
+      } else if (authErr.status === 500 || (authErr.message && authErr.message.toLowerCase().includes('database'))) {
+        errEl.textContent = 'Erro interno no servidor. Contate o administrador (código 500).';
+      } else {
+        errEl.textContent = 'Erro ao autenticar: ' + (authErr.message || 'Verifique suas credenciais.');
+      }
       if(btn){ btn.disabled=false; btn.textContent='Entrar no Sistema'; }
       return;
     }
@@ -1043,7 +1053,9 @@ async function renderMetricasDash(){
 
   // Busca presentes de hoje direto do Supabase via fetchAllRows para não esbarrar em limite (ex: 1500 alunos)
   try {
-    const hoje = new Date().toISOString().split('T')[0];
+    // Corrige fuso horário para garantir a data local correta
+    const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+    const hoje = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
     const targetDate = dia || hoje;
     const alunoIdsStr = alunos.map(a => String(a.id));
 
@@ -1076,7 +1088,9 @@ async function renderTurmasTable(){
 
   // Busca frequência do Supabase respeitando o filtro de data (ou hoje)
   const {dia} = getDashFiltros();
-  const hoje = new Date().toISOString().split('T')[0];
+  // Corrige fuso horário para garantir a data local correta
+  const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+  const hoje = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
   const targetDate = dia || hoje;
   
   let freqData = {}; // aluno_id → {entrada, saida}
@@ -1467,7 +1481,7 @@ function renderFichaOcorrencias(a){
     return;
   }
   el.innerHTML=ocorrs.map(o=>{
-    const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso'}[o.tipo]||o.tipo;
+    const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.'}[o.tipo]||o.tipo;
     const cor=o.tratada?'var(--green-light)':'var(--red-light)';
     const txt=o.tratada?'var(--green-dark)':'var(--red-dark)';
     return`<div style="background:${cor};border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px">
@@ -2031,6 +2045,11 @@ function renderFiltrosDiaFreq(){
 }
 
 async function carregarDadosFrequencia(turmaSel, diaSel) {
+  turmaChamadaAtual = turmaSel;
+  chamadaConsolidada.entrada = false;
+  chamadaConsolidada.saida = false;
+  chamadaDesbloqueadaTemporaria.entrada = false;
+  chamadaDesbloqueadaTemporaria.saida = false;
   if (!turmaSel || !diaSel) return;
   const turmaObj = TURMAS_DATA.find(t=>t.code===turmaSel);
   if(!turmaObj) return;
@@ -2174,17 +2193,22 @@ function renderChamada(){
     // Pré-marca P para todos
     alunos.forEach((_,i)=>{ if(!freq[tipo][i]) freq[tipo][i]='P'; });
     const consolidado=chamadaConsolidada[tipo];
-    const bgLista=consolidado?'var(--green-light)':'var(--red-light)';
-    // Apenas admins podem editar chamada já consolidada
-    const userAtual = getCurrentUser();
-    const isAdmin = userAtual?.perfil === 'admin';
-    const podeEditarFreq = isAdmin || !consolidado;
+    const temporario=chamadaDesbloqueadaTemporaria[tipo];
+    const bgLista=consolidado && !temporario ? 'var(--green-light)' : 'var(--red-light)';
+    const podeEditarFreq = !consolidado || temporario;
+    
+    // Controle de exibição dos botões Consolidar / Desbloquear
+    const btnConsolidar = document.getElementById('btn-consolidar-' + tipo);
+    const btnDesbloquear = document.getElementById('btn-desbloquear-' + tipo);
+    if(btnConsolidar) btnConsolidar.style.display = (consolidado && !temporario) ? 'none' : 'inline-block';
+    if(btnDesbloquear) btnDesbloquear.style.display = (consolidado && !temporario) ? 'inline-block' : 'none';
+
     container.innerHTML=alunos.map((al,i)=>{
       const cur=freq[tipo][i]||'P';
       const evasao=freq.entrada[i]==='P'&&freq.saida[i]==='F';
       const bg=evasao?'#ffe4e4':bgLista;
       const lockStyle=podeEditarFreq?'':'opacity:0.55;cursor:not-allowed;pointer-events:none';
-      const lockTag=consolidado&&!isAdmin?'<span style="font-size:10px;color:var(--gray5);margin-left:4px">🔒</span>':'';
+      const lockTag=consolidado && !temporario?'<span style="font-size:10px;color:var(--gray5);margin-left:4px">🔒</span>':'';
       return`<div class="aluno-row" style="background:${bg};transition:background .35s">
         <span class="aluno-name">${i+1}. ${al.nome}${lockTag}</span>
         <div class="freq-btn-group" style="${lockStyle}">
@@ -2344,10 +2368,9 @@ async function markFreq(tipo,idx,val,btn){
 
 async function consolidar(tipo){
   if(tipo==='saida'&&!chamadaConsolidada.entrada){showToast('Consolide a Entrada primeiro','alerta');return;}
-  // Bloqueia re-consolidação para não-admins
-  const userConsolidar = getCurrentUser();
-  if(chamadaConsolidada[tipo] && userConsolidar?.perfil !== 'admin'){
-    showToast('Chamada já consolidada. Apenas administradores podem alterar.','alerta');
+  // Verifica se está consolidada e não está desbloqueada temporariamente
+  if(chamadaConsolidada[tipo] && !chamadaDesbloqueadaTemporaria[tipo]){
+    showToast('Frequência trancada. É necessário desbloquear primeiro.','alerta');
     return;
   }
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual);
@@ -2368,6 +2391,7 @@ async function consolidar(tipo){
   await supabaseSalvar('frequencia', payload, 'aluno_id,data,tipo');
 
   chamadaConsolidada[tipo]=true;
+  chamadaDesbloqueadaTemporaria[tipo]=false; // Remove estado temporário
   const s=document.getElementById(tipo+'-status');
   if(s){s.textContent='Consolidado';s.className='chamada-status status-consolidado';}
   showToast('Chamada de '+tipo+' consolidada! ✅','sucesso');
@@ -2384,6 +2408,18 @@ async function consolidar(tipo){
   // Atualiza o Dashboard em tempo real após consolidação
   renderTurmasTable();
   renderMetricasDash();
+}
+
+function desbloquearFrequencia(tipo){
+  const senhaMestra = 'RVS@gestor#2026';
+  const digitada = prompt('Frequência trancada.\\nDigite a senha de Administrador para desbloquear:');
+  if(digitada === senhaMestra){
+    chamadaDesbloqueadaTemporaria[tipo] = true;
+    showToast('Edição desbloqueada!', 'sucesso');
+    renderChamada();
+  } else if(digitada !== null) {
+    showToast('Senha incorreta!', 'erro');
+  }
 }
 
 function updateConsolidado(){
@@ -2414,7 +2450,7 @@ function updateConsolidado(){
 // ─── OCORRÊNCIAS ──────────────────────────────────────────────────────────────
 function ocorrItemHTML(o){
   const cls=o.tratada?'tratada':o.aguardandoPais?'aguardando-pais':'nao-tratada';
-  const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso'}[o.tipo]||o.tipo;
+  const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.'}[o.tipo]||o.tipo;
   const clicavel=o.cpf?`onclick="verFicha('${o.cpf}')" style="cursor:pointer" title="Ver ficha de ${o.aluno}"`:
                  `onclick="showPage('ocorrencias',null)" style="cursor:pointer" title="Ver todas as ocorrências"`;
   return`<div class="ocorr-item ${cls}" ${clicavel}>
@@ -3736,16 +3772,11 @@ async function gerarRelFreq(){
   try {
     if(turmaObj) {
       // Usando fetchAllRows para não esbarrar no limite de 1000 da API
-      // IMPORTANTE: datas são salvas sem zero-padding (ex: '2026-4-7'), então usamos .in() para bater exatamente
+      // IMPORTANTE: datas são salvas COM zero-padding (ex: '2026-05-19') no banco agora, usamos os dias normalmente.
       const { data: fqRows, error } = await fetchAllRows('frequencia', 'aluno_id, data, tipo, status, consolidado', q => {
         let qFilter = q.eq('turma_id', turmaObj.id).eq('consolidado', true);
         if(dias && dias.length > 0) {
-          // Garante que as datas no formato sem padding (YYYY-M-D) sejam comparadas corretamente
-          const diasFormatados = dias.map(d => {
-            const [y, m, dd] = d.split('-');
-            return `${y}-${parseInt(m)}-${parseInt(dd)}`;
-          });
-          qFilter = qFilter.in('data', diasFormatados);
+          qFilter = qFilter.in('data', dias);
         }
         return qFilter;
       });
@@ -4752,7 +4783,6 @@ async function salvarUsuario(){
     }
     console.error('[RPC admin_criar_usuario]', rpcErr || rpcResp);
     showToast('Erro ao criar usuário: ' + (rpcErr?.message || rpcResp?.message || 'Verifique o console.'), 'evasao');
-  } 
   // ── Se for EDIÇÃO, atualiza a tabela pública normalmente ──────────────
   else {
     const payload = {
@@ -4764,16 +4794,29 @@ async function salvarUsuario(){
       foto_url: avatar,
       ativo: ativo
     };
-    if(senha) payload.senha = senha;
+    
+    // Se digitou uma nova senha, chama o RPC para atualizar a senha no Auth primeiro
+    if(senha) {
+      const { data: passData, error: passErr } = await supabaseClient.rpc('admin_atualizar_senha', {
+        p_user_id: id,
+        p_nova_senha: senha
+      });
+      if(passErr || passData?.status === 'error') {
+        console.error('[Update Senha]', passErr || passData);
+        showToast('Erro ao atualizar senha no sistema de autenticação: ' + (passErr?.message || passData?.message), 'evasao');
+        return; // Interrompe se não conseguiu atualizar a senha no Auth
+      }
+      payload.senha = senha;
+    }
 
     const { error } = await supabaseClient.from('usuarios').update(payload).eq('id', id);
     if (!error) {
       closeModal('modal-usuario');
-      showToast('Usuário atualizado!','sucesso');
+      showToast('Usuário atualizado com sucesso!','sucesso');
       await carregarUsuarios();
     } else {
       console.error('[Update Usuario]', error);
-      showToast('Erro ao atualizar: ' + error.message, 'evasao');
+      showToast('Erro ao atualizar os dados do usuário: ' + error.message, 'evasao');
     }
   }
 }
