@@ -2474,9 +2474,11 @@ function renderOcorrencias(){
   const turnoF=document.getElementById('filtro-ocorr-turno')?.value||'';
   const diaF=document.getElementById('filtro-ocorr-dia')?.value||'';
   const statusF=document.getElementById('filtro-ocorr-status')?.value||'';
+  const tipoF=document.getElementById('filtro-ocorr-tipo')?.value||'';
   let data=[...OCORR_DATA].reverse();
   if(turnoF){const als=ALUNOS_DATA.filter(a=>a.turno===turnoF).map(a=>a.nome);data=data.filter(o=>als.includes(o.aluno));}
   if(diaF) data=data.filter(o=>o.data===diaF);
+  if(tipoF) data=data.filter(o=>o.tipo===tipoF);
   if(statusF==='tratada') data=data.filter(o=>o.tratada);
   if(statusF==='nao-tratada') data=data.filter(o=>!o.tratada);
   c.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Sem registros');
@@ -3946,10 +3948,12 @@ function gerarRelTransp(){
 
 function gerarRelOcorr(){
   const turno=document.getElementById('rel-ocorr-turno')?.value||'';
+  const tipo=document.getElementById('rel-ocorr-tipo')?.value||'';
   const periodo=document.getElementById('rel-ocorr-periodo')?.value||'mensal';
   const dias=getDiasLetivos(periodo,'ocorr');
   let ocorrs=[...OCORR_DATA];
   if(turno){ const als=ALUNOS_DATA.filter(a=>a.turno===turno).map(a=>a.nome); ocorrs=ocorrs.filter(o=>als.includes(o.aluno)); }
+  if(tipo){ ocorrs=ocorrs.filter(o=>o.tipo===tipo); }
   // Filtra pelo período
   if(dias.length){
     const datas=new Set(dias.map(k=>{ const[y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('pt-BR'); }));
