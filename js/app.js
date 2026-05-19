@@ -4787,6 +4787,7 @@ async function salvarUsuario(){
     }
     console.error('[RPC admin_criar_usuario]', rpcErr || rpcResp);
     showToast('Erro ao criar usuário: ' + (rpcErr?.message || rpcResp?.message || 'Verifique o console.'), 'evasao');
+  }
   // ── Se for EDIÇÃO, atualiza a tabela pública normalmente ──────────────
   else {
     const payload = {
