@@ -364,6 +364,9 @@ async function carregarDados(){
          if (descView.startsWith('[ATRASO]')) {
              tipoView = 'atraso';
              descView = descView.replace('[ATRASO] ', '').replace('[ATRASO]\n', '').trim();
+         } else if (descView.startsWith('[LIBERADO]')) {
+             tipoView = 'liberado_coord';
+             descView = descView.replace('[LIBERADO] ', '').replace('[LIBERADO]\n', '').trim();
          }
 
          const al = ALUNOS_DATA.find(a => a.id === o.aluno_id);
@@ -371,7 +374,7 @@ async function carregarDados(){
          return {
             id: o.id,
             tipo: tipoView,
-            icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : '❌',
+            icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : tipoView === 'liberado_coord' ? '🟢' : '❌',
             aluno: o.participante || (al ? al.nome : '—'),
             cpf: al ? al.cpf : '',
             turma: tu ? tu.code : '',
@@ -2489,7 +2492,7 @@ async function saveOcorrencia(){
   const turma=document.getElementById('input-ocorr-turma')?.value;
   const desc=document.getElementById('input-ocorr-desc')?.value.trim();
   const comunicarPais=document.querySelector('input[name="comunicar-pais"]:checked')?.value==='sim';
-  const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰'};
+  const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰',liberado_coord:'🟢'};
   const alunoSel=document.getElementById('sel-aluno-principal')?.value;
   const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
   const user = getCurrentUser();
@@ -2499,13 +2502,16 @@ async function saveOcorrencia(){
   const turmaObj = TURMAS_DATA.find(t => t.code === turma);
   
   let tipoDb = tipo;
-  let prefixoAtraso = '';
+  let prefixoOcorr = '';
   if (tipo === 'atraso') {
     tipoDb = 'indisciplina'; // Mapeia para uma categoria existente no banco
-    prefixoAtraso = '[ATRASO] ';
+    prefixoOcorr = '[ATRASO] ';
+  } else if (tipo === 'liberado_coord') {
+    tipoDb = 'indisciplina';
+    prefixoOcorr = '[LIBERADO] ';
   }
 
-  const descFinal = prefixoAtraso + desc + 
+  const descFinal = prefixoOcorr + desc + 
     (comunicarPais ? '\n[AGUARDANDO PAIS]' : '') + 
     '\nResponsável: ' + (user?.nome || 'Usuário');
 
@@ -3965,7 +3971,7 @@ function gerarRelOcorr(){
     document.getElementById('rel-ocorr-actions').classList.remove('hidden');
     return;
   }
-  const labels={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso'};
+  const labels={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.'};
   const rows=ocorrs.map(o=>`<tr>
     <td style="font-size:12px;font-weight:600">${o.aluno}</td>
     <td><span class="metric-badge ${o.tratada?'badge-green':'badge-red'}">${labels[o.tipo]||o.tipo}</span></td>

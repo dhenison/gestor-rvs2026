@@ -146,9 +146,10 @@ if (faltando.length) {
 }
 
 // ── Geração do SQL ───────────────────────────────────────────────
-const linhasSQL = [];
+const linhasSQLMap = new Map();
 let   erros     = 0;
 let   ignorados = 0;
+let   duplicados = 0;
 
 for (let i = 0; i < rows.length; i++) {
   const row  = rows[i];
@@ -164,10 +165,15 @@ for (let i = 0; i < rows.length; i++) {
     continue;
   }
 
-  linhasSQL.push(
-    `  ('${cpf}', '${nome}', '${email}', '${senha}', '${esc(dn)}')`
-  );
+  if (linhasSQLMap.has(cpf)) {
+    console.warn(`  ⚠️  Linha ${i + 2}: CPF duplicado encontrado (${cpf}) — mantendo o mais recente`);
+    duplicados++;
+  }
+
+  linhasSQLMap.set(cpf, `  ('${cpf}', '${nome}', '${email}', '${senha}', '${esc(dn)}')`);
 }
+
+const linhasSQL = Array.from(linhasSQLMap.values());
 
 if (!linhasSQL.length) {
   console.error('\n❌  Nenhum registro válido encontrado.\n');
