@@ -448,6 +448,35 @@
       line-height: 1.5;
     }
 
+    /* ── Botão Portal do Aluno ── */
+    .btn-portal-aluno {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      max-width: 480px;
+      width: calc(100% - 48px);
+      margin: 0 auto 24px;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--blue2), var(--sky));
+      border: none;
+      border-radius: 14px;
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all .25s cubic-bezier(0.4,0,0.2,1);
+      box-shadow: 0 6px 24px rgba(37,99,235,.4);
+      letter-spacing: 0.02em;
+    }
+    .btn-portal-aluno:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(37,99,235,.55);
+    }
+    .btn-portal-aluno:active { transform: scale(0.98); }
+
     /* ── Banner TNBio ── */
     .banner-tnbio {
       display: block;
@@ -652,6 +681,11 @@
       </div>
     </div>
   </div>
+
+  <!-- BOTÃO PORTAL DO ALUNO -->
+  <a href="portal_login.html" class="btn-portal-aluno">
+    🎓 ACESSAR PORTAL DO ALUNO
+  </a>
 
   <!-- BANNER TNBIO -->
   <a href="https://app.seletaeducacao.com/" target="_blank" class="banner-tnbio">
