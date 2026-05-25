@@ -4847,11 +4847,21 @@ async function salvarUsuario(){
 
 async function excluirUsuario(id, nome){
   if(!confirm('Excluir o usuário "'+nome+'"?')) return;
-  const {error} = await supabaseClient.from('usuarios').delete().eq('id', id);
-  if(error){ showToast('Erro: '+error.message,'evasao'); return; }
+  
+  // Chama o RPC seguro para deletar o usuário do Auth e da tabela pública
+  const { data, error } = await supabaseClient.rpc('admin_deletar_usuario', {
+    p_user_id: id
+  });
+  
+  if (error || data?.status === 'error') {
+    console.error('[RPC admin_deletar_usuario]', error || data);
+    showToast('Erro ao excluir usuário: ' + (error?.message || data?.message), 'evasao');
+    return;
+  }
+  
   USUARIOS_DATA = USUARIOS_DATA.filter(u => u.id !== id);
   renderUsuarios();
-  showToast('Usuário excluído.','alerta');
+  showToast('Usuário excluído com sucesso do sistema e da autenticação.','sucesso');
 }
 
 function abrirModalUsuario(id){
