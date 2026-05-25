@@ -5589,3 +5589,140 @@ function gerarPDFIndividual(oId) {
     showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
   }
 }
+
+// Ficha de Registro de Aluno em PDF
+function gerarPDFFichaAluno() {
+  const cpf = document.getElementById('modal-ficha')?.dataset.cpf;
+  if (!cpf) return;
+  const a = ALUNOS_DATA.find(x => x.cpf === cpf);
+  if (!a) return;
+
+  // Filtrar ocorrências deste aluno
+  const ocorrs = OCORR_DATA.filter(o => 
+    o.aluno === a.nome || o.aluno === a.cpf ||
+    o.aluno.includes(a.nome) || (a.cpf && o.cpf === a.cpf)
+  );
+
+  const numFaltas = (a.historico || []).filter(h => h.tipo === 'falta').length;
+
+  const ocorrsHtml = ocorrs.length === 0 
+    ? '<p style="color:#666; font-style:italic; font-size:12px;">Nenhuma ocorrência registrada para este aluno.</p>'
+    : ocorrs.map(o => {
+        const label = {
+          evasao: 'Evasão Escolar',
+          indisciplina: 'Indisciplina',
+          bullying: 'Bullying',
+          agressao: 'Agressão Física',
+          atraso: 'Atraso',
+          liberado_coord: 'Liberado pela Coordenação',
+          suspensao_celular: 'Suspensão por Uso de Celular'
+        }[o.tipo] || o.tipo;
+        const status = o.tratada ? 'Tratada' : 'Pendente';
+        return `
+          <div style="background:#fafafa; border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:8px; page-break-inside:avoid;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11.5px;">
+              <strong>${label}</strong>
+              <span style="color:#555;">${o.data} às ${o.hora} | Status: <strong>${status}</strong></span>
+            </div>
+            <div style="font-size:12px; color:#444;">${o.desc}</div>
+          </div>
+        `;
+      }).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Ficha Individual - ${a.nome}</title>
+      <style>
+        @page { size: portrait; margin: 15mm; margin-top: 8mm; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; font-size: 13px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 20px; margin-top: -20px; }
+        .logo-escola { max-height: 90px; width: auto; object-fit: contain; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+        .header h2 { font-size: 16px; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header .subtitle { font-size: 11.5px; text-transform: uppercase; color: #666; font-weight: bold; }
+        
+        .section-title { font-size: 13px; font-weight: bold; text-transform: uppercase; background: #f2f2f2; padding: 6px 10px; margin-top: 20px; margin-bottom: 10px; border-left: 4px solid #333; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .field { margin-bottom: 8px; }
+        .label { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; display: block; }
+        .value { font-size: 13px; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
+        
+        .signatures { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; page-break-inside:avoid; }
+        .signature-line { text-align: center; margin-top: 20px; }
+        .signature-line div { border-top: 1px solid #333; width: 80%; margin: 0 auto; padding-top: 5px; font-size: 11px; text-transform: uppercase; font-weight: bold; color: #555; }
+        
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 8px; font-size: 10px; color: #888; }
+        .logo-seduc { max-height: 38px; width: auto; object-fit: contain; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <img class="logo-escola" src="assets/marca_dagua.png" alt="Escola Dr. Romildo Veloso e Silva">
+        <h2>Ficha Individual do Aluno</h2>
+        <div class="subtitle">Dossiê Escolar e Histórico Disciplinar</div>
+      </div>
+      
+      <div class="section-title">Dados de Identificação</div>
+      <div class="grid">
+        <div class="field"><span class="label">Nome Completo</span><div class="value"><strong>${a.nome}</strong></div></div>
+        <div class="field"><span class="label">CPF / Matrícula</span><div class="value">${a.cpf || '—'}</div></div>
+      </div>
+      <div class="grid-3">
+        <div class="field"><span class="label">Turma</span><div class="value">${a.turma || '—'}</div></div>
+        <div class="field"><span class="label">Turno</span><div class="value">${a.turno || '—'}</div></div>
+        <div class="field"><span class="label">Transporte / Rota</span><div class="value">${a.rota || 'Sem transporte'}</div></div>
+      </div>
+      <div class="grid-3">
+        <div class="field"><span class="label">Data de Nascimento</span><div class="value">${a.nasc ? new Date(a.nasc).toLocaleDateString('pt-BR') : '—'}</div></div>
+        <div class="field"><span class="label">Idade</span><div class="value">${a.idade ? a.idade + ' anos' : '—'}</div></div>
+        <div class="field"><span class="label">Total de Faltas</span><div class="value" style="color:#b91c1c; font-weight:bold;">${numFaltas} faltas</div></div>
+      </div>
+      <div class="grid">
+        <div class="field"><span class="label">Responsável Legal</span><div class="value">${a.resp || '—'}</div></div>
+        <div class="field"><span class="label">Contato do Responsável</span><div class="value">${a.contato || '—'}</div></div>
+      </div>
+      
+      <div class="section-title">Histórico de Ocorrências Disciplinares</div>
+      <div style="margin-top: 10px;">
+        ${ocorrsHtml}
+      </div>
+      
+      <div class="signatures">
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura do Aluno</div>
+        </div>
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura do Responsável</div>
+        </div>
+      </div>
+      
+      <div class="signatures" style="margin-top: 20px;">
+        <div class="signature-line" style="grid-column: span 2; max-width: 300px; margin: 0 auto;">
+          <br><br>
+          <div>Assinatura da Coordenação / Direção</div>
+        </div>
+      </div>
+      
+      <div class="footer">
+        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
+        <div>Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  } else {
+    showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
+  }
+}
