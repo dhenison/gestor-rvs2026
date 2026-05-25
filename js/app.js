@@ -5500,9 +5500,7 @@ function gerarPDFIndividual(oId) {
         @page { size: portrait; margin: 15mm; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; font-size: 13px; }
         .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 20px; }
-        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-        .logo-seduc { max-height: 54px; width: auto; object-fit: contain; }
-        .logo-escola { max-height: 70px; width: auto; object-fit: contain; }
+        .logo-escola { max-height: 90px; width: auto; object-fit: contain; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
         .header h2 { font-size: 16px; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
         .header .subtitle { font-size: 11.5px; text-transform: uppercase; color: #666; font-weight: bold; }
         
@@ -5520,15 +5518,13 @@ function gerarPDFIndividual(oId) {
         .signature-line { text-align: center; margin-top: 30px; }
         .signature-line div { border-top: 1px solid #333; width: 80%; margin: 0 auto; padding-top: 5px; font-size: 11px; text-transform: uppercase; font-weight: bold; color: #555; }
         
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #eee; padding-top: 5px; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 8px; font-size: 10px; color: #888; }
+        .logo-seduc { max-height: 38px; width: auto; object-fit: contain; }
       </style>
     </head>
     <body>
       <div class="header">
-        <div class="header-top">
-          <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
-          <img class="logo-escola" src="assets/marca_dagua.png" alt="Escola Dr. Romildo Veloso e Silva">
-        </div>
+        <img class="logo-escola" src="assets/marca_dagua.png" alt="Escola Dr. Romildo Veloso e Silva">
         <h2>Ficha de Ocorrência Disciplinar</h2>
         <div class="subtitle">Controle Interno de Ocorrências e Medidas Disciplinares</div>
       </div>
@@ -5577,7 +5573,8 @@ function gerarPDFIndividual(oId) {
       </div>
       
       <div class="footer">
-        Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
+        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
+        <div>Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
       </div>
     </body>
     </html>
