@@ -5498,11 +5498,22 @@ function gerarPDFIndividual(oId) {
       <title>Ficha de Ocorrência Disciplinar - ${o.aluno}</title>
       <style>
         @page { size: portrait; margin: 15mm; }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; font-size: 13px; }
-        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 20px; }
-        .header h1 { font-size: 18px; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-        .header h2 { font-size: 14px; margin: 0 0 4px; font-weight: normal; color: #666; }
-        .header .subtitle { font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; font-size: 13px; position: relative; min-height: 100%; }
+        .watermark {
+          position: absolute;
+          top: 45%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 80%;
+          max-width: 440px;
+          opacity: 0.15;
+          z-index: -1;
+          pointer-events: none;
+        }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 20px; }
+        .header-logo { max-height: 48px; width: auto; object-fit: contain; margin-bottom: 6px; }
+        .header h2 { font-size: 15px; margin: 0 0 2px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header .subtitle { font-size: 11px; text-transform: uppercase; color: #777; font-weight: bold; }
         
         .section-title { font-size: 13px; font-weight: bold; text-transform: uppercase; background: #f2f2f2; padding: 6px 10px; margin-top: 20px; margin-bottom: 10px; border-left: 4px solid #333; }
         
@@ -5522,9 +5533,10 @@ function gerarPDFIndividual(oId) {
       </style>
     </head>
     <body>
+      <img class="watermark" src="assets/marca_dagua.png" alt="Marca d'água">
       <div class="header">
-        <h1>Secretaria de Estado de Educação - SEDUC</h1>
-        <h2>Gestor RVS Escolar - Ficha de Ocorrência Disciplinar</h2>
+        <img class="header-logo" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
+        <h2>Ficha de Ocorrência Disciplinar</h2>
         <div class="subtitle">Controle Interno de Ocorrências e Medidas Disciplinares</div>
       </div>
       
