@@ -367,6 +367,9 @@ async function carregarDados(){
          } else if (descView.startsWith('[LIBERADO]')) {
              tipoView = 'liberado_coord';
              descView = descView.replace('[LIBERADO] ', '').replace('[LIBERADO]\n', '').trim();
+         } else if (descView.startsWith('[SUSP_CELULAR]')) {
+             tipoView = 'suspensao_celular';
+             descView = descView.replace('[SUSP_CELULAR] ', '').replace('[SUSP_CELULAR]\n', '').trim();
          }
 
          const al = ALUNOS_DATA.find(a => a.id === o.aluno_id);
@@ -374,7 +377,7 @@ async function carregarDados(){
          return {
             id: o.id,
             tipo: tipoView,
-            icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : tipoView === 'liberado_coord' ? '🟢' : '❌',
+            icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : tipoView === 'liberado_coord' ? '🟢' : tipoView === 'suspensao_celular' ? '📵' : '❌',
             aluno: o.participante || (al ? al.nome : '—'),
             cpf: al ? al.cpf : '',
             turma: tu ? tu.code : '',
@@ -1484,7 +1487,7 @@ function renderFichaOcorrencias(a){
     return;
   }
   el.innerHTML=ocorrs.map(o=>{
-    const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.'}[o.tipo]||o.tipo;
+    const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'Suspensão Uso Celular'}[o.tipo]||o.tipo;
     const cor=o.tratada?'var(--green-light)':'var(--red-light)';
     const txt=o.tratada?'var(--green-dark)':'var(--red-dark)';
     return`<div style="background:${cor};border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px">
@@ -2453,7 +2456,7 @@ function updateConsolidado(){
 // ─── OCORRÊNCIAS ──────────────────────────────────────────────────────────────
 function ocorrItemHTML(o){
   const cls=o.tratada?'tratada':o.aguardandoPais?'aguardando-pais':'nao-tratada';
-  const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.'}[o.tipo]||o.tipo;
+  const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'Suspensão Uso Celular'}[o.tipo]||o.tipo;
   const clicavel=o.cpf?`onclick="verFicha('${o.cpf}')" style="cursor:pointer" title="Ver ficha de ${o.aluno}"`:
                  `onclick="showPage('ocorrencias',null)" style="cursor:pointer" title="Ver todas as ocorrências"`;
   return`<div class="ocorr-item ${cls}" ${clicavel}>
@@ -2492,7 +2495,7 @@ async function saveOcorrencia(){
   const turma=document.getElementById('input-ocorr-turma')?.value;
   const desc=document.getElementById('input-ocorr-desc')?.value.trim();
   const comunicarPais=document.querySelector('input[name="comunicar-pais"]:checked')?.value==='sim';
-  const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰',liberado_coord:'🟢'};
+  const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰',liberado_coord:'🟢',suspensao_celular:'📵'};
   const alunoSel=document.getElementById('sel-aluno-principal')?.value;
   const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
   const user = getCurrentUser();
@@ -2509,6 +2512,9 @@ async function saveOcorrencia(){
   } else if (tipo === 'liberado_coord') {
     tipoDb = 'indisciplina';
     prefixoOcorr = '[LIBERADO] ';
+  } else if (tipo === 'suspensao_celular') {
+    tipoDb = 'indisciplina';
+    prefixoOcorr = '[SUSP_CELULAR] ';
   }
 
   const descFinal = prefixoOcorr + desc + 
@@ -2606,6 +2612,9 @@ function atualizarAlunosPorTurmaOcorr(){
 function toggleProfIncluso(){
   const tipo=document.getElementById('input-ocorr-tipo')?.value;
   document.getElementById('row-prof-incluso')?.classList.toggle('hidden',tipo!=='indisciplina');
+}
+function toggleProfInclusoOcorr(){
+  toggleProfIncluso();
 }
 
 function abrirAddEnvolvido(listId){
@@ -3971,7 +3980,7 @@ function gerarRelOcorr(){
     document.getElementById('rel-ocorr-actions').classList.remove('hidden');
     return;
   }
-  const labels={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.'};
+  const labels={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'Suspensão Uso Celular'};
   const rows=ocorrs.map(o=>`<tr>
     <td style="font-size:12px;font-weight:600">${o.aluno}</td>
     <td><span class="metric-badge ${o.tratada?'badge-green':'badge-red'}">${labels[o.tipo]||o.tipo}</span></td>
