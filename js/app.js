@@ -376,6 +376,7 @@ async function carregarDados(){
          const tu = TURMAS_DATA.find(t => t.id === o.turma_id);
          return {
             id: o.id,
+            aluno_id: o.aluno_id,
             tipo: tipoView,
             icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : tipoView === 'liberado_coord' ? '🟢' : tipoView === 'suspensao_celular' ? '📵' : '❌',
             aluno: o.participante || (al ? al.nome : '—'),
@@ -2469,8 +2470,11 @@ function ocorrItemHTML(o){
     </div>
     <div class="ocorr-time">
       <div>${o.hora}</div><div style="margin-top:4px">${o.data||''}</div>
-      ${!o.tratada?`<button class="btn btn-xs btn-outline" style="margin-top:6px" onclick="event.stopPropagation();abrirTratarOcorr('${o.id}')">Tratar</button>`
-        :'<span style="color:var(--green-dark);font-size:11px;font-weight:600">✓ Tratada</span>'}
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;align-items:flex-end">
+        ${!o.tratada?`<button class="btn btn-xs btn-outline" onclick="event.stopPropagation();abrirTratarOcorr('${o.id}')">Tratar</button>`
+          :'<span style="color:var(--green-dark);font-size:11px;font-weight:600">✓ Tratada</span>'}
+        <button class="btn btn-xs btn-outline" style="border-color:var(--blue);color:var(--blue)" onclick="event.stopPropagation();gerarPDFIndividual('${o.id}')">🖨️ PDF</button>
+      </div>
     </div>
   </div>`;
 }
@@ -5463,5 +5467,123 @@ async function buscarAluno() {
   } finally {
     btn.disabled       = false;
     btnTxt.textContent = String.fromCodePoint(0x1F50D) + ' Procurar';
+  }
+}
+
+// Ficha de Ocorrência Individual em PDF
+function gerarPDFIndividual(oId) {
+  const o = OCORR_DATA.find(item => item.id === oId);
+  if (!o) { showToast('Ocorrência não encontrada', 'alerta'); return; }
+
+  // Buscar dados completos do aluno
+  const al = ALUNOS_DATA.find(a => a.id === o.aluno_id || a.cpf === o.cpf || a.nome === o.aluno);
+  
+  const label = {
+    evasao: 'Evasão Escolar',
+    indisciplina: 'Indisciplina',
+    bullying: 'Bullying',
+    agressao: 'Agressão Física',
+    atraso: 'Atraso',
+    liberado_coord: 'Liberado pela Coordenação',
+    suspensao_celular: 'Suspensão por Uso de Celular'
+  }[o.tipo] || o.tipo;
+
+  const statusTexto = o.tratada ? 'TRATADA' : 'PENDENTE';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Ficha de Ocorrência Disciplinar - ${o.aluno}</title>
+      <style>
+        @page { size: portrait; margin: 15mm; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; font-size: 13px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 20px; }
+        .header h1 { font-size: 18px; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header h2 { font-size: 14px; margin: 0 0 4px; font-weight: normal; color: #666; }
+        .header .subtitle { font-size: 11px; text-transform: uppercase; color: #888; font-weight: bold; }
+        
+        .section-title { font-size: 13px; font-weight: bold; text-transform: uppercase; background: #f2f2f2; padding: 6px 10px; margin-top: 20px; margin-bottom: 10px; border-left: 4px solid #333; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .field { margin-bottom: 8px; }
+        .label { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #555; display: block; }
+        .value { font-size: 13px; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
+        
+        .description-box { border: 1px solid #ccc; padding: 12px; min-height: 120px; border-radius: 4px; background: #fafafa; margin-top: 10px; white-space: pre-wrap; font-size: 12.5px; }
+        
+        .signatures { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .signature-line { text-align: center; margin-top: 30px; }
+        .signature-line div { border-top: 1px solid #333; width: 80%; margin: 0 auto; padding-top: 5px; font-size: 11px; text-transform: uppercase; font-weight: bold; color: #555; }
+        
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: #888; border-top: 1px solid #eee; padding-top: 5px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Secretaria de Estado de Educação - SEDUC</h1>
+        <h2>Gestor RVS Escolar - Ficha de Ocorrência Disciplinar</h2>
+        <div class="subtitle">Controle Interno de Ocorrências e Medidas Disciplinares</div>
+      </div>
+      
+      <div class="section-title">Dados do Aluno Envolvido</div>
+      <div class="grid">
+        <div class="field"><span class="label">Nome Completo</span><div class="value">${al ? al.nome : o.aluno}</div></div>
+        <div class="field"><span class="label">CPF / Matrícula</span><div class="value">${al ? al.cpf || '—' : o.cpf || '—'}</div></div>
+      </div>
+      <div class="grid-3">
+        <div class="field"><span class="label">Turma</span><div class="value">${al ? al.turma || '—' : o.turma || '—'}</div></div>
+        <div class="field"><span class="label">Turno</span><div class="value">${al ? al.turno || '—' : '—'}</div></div>
+        <div class="field"><span class="label">Transporte / Rota</span><div class="value">${al ? al.rota || 'Sem transporte' : '—'}</div></div>
+      </div>
+      <div class="grid">
+        <div class="field"><span class="label">Responsável Legal</span><div class="value">${al ? al.resp || '—' : '—'}</div></div>
+        <div class="field"><span class="label">Contato do Responsável</span><div class="value">${al ? al.contato || '—' : '—'}</div></div>
+      </div>
+      
+      <div class="section-title">Informações do Registro</div>
+      <div class="grid-3">
+        <div class="field"><span class="label">Tipo de Ocorrência</span><div class="value"><strong>${label}</strong></div></div>
+        <div class="field"><span class="label">Data / Hora</span><div class="value">${o.data} às ${o.hora}</div></div>
+        <div class="field"><span class="label">Status do Registro</span><div class="value"><strong>${statusTexto}</strong></div></div>
+      </div>
+      
+      <div class="section-title">Descrição Detalhada do Ocorrido</div>
+      <div class="description-box">${o.desc}</div>
+      
+      <div class="signatures">
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura do Aluno</div>
+        </div>
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura do Responsável</div>
+        </div>
+      </div>
+      
+      <div class="signatures" style="margin-top: 30px;">
+        <div class="signature-line" style="grid-column: span 2; max-width: 300px; margin: 0 auto;">
+          <br><br>
+          <div>Assinatura da Coordenação / Direção</div>
+        </div>
+      </div>
+      
+      <div class="footer">
+        Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
+      </div>
+    </body>
+    </html>
+  `;
+
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  } else {
+    showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
   }
 }
