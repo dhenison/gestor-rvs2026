@@ -5499,8 +5499,8 @@ function gerarPDFIndividual(oId) {
       <style>
         @page { size: portrait; margin: 15mm; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; font-size: 13px; }
-        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 20px; }
-        .logo-escola { max-height: 90px; width: auto; object-fit: contain; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 20px; margin-top: -15px; }
+        .logo-escola { max-height: 120px; width: auto; object-fit: contain; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; position: relative; z-index: 10; }
         .header h2 { font-size: 16px; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
         .header .subtitle { font-size: 11.5px; text-transform: uppercase; color: #666; font-weight: bold; }
         
