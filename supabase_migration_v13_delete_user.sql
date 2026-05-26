@@ -148,4 +148,7 @@ $$;
 REVOKE ALL ON FUNCTION public.admin_deletar_usuario(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_deletar_usuario(UUID) TO authenticated;
 
+DELETE FROM auth.identities WHERE user_id NOT IN (SELECT id FROM public.usuarios);
+DELETE FROM auth.users WHERE id NOT IN (SELECT id FROM public.usuarios);
+
 NOTIFY pgrst, 'reload schema';
