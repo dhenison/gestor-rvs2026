@@ -45,9 +45,9 @@ WHERE a.provider = 'email' AND a.id IN (
 -- Alinha ID e Provider_ID com o UID
 UPDATE auth.identities
 SET 
-  id = user_id::text, -- Garante compatibilidade caso id seja TEXT ou UUID
+  id = user_id, -- Garante compatibilidade sem forçar cast incompatível de texto para uuid
   provider_id = user_id::text
-WHERE provider = 'email' AND (id <> user_id::text OR provider_id <> user_id::text);
+WHERE provider = 'email' AND (id::text <> user_id::text OR provider_id <> user_id::text);
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 --  PASSO 3: Atualizar a função de criação de novos usuários (admin_criar_usuario)
@@ -100,7 +100,7 @@ BEGIN
   INSERT INTO auth.identities (
     id, user_id, identity_data, provider, provider_id, created_at, updated_at
   ) VALUES (
-    new_uid::text, new_uid, jsonb_build_object('sub', new_uid, 'email', final_email), 'email', new_uid::text, NOW(), NOW()
+    new_uid, new_uid, jsonb_build_object('sub', new_uid, 'email', final_email), 'email', new_uid::text, NOW(), NOW()
   );
 
   -- 3. Insere em public.usuarios
