@@ -12,13 +12,13 @@ WHERE a.provider = 'email' AND a.id IN (
 
 UPDATE auth.identities
 SET 
-  id = user_id::text,
+  id = user_id,
   provider_id = user_id::text
-WHERE provider = 'email' AND (id <> user_id::text OR provider_id <> user_id::text);
+WHERE provider = 'email' AND (id <> user_id OR provider_id <> user_id::text);
 
 INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
 SELECT 
-  u.id::text, 
+  u.id, 
   u.id, 
   jsonb_build_object('sub', u.id, 'email', u.email), 
   'email', 
@@ -74,7 +74,7 @@ BEGIN
   INSERT INTO auth.identities (
     id, user_id, identity_data, provider, provider_id, created_at, updated_at
   ) VALUES (
-    new_uid::text, new_uid, jsonb_build_object('sub', new_uid, 'email', final_email), 'email', new_uid::text, NOW(), NOW()
+    new_uid, new_uid, jsonb_build_object('sub', new_uid, 'email', final_email), 'email', new_uid::text, NOW(), NOW()
   );
 
   INSERT INTO public.usuarios (id, nome, email, senha, perfil, turno, cargo)
