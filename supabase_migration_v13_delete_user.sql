@@ -4,6 +4,7 @@
 --    1. Exclusão de usuário no painel não o remove do Supabase Auth (e-mail duplicado)
 --    2. Usuários cadastrados não conseguem logar (erro 500 ou senha rejeitada)
 --    3. Erro "function gen_salt(unknown) does not exist" ao cadastrar ou atualizar senha
+--    4. Erro "column confirmed_at is a generated column" ao rodar a migração
 --  Execute no Supabase: SQL Editor → Cole tudo → Run
 -- ══════════════════════════════════════════════════════════════════════
 
@@ -35,12 +36,11 @@ FROM auth.users u
 LEFT JOIN auth.identities i ON u.id = i.user_id
 WHERE i.user_id IS NULL;
 
--- C) Garante que a coluna confirmed_at esteja preenchida para todos os usuários ativos logarem
+-- C) Garante que a coluna email_confirmed_at esteja preenchida (confirmed_at é autogerada pelo Supabase)
 UPDATE auth.users
 SET 
-  confirmed_at = COALESCE(confirmed_at, email_confirmed_at, NOW()),
-  email_confirmed_at = COALESCE(email_confirmed_at, confirmed_at, NOW())
-WHERE confirmed_at IS NULL OR email_confirmed_at IS NULL;
+  email_confirmed_at = COALESCE(email_confirmed_at, NOW())
+WHERE email_confirmed_at IS NULL;
 
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -72,14 +72,14 @@ BEGIN
 
   encrypted_pw := crypt(p_senha, gen_salt('bf'));
 
-  -- 1. Insere em auth.users (Garantindo confirmed_at e email_confirmed_at)
+  -- 1. Insere em auth.users (Garantindo email_confirmed_at, confirmed_at é gerada automaticamente)
   INSERT INTO auth.users (
     instance_id, id, aud, role, email, encrypted_password, 
-    email_confirmed_at, confirmed_at, raw_app_meta_data, raw_user_meta_data, 
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data, 
     created_at, updated_at
   ) VALUES (
     '00000000-0000-0000-0000-000000000000', new_uid, 'authenticated', 'authenticated', final_email, encrypted_pw, 
-    NOW(), NOW(), '{"provider": "email", "providers": ["email"]}', 
+    NOW(), '{"provider": "email", "providers": ["email"]}', 
     jsonb_build_object('nome', p_nome, 'perfil', p_perfil), 
     NOW(), NOW()
   );
