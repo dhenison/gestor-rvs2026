@@ -1,12 +1,24 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+DELETE FROM auth.identities a
+WHERE a.provider = 'email' AND a.id IN (
+  SELECT id FROM (
+    SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) as rnum
+    FROM auth.identities
+    WHERE provider = 'email'
+  ) t
+  WHERE t.rnum > 1
+);
+
 UPDATE auth.identities
-SET provider_id = user_id::text
-WHERE provider = 'email' AND (provider_id IS NULL OR provider_id <> user_id::text);
+SET 
+  id = user_id::text,
+  provider_id = user_id::text
+WHERE provider = 'email' AND (id <> user_id::text OR provider_id <> user_id::text);
 
 INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
 SELECT 
-  gen_random_uuid(), 
+  u.id::text, 
   u.id, 
   jsonb_build_object('sub', u.id, 'email', u.email), 
   'email', 
@@ -15,7 +27,8 @@ SELECT
   NOW()
 FROM auth.users u
 LEFT JOIN auth.identities i ON u.id = i.user_id
-WHERE i.user_id IS NULL;
+WHERE i.user_id IS NULL
+ON CONFLICT (provider, id) DO NOTHING;
 
 UPDATE auth.users
 SET 
@@ -61,7 +74,7 @@ BEGIN
   INSERT INTO auth.identities (
     id, user_id, identity_data, provider, provider_id, created_at, updated_at
   ) VALUES (
-    gen_random_uuid(), new_uid, jsonb_build_object('sub', new_uid, 'email', final_email), 'email', new_uid::text, NOW(), NOW()
+    new_uid::text, new_uid, jsonb_build_object('sub', new_uid, 'email', final_email), 'email', new_uid::text, NOW(), NOW()
   );
 
   INSERT INTO public.usuarios (id, nome, email, senha, perfil, turno, cargo)
@@ -105,7 +118,7 @@ BEGIN
   SET senha = p_nova_senha
   WHERE id = p_user_id;
 
-  RETURN jsonb_build_object('status', 'success', 'message', 'Senha atualizada com sucesso.');
+  RETURN jsonb_build_object('status', 'success', 'message', 'Senha updated com sucesso.');
 
 EXCEPTION WHEN OTHERS THEN
   RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
