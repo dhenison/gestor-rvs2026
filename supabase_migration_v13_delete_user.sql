@@ -27,8 +27,7 @@ SELECT
   NOW()
 FROM auth.users u
 LEFT JOIN auth.identities i ON u.id = i.user_id
-WHERE i.user_id IS NULL
-ON CONFLICT (provider, id) DO NOTHING;
+WHERE i.user_id IS NULL;
 
 UPDATE auth.users
 SET 
