@@ -79,6 +79,7 @@
       <div class="nav-item" onclick="showPage('topo-saber',this)"><i data-lucide="award" class="nav-item-icon"></i>Topo do Saber</div>
       <div class="nav-item" onclick="showPage('transporte',this)"><i data-lucide="bus" class="nav-item-icon"></i>Transporte</div>
       <div class="nav-item" onclick="showPage('ocorrencias',this)"><i data-lucide="alert-triangle" class="nav-item-icon"></i>Ocorrências</div>
+      <div class="nav-item" onclick="showPage('tratamento-ocorrencias',this)"><i data-lucide="shield-alert" class="nav-item-icon"></i>Tratamento Ocorr.</div>
       <div class="nav-section-title">Gestão</div>
       <div class="nav-item" onclick="showPage('livros',this)"><i data-lucide="book-open" class="nav-item-icon"></i>Livros Didáticos</div>
       <div class="nav-item" onclick="showPage('relatorios',this)"><i data-lucide="bar-chart-2" class="nav-item-icon"></i>Relatórios</div>
@@ -1036,6 +1037,50 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ TRATAMENTO DE OCORRÊNCIAS ══════════════════ -->
+      <div class="page" id="page-tratamento-ocorrencias">
+        <div class="section-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
+          <div>
+            <div class="section-title">🛡️ Tratamento & Alertas de Ocorrências</div>
+            <p style="font-size:12px; color:var(--gray5); margin-top:4px">Verificação automatizada de alunos que atingiram o limite crítico de 3 ou mais ocorrências disciplinares.</p>
+          </div>
+          <div>
+            <button class="btn btn-outline btn-sm" onclick="loadTratamentoOcorrencias()"><i data-lucide="refresh-cw" style="width:14px; height:14px; margin-right:4px"></i>Recarregar Painel</button>
+          </div>
+        </div>
+
+        <!-- KPIs Alertas -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px">
+          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--red)">
+            <div style="font-size:12px; color:var(--gray5)">Alunos Críticos (≥ 3 Ocorrências)</div>
+            <div style="font-size:28px; font-weight:700; color:var(--red); margin-top:8px" id="to-stats-criticos">0</div>
+          </div>
+          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--orange)">
+            <div style="font-size:12px; color:var(--gray5)">Total de Ocorrências Críticas</div>
+            <div style="font-size:28px; font-weight:700; color:var(--orange); margin-top:8px" id="to-stats-total">0</div>
+          </div>
+          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--green)">
+            <div style="font-size:12px; color:var(--gray5)">Ações Recomendadas</div>
+            <div style="font-size:13px; color:var(--gray6); font-weight:500; margin-top:14px">Notificar Responsáveis / Suspensão</div>
+          </div>
+        </div>
+
+        <!-- Filtros e Busca -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px">
+          <div style="display:flex; gap:10px; width:100%; max-width:600px">
+            <input type="text" class="form-input" style="max-width:320px; margin:0" id="to-filtro-busca" placeholder="Buscar aluno..." oninput="filtrarTratamentoOcorrencias()">
+            <select class="form-input form-select" style="max-width:180px; margin:0" id="to-filtro-turma" onchange="filtrarTratamentoOcorrencias()">
+              <option value="">Todas as turmas</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lista Grid de Alunos Críticos -->
+        <div style="display:grid; grid-template-columns:1fr; gap:16px" id="to-alunos-alertas-lista">
+          <!-- Populado via JS -->
         </div>
       </div>
 
@@ -2002,6 +2047,59 @@
     <div class="modal-footer" style="margin-top:15px">
       <button class="btn btn-outline" onclick="closeModal('modal-wa-edit-rule')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarRuleWa()">Salvar Regra</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Comunicado Ocorrência -->
+<div class="modal-overlay" id="modal-wa-comunicado-alerta" onclick="if(event.target===this)closeModal('modal-wa-comunicado-alerta')">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <span class="modal-title">✉️ Gerar Comunicado aos Pais</span>
+      <button class="modal-close" onclick="closeModal('modal-wa-comunicado-alerta')">✕</button>
+    </div>
+    <input type="hidden" id="to-comunicado-aluno-id">
+    <div class="form-group" style="margin-top:10px">
+      <label class="form-label">Responsável Destinatário</label>
+      <select class="form-input form-select" id="to-comunicado-responsavel-select"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mensagem Personalizada</label>
+      <textarea class="form-input" id="to-comunicado-mensagem" rows="7"></textarea>
+      <small style="color:var(--gray5); font-size:11px">A mensagem acima será disparada diretamente ao WhatsApp do responsável selecionado.</small>
+    </div>
+    <div class="modal-footer" style="margin-top:15px">
+      <button class="btn btn-outline" onclick="closeModal('modal-wa-comunicado-alerta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarComunicadoPaisOcorr()">🚀 Enviar via WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Aplicar Suspensão -->
+<div class="modal-overlay" id="modal-aplicar-suspensao" onclick="if(event.target===this)closeModal('modal-aplicar-suspensao')">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <span class="modal-title">🚫 Aplicar Suspensão Disciplinar</span>
+      <button class="modal-close" onclick="closeModal('modal-aplicar-suspensao')">✕</button>
+    </div>
+    <input type="hidden" id="to-suspensao-aluno-id">
+    <div class="form-row" style="margin-top:10px">
+      <div class="form-group">
+        <label class="form-label">Data de Início</label>
+        <input type="date" class="form-input" id="to-suspensao-data-inicio">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data de Fim</label>
+        <input type="date" class="form-input" id="to-suspensao-data-fim">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Motivo / Parecer Disciplinar</label>
+      <textarea class="form-input" id="to-suspensao-motivo" rows="5" placeholder="Descreva os motivos da suspensão..."></textarea>
+    </div>
+    <div class="modal-footer" style="margin-top:15px">
+      <button class="btn btn-outline" onclick="closeModal('modal-aplicar-suspensao')">Cancelar</button>
+      <button class="btn btn-red" onclick="salvarSuspensaoOcorr()">Confirmar Suspensão</button>
     </div>
   </div>
 </div>

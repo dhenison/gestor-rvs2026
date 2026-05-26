@@ -185,6 +185,7 @@ let PERMS = [
   {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
   {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
 ];
@@ -680,7 +681,7 @@ function showPage(p, el) {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    whatsapp: 'Comunicação Automática'
+    whatsapp: 'Comunicação Automática', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
@@ -704,6 +705,7 @@ function showPage(p, el) {
   if(p==='permissoes') renderPermissoes();
   if(p==='perfil') renderPerfil();
   if(p==='whatsapp') initWhatsAppPage();
+  if(p==='tratamento-ocorrencias') initTratamentoOcorrenciasPage();
   if(p==='frequencia'){
     // Sempre mostra etapa1 se não houver chamada em andamento
     if(!turmaChamadaAtual){
@@ -6006,5 +6008,361 @@ function renderWaHistory() {
       </tr>
     `;
   }).join('');
+}
+
+// ============================================================================
+// TRATAMENTO DE OCORRÊNCIAS & ALERTAS (≥ 3 OCORRÊNCIAS)
+// ============================================================================
+let TO_ALUNOS_CRITICOS = [];
+
+async function initTratamentoOcorrenciasPage() {
+  console.log('[initTratamentoOcorrenciasPage] Initializing Treatment tab...');
+  if (WA_RESPONSAIVEIS.length === 0) {
+    const { data: resps } = await supabaseClient.from('responsaveis').select('*');
+    if (resps) WA_RESPONSAIVEIS = resps;
+  }
+  popularToSelectTurmas();
+  await loadTratamentoOcorrencias();
+}
+
+function popularToSelectTurmas() {
+  const select = document.getElementById('to-filtro-turma');
+  if (!select) return;
+  const codes = [...new Set(ALUNOS_DATA.map(a => a.turma).filter(Boolean))].sort();
+  select.innerHTML = '<option value="">Todas as turmas</option>' + 
+    codes.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+async function loadTratamentoOcorrencias() {
+  const toLista = document.getElementById('to-alunos-alertas-lista');
+  if (toLista) toLista.innerHTML = '<div style="padding:20px; text-align:center; color:var(--gray5)">Calculando limites e carregando dados...</div>';
+
+  const ocorrsPorAluno = {};
+  
+  const { data: ocorrsDb, error: errOcorrs } = await supabaseClient
+    .from('ocorrencias')
+    .select('*')
+    .order('created_at', { ascending: false });
+    
+  if (errOcorrs) {
+    console.error('[loadTratamentoOcorrencias] Error fetching occurrences:', errOcorrs);
+    showToast('Erro ao atualizar ocorrências.', 'erro');
+    return;
+  }
+
+  const listOcorrs = ocorrsDb || [];
+  listOcorrs.forEach(o => {
+    if (!o.aluno_id) return;
+    if (!ocorrsPorAluno[o.aluno_id]) {
+      ocorrsPorAluno[o.aluno_id] = [];
+    }
+    ocorrsPorAluno[o.aluno_id].push(o);
+  });
+
+  TO_ALUNOS_CRITICOS = [];
+  let totalOcorrsCriticas = 0;
+
+  ALUNOS_DATA.forEach(a => {
+    const alunoOcorrs = ocorrsPorAluno[a.id] || [];
+    if (alunoOcorrs.length >= 3 && a.status === 'ativo') {
+      TO_ALUNOS_CRITICOS.push({
+        aluno: a,
+        ocorrencias: alunoOcorrs
+      });
+      totalOcorrsCriticas += alunoOcorrs.length;
+    }
+  });
+
+  const statsCriticos = document.getElementById('to-stats-criticos');
+  const statsTotal = document.getElementById('to-stats-total');
+  if (statsCriticos) statsCriticos.textContent = TO_ALUNOS_CRITICOS.length;
+  if (statsTotal) statsTotal.textContent = totalOcorrsCriticas;
+
+  renderTratamentoOcorrencias();
+}
+
+function renderTratamentoOcorrencias() {
+  const container = document.getElementById('to-alunos-alertas-lista');
+  if (!container) return;
+
+  if (TO_ALUNOS_CRITICOS.length === 0) {
+    container.innerHTML = emptyState('🛡️', 'Nenhum Aluno Crítico', 'Todos os alunos estão em conformidade com o regimento escolar (menos de 3 ocorrências).');
+    return;
+  }
+
+  container.innerHTML = TO_ALUNOS_CRITICOS.map(item => {
+    const a = item.aluno;
+    const ocorrs = item.ocorrencias;
+    const count = ocorrs.length;
+    
+    const recentes = ocorrs.slice(0, 3);
+    const ocorrsHtml = recentes.map(o => {
+      const data = new Date(o.created_at || o.data_ocorr).toLocaleDateString('pt-BR');
+      const tipoLabel = { evasao: '🚨 Evasão', indisciplina: '⚠️ Indisciplina', atraso: '⏰ Atraso', liberado_coord: '🟢 Liberado', suspensao_celular: '📵 Celular' }[o.tipo] || o.tipo;
+      
+      let desc = o.descricao || '';
+      const isSuspensa = desc.includes('[SUSPENSÃO]');
+      
+      return `
+        <div style="background:var(--gray1); padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid ${isSuspensa ? 'var(--red)' : 'var(--orange)'}; font-size:12.5px">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+            <span style="font-weight:600; color:var(--gray7)">${tipoLabel}</span>
+            <span style="color:var(--gray4); font-size:11px">${data}</span>
+          </div>
+          <p style="color:var(--gray5); font-size:12px; margin:0">${desc}</p>
+        </div>
+      `;
+    }).join('');
+
+    const responsavelFicha = WA_RESPONSAIVEIS.find(r => r.aluno_id === a.id);
+    const respContatoStr = responsavelFicha ? `${responsavelFicha.nome} (${responsavelFicha.parentesco}) - ${responsavelFicha.whatsapp}` : 'Nenhum vinculado';
+
+    return `
+      <div class="profile-card" style="margin:0; padding:20px; border:1px solid rgba(220, 38, 38, 0.2); border-left:6px solid var(--red); background:rgba(220, 38, 38, 0.02)">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px">
+          
+          <div style="flex:1; min-width:280px">
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px">
+              <div style="position:relative">
+                <div class="user-avatar" style="width:48px; height:48px; background:var(--red-light); color:var(--red); font-size:18px; font-weight:700">
+                  ${a.nome.substring(0, 2).toUpperCase()}
+                </div>
+                <span style="position:absolute; top:-6px; right:-6px; background:var(--red); color:white; font-size:11px; font-weight:700; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; border:2px solid #fff" title="Total de Ocorrências">
+                  ${count}
+                </span>
+              </div>
+              <div>
+                <h4 style="margin:0; font-size:16px; color:var(--gray8); font-weight:700">${a.nome}</h4>
+                <p style="margin:2px 0 0 0; font-size:12px; color:var(--gray5)">Turma: <strong>${a.turma || '—'}</strong> | Turno: ${a.turno || '—'} | Rota: ${a.rota || '—'}</p>
+                <p style="margin:4px 0 0 0; font-size:11px; color:var(--green); font-weight:600">👤 Resp: ${respContatoStr}</p>
+              </div>
+            </div>
+            
+            <div style="margin-top:16px">
+              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; color:var(--gray4); margin-bottom:8px">Últimas 3 Ocorrências do Aluno:</div>
+              ${ocorrsHtml}
+              ${count > 3 ? `<div style="font-size:11px; color:var(--gray4); text-align:right">+ ${count - 3} ocorrências mais antigas registradas no dossiê...</div>` : ''}
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:200px">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--gray4); text-align:center">Ações Recomendadas</div>
+            <button class="btn btn-primary btn-sm" onclick="abrirGerarComunicadoOcorr('${a.id}')" style="width:100%; justify-content:center">
+              ✉️ Enviar Comunicado
+            </button>
+            <button class="btn btn-red btn-sm" onclick="abrirSuspensaoOcorr('${a.id}')" style="width:100%; justify-content:center; background:var(--red)">
+              🚫 Aplicar Suspensão
+            </button>
+            <button class="btn btn-outline btn-xs" onclick="verFicha('${a.cpf}')" style="width:100%; justify-content:center; margin-top:8px">
+              🔍 Ver Ficha Completa
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filtrarTratamentoOcorrencias() {
+  const busca = document.getElementById('to-filtro-busca').value.toLowerCase().trim();
+  const turma = document.getElementById('to-filtro-turma').value;
+  
+  const cards = document.querySelectorAll('#to-alunos-alertas-lista > .profile-card');
+  TO_ALUNOS_CRITICOS.forEach((item, index) => {
+    const a = item.aluno;
+    const matchesBusca = a.nome.toLowerCase().includes(busca);
+    const matchesTurma = !turma || a.turma === turma;
+    
+    const card = cards[index];
+    if (card) {
+      card.style.display = (matchesBusca && matchesTurma) ? 'block' : 'none';
+    }
+  });
+}
+
+function abrirGerarComunicadoOcorr(alunoId) {
+  const item = TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId);
+  if (!item) return;
+
+  const a = item.aluno;
+  document.getElementById('to-comunicado-aluno-id').value = a.id;
+  
+  const select = document.getElementById('to-comunicado-responsavel-select');
+  if (select) {
+    const resps = WA_RESPONSAIVEIS.filter(r => r.aluno_id === a.id);
+    if (resps.length === 0) {
+      select.innerHTML = '<option value="">Nenhum responsável cadastrado</option>';
+    } else {
+      select.innerHTML = resps.map(r => `<option value="${r.id}">${r.nome} (${r.parentesco}) - ${r.whatsapp}</option>`).join('');
+    }
+  }
+
+  const msgTextarea = document.getElementById('to-comunicado-mensagem');
+  if (msgTextarea) {
+    const listTipos = item.ocorrencias.slice(0, 3).map(o => {
+      const label = { evasao: 'Evasão', indisciplina: 'Indisciplina', atraso: 'Atraso', liberado_coord: 'Liberado', suspensao_celular: 'Uso de Celular' }[o.tipo] || o.tipo;
+      const data = new Date(o.created_at || o.data_ocorr).toLocaleDateString('pt-BR');
+      return `• ${label} (em ${data})`;
+    }).join('\n');
+
+    msgTextarea.value = `Prezado(a) responsável,\n\nEntramos em contato para alertar que o(a) aluno(a) *${a.nome}* atingiu um limite crítico de *${item.ocorrencias.length} ocorrências* disciplinares registradas em nosso sistema pedagógico.\n\nÚltimos registros:\n${listTipos}\n\nJustificativa: Solicitamos o seu comparecimento ao colégio com urgência para conversarmos com a coordenação e alinharmos o plano de acompanhamento pedagógico do estudante.\n\nAtenciosamente,\nCoordenação Pedagógica RVS.`;
+  }
+
+  openModal('modal-wa-comunicado-alerta');
+}
+
+async function salvarComunicadoPaisOcorr() {
+  const alunoId = document.getElementById('to-comunicado-aluno-id').value;
+  const respId = document.getElementById('to-comunicado-responsavel-select').value;
+  const mensagem = document.getElementById('to-comunicado-mensagem').value.trim();
+
+  if (!respId) {
+    showToast('Adicione ou selecione um responsável antes de enviar!', 'alerta');
+    return;
+  }
+  if (!mensagem) {
+    showToast('A mensagem não pode estar vazia!', 'alerta');
+    return;
+  }
+
+  const resp = WA_RESPONSAIVEIS.find(x => x.id === respId);
+  if (!resp) return;
+
+  const btn = document.querySelector('button[onclick="salvarComunicadoPaisOcorr()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando...'; }
+
+  try {
+    const { data: logData, error: logErr } = await supabaseClient
+      .from('whatsapp_envios')
+      .insert({
+        responsavel_id: resp.id,
+        tipo_evento: 'OCORRENCIA',
+        mensagem: mensagem,
+        whatsapp_destino: resp.whatsapp,
+        status: 'PENDENTE'
+      }).select().single();
+
+    if (logErr) throw logErr;
+
+    const res = await fetch('http://localhost:3001/api/comunicados/disparar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        titulo: `Comunicado Crítico - Aluno: ${TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId)?.aluno.nome}`,
+        mensagem: mensagem,
+        destinatariosTurmas: 'TODOS'
+      })
+    });
+
+    if (res.ok) {
+      showToast('Comunicado de alerta disparado com sucesso! 🚀', 'sucesso');
+      if (logData) {
+        await supabaseClient.from('whatsapp_envios').update({ status: 'ENVIADO', updated_at: new Date().toISOString() }).eq('id', logData.id);
+      }
+    } else {
+      showToast('Alerta enfileirado para reenvio. Verifique o servidor local.', 'alerta');
+      if (logData) {
+        await supabaseClient.from('whatsapp_envios').update({ status: 'FALHA', erro_log: 'Servidor local offline', updated_at: new Date().toISOString() }).eq('id', logData.id);
+      }
+    }
+  } catch (err) {
+    console.error('[salvarComunicadoPaisOcorr] Error:', err);
+    showToast('Falha na transmissão. Fila de disparos atualizada.', 'alerta');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Enviar via WhatsApp'; }
+    closeModal('modal-wa-comunicado-alerta');
+    await loadTratamentoOcorrencias();
+  }
+}
+
+function abrirSuspensaoOcorr(alunoId) {
+  const item = TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId);
+  if (!item) return;
+
+  document.getElementById('to-suspensao-aluno-id').value = alunoId;
+  document.getElementById('to-suspensao-data-inicio').value = new Date().toISOString().split('T')[0];
+  document.getElementById('to-suspensao-data-fim').value = '';
+  document.getElementById('to-suspensao-motivo').value = '';
+
+  openModal('modal-aplicar-suspensao');
+}
+
+async function salvarSuspensaoOcorr() {
+  const alunoId = document.getElementById('to-suspensao-aluno-id').value;
+  const dataInicio = document.getElementById('to-suspensao-data-inicio').value;
+  const dataFim = document.getElementById('to-suspensao-data-fim').value;
+  const motivo = document.getElementById('to-suspensao-motivo').value.trim();
+
+  if (!dataInicio || !dataFim || !motivo) {
+    showToast('Preencha todas as datas e o motivo da suspensão!', 'alerta');
+    return;
+  }
+
+  const item = TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId);
+  if (!item) return;
+
+  const a = item.aluno;
+  const dataInicioBr = new Date(dataInicio + 'T00:00:00').toLocaleDateString('pt-BR');
+  const dataFimBr = new Date(dataFim + 'T00:00:00').toLocaleDateString('pt-BR');
+
+  const descFinal = `[SUSPENSÃO] Aluno suspenso no período de ${dataInicioBr} a ${dataFimBr}.\nMotivo: ${motivo}\nAutorizado por: Coordenação Pedagógica`;
+
+  const payload = {
+    tipo: 'indisciplina',
+    aluno_id: a.id,
+    turma_id: TURMAS_DATA.find(t => t.code === a.turma)?.id || null,
+    participante: a.nome,
+    descricao: descFinal,
+    auto_gerada: false
+  };
+
+  const btn = document.querySelector('button[onclick="salvarSuspensaoOcorr()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Gravando...'; }
+
+  try {
+    const { data: insertedOcorr, error } = await supabaseClient.from('ocorrencias').insert(payload).select().single();
+    if (error) throw error;
+
+    showToast('Suspensão registrada com sucesso no dossiê! 🚫', 'sucesso');
+    
+    const oData = new Date().toLocaleDateString('pt-BR');
+    const oHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    OCORR_DATA.push({
+      id: insertedOcorr?.id || Date.now(),
+      tipo: 'indisciplina', icon: '📵', aluno: a.nome, turma: a.turma,
+      desc: descFinal, hora: oHora, data: oData,
+      tratada: false, aguardandoPais: true, origem: 'manual'
+    });
+
+    const resps = WA_RESPONSAIVEIS.filter(r => r.aluno_id === a.id && r.notificacoes_ativas);
+    if (resps.length > 0) {
+      const envolvidosPayload = [
+        { alunoId: a.id, papel: 'AGRESSOR' }
+      ];
+      fetch('http://localhost:3001/api/ocorrencias/registrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ocorrenciaId: insertedOcorr.id,
+          tipo: 'Suspensão Disciplinar',
+          parecer: `Prezado responsável, comunicamos a aplicação da suspensão disciplinar ao aluno ${a.nome} de ${dataInicioBr} a ${dataFimBr} por motivo de: ${motivo}.`,
+          envolvidos: envolvidosPayload
+        })
+      }).then(r => r.json())
+        .then(resData => console.log('[Suspensao Auto-Notif WhatsApp] Success:', resData))
+        .catch(err => console.error('[Suspensao Auto-Notif WhatsApp] Error:', err));
+    }
+
+  } catch (err) {
+    console.error('[salvarSuspensaoOcorr] Error:', err);
+    showToast('Erro ao salvar suspensão disciplinar: ' + err.message, 'erro');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirmar Suspensão'; }
+    closeModal('modal-aplicar-suspensao');
+    await loadTratamentoOcorrencias();
+    renderOcorrencias();
+    renderDashOcorr();
+  }
 }
 
