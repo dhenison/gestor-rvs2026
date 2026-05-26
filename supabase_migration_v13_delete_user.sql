@@ -3,6 +3,7 @@
 --  PROBLEMAS: 
 --    1. Exclusão de usuário no painel não o remove do Supabase Auth (e-mail duplicado)
 --    2. Usuários cadastrados não conseguem logar (erro 500 ou senha rejeitada)
+--    3. Erro "function gen_salt(unknown) does not exist" ao cadastrar ou atualizar senha
 --  Execute no Supabase: SQL Editor → Cole tudo → Run
 -- ══════════════════════════════════════════════════════════════════════
 
@@ -43,7 +44,7 @@ WHERE confirmed_at IS NULL OR email_confirmed_at IS NULL;
 
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---  3. RECRIA A FUNÇÃO DE CRIAÇÃO DE USUÁRIOS GARANTINDO CONFIRMAÇÃO COMPLETA
+--  3. RECRIA A FUNÇÃO DE CRIAÇÃO DE USUÁRIOS GARANTINDO CONFIRMAÇÃO E SCHEMA CORRETOS
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATE OR REPLACE FUNCTION public.admin_criar_usuario(
   p_nome TEXT,
@@ -55,7 +56,7 @@ CREATE OR REPLACE FUNCTION public.admin_criar_usuario(
 ) RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER -- Executa com privilégios de superuser
-SET search_path = public, auth
+SET search_path = public, auth, extensions -- Adiciona extensions para localizar gen_salt e crypt
 AS $$
 DECLARE
   new_uid UUID := gen_random_uuid();
@@ -102,8 +103,58 @@ $$;
 
 
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---  4. NOVA FUNÇÃO DE EXCLUSÃO COMPLETA DE USUÁRIO
---  Remove simultaneamente da public.usuarios, auth.identities e auth.users
+--  4. RECRIA A FUNÇÃO DE ATUALIZAÇÃO DE SENHA GARANTINDO SCHEMA CORRETO
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CREATE OR REPLACE FUNCTION public.admin_atualizar_senha(
+  p_user_id UUID,
+  p_nova_senha TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER -- Executa com privilégios de superuser
+SET search_path = public, auth, extensions -- Adiciona extensions para localizar gen_salt e crypt
+AS $$
+DECLARE
+  encrypted_pw TEXT;
+BEGIN
+  -- Validação mínima
+  IF p_nova_senha IS NULL OR length(p_nova_senha) < 6 THEN
+    RETURN jsonb_build_object('status', 'error', 'message', 'Senha deve ter ao menos 6 caracteres.');
+  END IF;
+
+  -- Criptografa com bcrypt (mesmo algoritmo do Supabase Auth)
+  encrypted_pw := crypt(p_nova_senha, gen_salt('bf'));
+
+  -- 1. Atualiza a senha real no Supabase Auth
+  UPDATE auth.users
+  SET 
+    encrypted_password = encrypted_pw,
+    updated_at = NOW()
+  WHERE id = p_user_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('status', 'error', 'message', 'Usuário não encontrado no Auth.');
+  END IF;
+
+  -- 2. Atualiza também na tabela pública (referência)
+  UPDATE public.usuarios
+  SET senha = p_nova_senha
+  WHERE id = p_user_id;
+
+  RETURN jsonb_build_object('status', 'success', 'message', 'Senha atualizada com sucesso.');
+
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('status', 'error', 'message', SQLERRM);
+END;
+$$;
+
+-- Garante permissões de execução
+REVOKE ALL ON FUNCTION public.admin_atualizar_senha(UUID, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.admin_atualizar_senha(UUID, TEXT) TO authenticated;
+
+
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+--  5. RECRIA A FUNÇÃO DE EXCLUSÃO DE USUÁRIO GARANTINDO SCHEMA CORRETO
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATE OR REPLACE FUNCTION public.admin_deletar_usuario(
   p_user_id UUID
@@ -111,7 +162,7 @@ CREATE OR REPLACE FUNCTION public.admin_deletar_usuario(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER -- Executa com privilégios de superuser
-SET search_path = public, auth
+SET search_path = public, auth, extensions
 AS $$
 BEGIN
   -- Segurança: verifica se o usuário executor está autenticado e é coordenador/admin
@@ -142,7 +193,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Garante que apenas usuários autenticados chamem a função
+-- Garante permissões de execução
 REVOKE ALL ON FUNCTION public.admin_deletar_usuario(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_deletar_usuario(UUID) TO authenticated;
 
