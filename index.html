@@ -83,6 +83,7 @@
       <div class="nav-item" onclick="showPage('livros',this)"><i data-lucide="book-open" class="nav-item-icon"></i>Livros Didáticos</div>
       <div class="nav-item" onclick="showPage('relatorios',this)"><i data-lucide="bar-chart-2" class="nav-item-icon"></i>Relatórios</div>
       <div class="nav-item" onclick="showPage('chat',this)"><i data-lucide="message-square" class="nav-item-icon"></i>Chat RVS</div>
+      <div class="nav-item" onclick="showPage('whatsapp',this)"><i data-lucide="send" class="nav-item-icon"></i>WhatsApp RVS</div>
       <div class="nav-item" onclick="showPage('permissoes',this)"><i data-lucide="lock" class="nav-item-icon"></i>Permissões</div>
       <div class="nav-item" id="nav-usuarios" onclick="showPage('usuarios',this)"><i data-lucide="user-cog" class="nav-item-icon"></i>Usuários</div>
 
@@ -911,7 +912,7 @@
             <div style="flex:1">
               <div style="font-size:13px;font-weight:700;color:var(--gray7);margin-bottom:10px">📷 Foto de Perfil</div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <!-- Galeria -->
+              <!-- Galeria -->
                 <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
                   🖼️ Da Galeria
                   <input type="file" id="perfil-foto-input" accept="image/*" style="display:none" onchange="perfilSelecionarFoto(this)">
@@ -937,6 +938,142 @@
           </div>
 
           <button class="btn btn-primary" style="margin-top:16px;width:100%" onclick="salvarPerfil()">💾 Salvar Alterações</button>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════════
+           ABA WHATSAPP / COMUNICAÇÃO AUTOMÁTICA
+           ══════════════════════════════════════════════════════════════════════ -->
+      <div class="page" id="page-whatsapp">
+        <div class="section-header" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px">
+          <div>
+            <div class="section-title">💬 Comunicação Automática & WhatsApp</div>
+            <p style="font-size:12px; color:var(--gray5); margin-top:4px">Dispare informativos gerais e configure automações automáticas de faltas e ocorrências.</p>
+          </div>
+          <div style="display:flex; gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="loadWhatsAppStats()"><i data-lucide="refresh-cw" style="width:14px; height:14px; margin-right:4px"></i>Atualizar Stats</button>
+            <button class="btn btn-red btn-sm" onclick="retryFailedNotifications()"><i data-lucide="send" style="width:14px; height:14px; margin-right:4px"></i>Reenviar Falhas</button>
+          </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px">
+          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--green)">
+            <div style="font-size:12px; color:var(--gray5)">Enviados com Sucesso</div>
+            <div style="font-size:28px; font-weight:700; color:var(--green); margin-top:8px" id="ws-stats-enviados">0</div>
+          </div>
+          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--red)">
+            <div style="font-size:12px; color:var(--gray5)">Falhas de Envio</div>
+            <div style="font-size:28px; font-weight:700; color:var(--red); margin-top:8px" id="ws-stats-falhas">0</div>
+          </div>
+          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--blue)">
+            <div style="font-size:12px; color:var(--gray5)">Fila Pendente</div>
+            <div style="font-size:28px; font-weight:700; color:var(--blue); margin-top:8px" id="ws-stats-pendentes">0</div>
+          </div>
+          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--yellow)">
+            <div style="font-size:12px; color:var(--gray5)">Taxa de Sucesso</div>
+            <div style="font-size:28px; font-weight:700; color:var(--yellow); margin-top:8px" id="ws-stats-taxa">100%</div>
+          </div>
+        </div>
+
+        <!-- Internal Tabs Navigation -->
+        <div class="tab-menu" style="display:flex; border-bottom:2px solid var(--gray3); margin-bottom:20px; gap:8px">
+          <button class="tab-btn active" onclick="switchWaSubTab(this, 'wa-subtab-responsaveis')" id="btn-wa-subtab-responsaveis">👥 Responsáveis</button>
+          <button class="tab-btn" onclick="switchWaSubTab(this, 'wa-subtab-campanhas')">🚀 Nova Campanha</button>
+          <button class="tab-btn" onclick="switchWaSubTab(this, 'wa-subtab-automacoes')">⚙️ Automações</button>
+          <button class="tab-btn" onclick="switchWaSubTab(this, 'wa-subtab-historico')">📋 Histórico de Disparos</button>
+        </div>
+
+        <!-- SubTab: Responsáveis -->
+        <div id="wa-subtab-responsaveis" class="wa-subtab active">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px">
+            <input type="text" class="form-input" style="max-width:320px; margin:0" id="wa-filtro-responsavel" placeholder="Buscar responsável ou aluno..." oninput="filtrarWaResponsaveis()">
+            <button class="btn btn-primary btn-sm" onclick="openWaNovoResponsavelModal()">+ Novo Responsável</button>
+          </div>
+          <div style="overflow-x:auto; background:var(--gray1); border-radius:12px">
+            <table class="table" style="width:100%; border-collapse:collapse; font-size:13.5px">
+              <thead>
+                <tr style="background:var(--gray2)">
+                  <th>Aluno</th>
+                  <th>Responsável</th>
+                  <th>WhatsApp</th>
+                  <th>Parentesco</th>
+                  <th>Notificação</th>
+                  <th style="text-align:right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="wa-responsaveis-tbody">
+                <!-- Populado via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SubTab: Campanhas -->
+        <div id="wa-subtab-campanhas" class="wa-subtab" style="display:none">
+          <div class="profile-card" style="max-width:680px">
+            <div style="font-weight:700; font-size:15px; color:var(--gray7); margin-bottom:12px">📣 Criar Comunicado em Massa (WhatsApp)</div>
+            <div class="form-group">
+              <label class="form-label">Título da Campanha (Uso interno)</label>
+              <input type="text" class="form-input" id="wa-campanha-titulo" placeholder="Ex: Reunião do Segundo Bimestre">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Destinatários (Turmas)</label>
+              <select class="form-input form-select" id="wa-campanha-turmas" style="height:auto" multiple>
+                <option value="TODOS" selected>Todos os Responsáveis Cadastrados</option>
+              </select>
+              <small style="color:var(--gray4); font-size:11px">Pressione CTRL para selecionar múltiplas turmas.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mensagem do Comunicado</label>
+              <textarea class="form-input" id="wa-campanha-mensagem" rows="6" placeholder="Escreva a mensagem... O nome do responsável será mesclado automaticamente no início da mensagem."></textarea>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div id="wa-campanha-progresso-container" style="display:none; background:var(--gray2); padding:16px; border-radius:12px; margin-bottom:16px">
+              <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; font-weight:600">
+                <span id="wa-campanha-status">Processando disparos...</span>
+                <span id="wa-campanha-progresso-percent">0%</span>
+              </div>
+              <div style="background:var(--gray3); height:8px; border-radius:4px; overflow:hidden">
+                <div id="wa-campanha-progresso-bar" style="background:var(--blue); width:0%; height:100%; transition:width 0.4s ease"></div>
+              </div>
+              <div style="font-size:11px; color:var(--gray5); margin-top:6px; display:flex; justify-content:space-between">
+                <span id="wa-campanha-progresso-sucessos">Sucesso: 0</span>
+                <span id="wa-campanha-progresso-falhas">Falhas: 0</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%" onclick="iniciarDisparoMassa()">🚀 Iniciar Disparos (background)</button>
+          </div>
+        </div>
+
+        <!-- SubTab: Automações -->
+        <div id="wa-subtab-automacoes" class="wa-subtab" style="display:none">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px" id="wa-automacoes-grid">
+            <!-- Populado via JS -->
+          </div>
+        </div>
+
+        <!-- SubTab: Histórico -->
+        <div id="wa-subtab-historico" class="wa-subtab" style="display:none">
+          <div style="overflow-x:auto; background:var(--gray1); border-radius:12px">
+            <table class="table" style="width:100%; border-collapse:collapse; font-size:13.5px">
+              <thead>
+                <tr style="background:var(--gray2)">
+                  <th>Data/Hora</th>
+                  <th>Destinatário</th>
+                  <th>Evento</th>
+                  <th>Mensagem</th>
+                  <th>Status</th>
+                  <th>Erro Log</th>
+                </tr>
+              </thead>
+              <tbody id="wa-historico-tbody">
+                <!-- Populado via JS -->
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1273,6 +1410,16 @@
     </div>
     <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--gray6)">Timeline</div>
     <div class="timeline" id="ficha-timeline"></div>
+
+    <!-- Seção de Responsáveis para WhatsApp -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--gray6)">👥 Responsáveis (WhatsApp Notificações)</div>
+        <button class="btn btn-outline btn-xs" style="margin:0;padding:2px 8px;font-size:11px" onclick="abrirAddResponsavelFicha()">+ Vincular</button>
+      </div>
+      <div id="ficha-responsaveis-lista" style="max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray3)">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--gray6)">⚠️ Ocorrências do Aluno</div>
       <div id="ficha-ocorrencias" style="max-height:180px;overflow-y:auto"></div>
@@ -1883,6 +2030,69 @@
   </div>
 </div>
 
+<!-- Modal: WhatsApp Responsável -->
+<div class="modal-overlay" id="modal-wa-responsavel" onclick="if(event.target===this)closeModal('modal-wa-responsavel')">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <span class="modal-title">👥 Vincular Responsável</span>
+      <button class="modal-close" onclick="closeModal('modal-wa-responsavel')">✕</button>
+    </div>
+    <input type="hidden" id="wa-resp-id">
+    <div class="form-group" style="margin-top:10px" id="wa-resp-aluno-group">
+      <label class="form-label">Aluno</label>
+      <select class="form-input form-select" id="wa-resp-aluno-id"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nome do Responsável</label>
+      <input type="text" class="form-input" id="wa-resp-nome" placeholder="Ex: Maria da Conceição">
+    </div>
+    <div class="form-group">
+      <label class="form-label">WhatsApp (DDI + DDD + Número)</label>
+      <input type="text" class="form-input" id="wa-resp-phone" placeholder="Ex: 5594987654321">
+      <small style="color:var(--gray4); font-size:11px">Incluir 55 (Brasil) + DDD + número. Ex: 5594987654321</small>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Parentesco</label>
+      <input type="text" class="form-input" id="wa-resp-parentesco" placeholder="Ex: Mãe, Pai, Tio(a)">
+    </div>
+    <div class="form-group" style="display:flex; align-items:center; gap:8px">
+      <input type="checkbox" id="wa-resp-notif" checked style="width:18px; height:18px; cursor:pointer">
+      <label class="form-label" for="wa-resp-notif" style="margin:0; cursor:pointer">Permitir Notificações / Envios</label>
+    </div>
+    <div class="modal-footer" style="margin-top:15px">
+      <button class="btn btn-outline" onclick="closeModal('modal-wa-responsavel')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarResponsavelWa()">Salvar Responsável</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Editar Automação Wa -->
+<div class="modal-overlay" id="modal-wa-edit-rule" onclick="if(event.target===this)closeModal('modal-wa-edit-rule')">
+  <div class="modal" style="max-width:550px">
+    <div class="modal-header">
+      <span class="modal-title">⚙️ Editar Template de Automação</span>
+      <button class="modal-close" onclick="closeModal('modal-wa-edit-rule')">✕</button>
+    </div>
+    <input type="hidden" id="wa-rule-id">
+    <div class="form-group" style="margin-top:10px">
+      <label class="form-label">Nome da Automação</label>
+      <input type="text" class="form-input" id="wa-rule-name" readonly style="background:var(--gray2); color:var(--gray5)">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Template da Mensagem</label>
+      <textarea class="form-input" id="wa-rule-template" rows="8"></textarea>
+      <small style="color:var(--gray5); font-size:11px">Variáveis: `{{student_name}}`, `{{guardian_name}}`, `{{time}}`, `{{incident_type}}`, `{{incident_description}}`, `{{role_label}}`</small>
+    </div>
+    <div class="form-group" style="display:flex; align-items:center; gap:8px">
+      <input type="checkbox" id="wa-rule-active" style="width:18px; height:18px; cursor:pointer">
+      <label class="form-label" for="wa-rule-active" style="margin:0; cursor:pointer">Automação Ativa</label>
+    </div>
+    <div class="modal-footer" style="margin-top:15px">
+      <button class="btn btn-outline" onclick="closeModal('modal-wa-edit-rule')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarRuleWa()">Salvar Regra</button>
+    </div>
+  </div>
+</div>
 
 </div><!-- fim do #app -->
 

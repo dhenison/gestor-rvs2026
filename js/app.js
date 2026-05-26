@@ -687,7 +687,8 @@ function showPage(p, el) {
   const titles = {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
-    livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil'
+    livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
+    whatsapp: 'Comunicação Automática'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
@@ -710,6 +711,7 @@ function showPage(p, el) {
   if(p==='obafog') renderObafog();
   if(p==='permissoes') renderPermissoes();
   if(p==='perfil') renderPerfil();
+  if(p==='whatsapp') initWhatsAppPage();
   if(p==='frequencia'){
     // Sempre mostra etapa1 se não houver chamada em andamento
     if(!turmaChamadaAtual){
@@ -1472,6 +1474,7 @@ function verFicha(cpf){
 
   renderTimeline(a);
   renderFichaOcorrencias(a);
+  renderResponsaveisFicha(a.id);
   document.getElementById('modal-ficha').dataset.cpf=cpf;
   openModal('modal-ficha');
 }
@@ -2411,10 +2414,34 @@ async function consolidar(tipo){
   }
   if(tipo==='entrada') renderChamada();
   atualizarBloqueioSaida();
-  updateConsolidado();
   // Atualiza o Dashboard em tempo real após consolidação
   renderTurmasTable();
   renderMetricasDash();
+
+  // Aciona disparos automáticos de frequência via WhatsApp
+  payload.forEach(item => {
+    let itemStatus = item.status;
+    if (tipo === 'saida') {
+      const studentIndex = alunos.findIndex(a => a.id === item.aluno_id);
+      if (studentIndex !== -1 && freq.entrada[studentIndex] === 'P' && freq.saida[studentIndex] === 'F') {
+        itemStatus = 'EVASAO';
+      }
+    }
+    if (itemStatus === 'F' || itemStatus === 'EVASAO') {
+      fetch('http://localhost:3001/api/frequencia/notificar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          alunoId: item.aluno_id,
+          tipo: item.tipo,
+          status: itemStatus,
+          horario: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        })
+      }).then(r => r.json())
+        .then(data => console.log('[Consolidar Freq WhatsApp Trigger] Success:', data))
+        .catch(err => console.error('[Consolidar Freq WhatsApp Trigger] Error:', err));
+    }
+  });
 }
 
 function desbloquearFrequencia(tipo){
@@ -2540,6 +2567,32 @@ async function saveOcorrencia(){
     console.error('[saveOcorrencia] Erro:', error);
     showToast('Erro ao salvar ocorrência: ' + error.message, 'evasao');
     return;
+  }
+
+  // Se comunicarPais for verdadeiro, dispara o alerta via WhatsApp
+  if (comunicarPais && alunoObj) {
+    const envolvidosPayload = [
+      { alunoId: alunoObj.id, papel: 'AGRESSOR' } // Papel padrão
+    ];
+    if (typeof envolvidos !== 'undefined' && envolvidos.length > 0) {
+      envolvidos.forEach(env => {
+        const envAluno = ALUNOS_DATA.find(a => a.nome === env.nome);
+        if (envAluno) envolvidosPayload.push({ alunoId: envAluno.id, papel: env.papel || 'NEUTRO' });
+      });
+    }
+
+    fetch('http://localhost:3001/api/ocorrencias/registrar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ocorrenciaId: insertedOcorr.id,
+        tipo: tipo,
+        parecer: desc, // passa o parecer limpo
+        envolvidos: envolvidosPayload
+      })
+    }).then(r => r.json())
+      .then(data => console.log('[Save Ocorrencia WhatsApp Trigger] Success:', data))
+      .catch(err => console.error('[Save Ocorrencia WhatsApp Trigger] Error:', err));
   }
   
   // Atualiza cache local com os dados reais do banco
@@ -5732,7 +5785,553 @@ function gerarPDFFichaAluno() {
     w.document.write(html);
     w.document.close();
     setTimeout(() => w.print(), 500);
-  } else {
-    showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
+    } else {
+      showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
+    }
   }
 }
+
+// ============================================================================
+// WHATSAPP AND AUTOMATED COMMUNICATION SYSTEM LOGIC
+// ============================================================================
+let WA_RESPONSAIVEIS = [];
+let WA_RULES = [];
+let WA_HISTORY = [];
+
+// Inject custom CSS styling for switches seamlessly
+(function() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--gray3); transition: .3s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--green); }
+    input:checked + .slider:before { transform: translateX(14px); }
+  `;
+  document.head.appendChild(style);
+})();
+
+function switchWaSubTab(btn, subtabId) {
+  document.querySelectorAll('.wa-subtab').forEach(x => x.style.display = 'none');
+  document.querySelectorAll('#page-whatsapp .tab-menu .tab-btn').forEach(x => x.classList.remove('active'));
+  const target = document.getElementById(subtabId);
+  if (target) target.style.display = 'block';
+  btn.classList.add('active');
+}
+
+async function initWhatsAppPage() {
+  console.log('[initWhatsAppPage] Initializing WhatsApp tab...');
+  const btnResp = document.getElementById('btn-wa-subtab-responsaveis');
+  if (btnResp) switchWaSubTab(btnResp, 'wa-subtab-responsaveis');
+  
+  await Promise.all([
+    loadResponsaveisWa(),
+    loadWaRules(),
+    loadWaHistory(),
+    loadWhatsAppStats()
+  ]);
+  popularWaAlunosSelect();
+  popularWaCampanhaTurmas();
+}
+
+async function loadWhatsAppStats() {
+  try {
+    const res = await fetch('http://localhost:3001/api/whatsapp/stats');
+    if (res.ok) {
+      const stats = await res.json();
+      const env = document.getElementById('ws-stats-enviados');
+      const fal = document.getElementById('ws-stats-falhas');
+      const pen = document.getElementById('ws-stats-pendentes');
+      const tax = document.getElementById('ws-stats-taxa');
+      if (env) env.textContent = stats.enviados || 0;
+      if (fal) fal.textContent = stats.falhas || 0;
+      if (pen) pen.textContent = stats.pendentes || 0;
+      if (tax) tax.textContent = (stats.sucesso_percent !== undefined ? stats.sucesso_percent : 100) + '%';
+    }
+  } catch (err) {
+    console.error('[loadWhatsAppStats] Error:', err);
+  }
+}
+
+async function retryFailedNotifications() {
+  showToast('Iniciando reenvio de falhas...', 'sucesso');
+  try {
+    const res = await fetch('http://localhost:3001/api/whatsapp/reenviar', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.sucesso) {
+        showToast('Fila de reenvio processada!', 'sucesso');
+        await loadWhatsAppStats();
+        await loadWaHistory();
+      } else {
+        showToast('Erro ao reprocessar: ' + (data.mensagem || 'erro'), 'erro');
+      }
+    }
+  } catch (err) {
+    console.error('[retryFailedNotifications] Error:', err);
+    showToast('Falha de conexão com o servidor WhatsApp.', 'erro');
+  }
+}
+
+async function loadResponsaveisWa() {
+  const { data, error } = await supabaseClient.from('responsaveis').select('*').order('created_at', { ascending: false });
+  if (error) {
+    console.error('[loadResponsaveisWa] Error:', error);
+    showToast('Erro ao carregar responsáveis.', 'erro');
+    return;
+  }
+  WA_RESPONSAIVEIS = data || [];
+  renderResponsaveisWa();
+}
+
+function renderResponsaveisWa() {
+  const tbody = document.getElementById('wa-responsaveis-tbody');
+  if (!tbody) return;
+  if (WA_RESPONSAIVEIS.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--gray5)">Nenhum responsável cadastrado.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = WA_RESPONSAIVEIS.map(r => {
+    const aluno = ALUNOS_DATA.find(a => a.id === r.aluno_id);
+    const alunoNome = aluno ? aluno.nome : 'Aluno não localizado';
+    const activeChecked = r.notificacoes_ativas ? 'checked' : '';
+    return `
+      <tr>
+        <td style="font-weight:600; color:var(--gray7)">${alunoNome}</td>
+        <td>${r.nome}</td>
+        <td><a href="https://wa.me/${r.whatsapp}" target="_blank" style="color:var(--green); text-decoration:none; display:inline-flex; align-items:center; gap:4px">
+          <i data-lucide="phone" style="width:12px; height:12px"></i> ${r.whatsapp}
+        </a></td>
+        <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${r.parentesco || 'Responsável'}</span></td>
+        <td>
+          <label class="switch">
+            <input type="checkbox" ${activeChecked} onchange="toggleWaNotif('${r.id}', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </td>
+        <td style="text-align:right">
+          <button class="btn btn-outline btn-xs" onclick="editarWaResponsavel('${r.id}')" style="margin-right:4px">Editar</button>
+          <button class="btn btn-red btn-xs" onclick="excluirWaResponsavel('${r.id}')">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function filtrarWaResponsaveis() {
+  const q = document.getElementById('wa-filtro-responsavel').value.toLowerCase().trim();
+  const tbody = document.getElementById('wa-responsaveis-tbody');
+  if (!tbody) return;
+  const filtered = WA_RESPONSAIVEIS.filter(r => {
+    const aluno = ALUNOS_DATA.find(a => a.id === r.aluno_id);
+    const alunoNome = aluno ? aluno.nome.toLowerCase() : '';
+    return r.nome.toLowerCase().includes(q) || r.whatsapp.includes(q) || alunoNome.includes(q);
+  });
+  tbody.innerHTML = filtered.map(r => {
+    const aluno = ALUNOS_DATA.find(a => a.id === r.aluno_id);
+    const alunoNome = aluno ? aluno.nome : 'Aluno não localizado';
+    const activeChecked = r.notificacoes_ativas ? 'checked' : '';
+    return `
+      <tr>
+        <td style="font-weight:600; color:var(--gray7)">${alunoNome}</td>
+        <td>${r.nome}</td>
+        <td><a href="https://wa.me/${r.whatsapp}" target="_blank" style="color:var(--green); text-decoration:none; display:inline-flex; align-items:center; gap:4px">
+          <i data-lucide="phone" style="width:12px; height:12px"></i> ${r.whatsapp}
+        </a></td>
+        <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${r.parentesco || 'Responsável'}</span></td>
+        <td>
+          <label class="switch">
+            <input type="checkbox" ${activeChecked} onchange="toggleWaNotif('${r.id}', this.checked)">
+            <span class="slider"></span>
+          </label>
+        </td>
+        <td style="text-align:right">
+          <button class="btn btn-outline btn-xs" onclick="editarWaResponsavel('${r.id}')" style="margin-right:4px">Editar</button>
+          <button class="btn btn-red btn-xs" onclick="excluirWaResponsavel('${r.id}')">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function toggleWaNotif(id, active) {
+  const { error } = await supabaseClient.from('responsaveis').update({ notificacoes_ativas: active }).eq('id', id);
+  if (error) {
+    console.error('[toggleWaNotif] Error:', error);
+    showToast('Erro ao atualizar notificação.', 'erro');
+    return;
+  }
+  const r = WA_RESPONSAIVEIS.find(x => x.id === id);
+  if (r) r.notificacoes_ativas = active;
+  showToast('Notificação atualizada!', 'sucesso');
+}
+
+function popularWaAlunosSelect() {
+  const select = document.getElementById('wa-resp-aluno-id');
+  if (!select) return;
+  const sorted = [...ALUNOS_DATA].sort((a,b) => a.nome.localeCompare(b.nome));
+  select.innerHTML = sorted.map(a => `<option value="${a.id}">${a.nome} (${a.turma || 'Sem turma'})</option>`).join('');
+}
+
+function openWaNovoResponsavelModal() {
+  document.getElementById('wa-resp-id').value = '';
+  document.getElementById('wa-resp-nome').value = '';
+  document.getElementById('wa-resp-phone').value = '';
+  document.getElementById('wa-resp-parentesco').value = '';
+  document.getElementById('wa-resp-notif').checked = true;
+  document.getElementById('wa-resp-aluno-group').style.display = 'block';
+  openModal('modal-wa-responsavel');
+}
+
+function editarWaResponsavel(id) {
+  const r = WA_RESPONSAIVEIS.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('wa-resp-id').value = r.id;
+  document.getElementById('wa-resp-nome').value = r.nome;
+  document.getElementById('wa-resp-phone').value = r.whatsapp;
+  document.getElementById('wa-resp-parentesco').value = r.parentesco || '';
+  document.getElementById('wa-resp-notif').checked = r.notificacoes_ativas;
+  document.getElementById('wa-resp-aluno-group').style.display = 'none';
+  openModal('modal-wa-responsavel');
+}
+
+async function salvarResponsavelWa() {
+  const id = document.getElementById('wa-resp-id').value;
+  const aluno_id = document.getElementById('wa-resp-aluno-id').value;
+  const nome = document.getElementById('wa-resp-nome').value.trim();
+  const whatsapp = document.getElementById('wa-resp-phone').value.trim();
+  const parentesco = document.getElementById('wa-resp-parentesco').value.trim();
+  const notificacoes_ativas = document.getElementById('wa-resp-notif').checked;
+
+  if (!nome || !whatsapp) {
+    showToast('Nome e WhatsApp são obrigatórios!', 'alerta');
+    return;
+  }
+
+  const payload = { nome, whatsapp, parentesco, notificacoes_ativas };
+
+  if (id) {
+    const { error } = await supabaseClient.from('responsaveis').update(payload).eq('id', id);
+    if (error) {
+      console.error('[salvarResponsavelWa] Update error:', error);
+      showToast('Erro ao atualizar: ' + error.message, 'erro');
+      return;
+    }
+    showToast('Responsável atualizado! ✅', 'sucesso');
+  } else {
+    payload.aluno_id = aluno_id;
+    const { error } = await supabaseClient.from('responsaveis').insert(payload);
+    if (error) {
+      console.error('[salvarResponsavelWa] Insert error:', error);
+      showToast('Erro ao cadastrar: ' + error.message, 'erro');
+      return;
+    }
+    showToast('Responsável cadastrado! ✅', 'sucesso');
+  }
+
+  closeModal('modal-wa-responsavel');
+  await loadResponsaveisWa();
+  
+  const fichaAlunoId = document.getElementById('ficha-aluno-id')?.value;
+  if (fichaAlunoId) renderResponsaveisFicha(fichaAlunoId);
+}
+
+async function excluirWaResponsavel(id) {
+  if (!confirm('Deseja realmente excluir este responsável?')) return;
+  const { error } = await supabaseClient.from('responsaveis').delete().eq('id', id);
+  if (error) {
+    console.error('[excluirWaResponsavel] Error:', error);
+    showToast('Erro ao excluir responsável.', 'erro');
+    return;
+  }
+  showToast('Responsável excluído! 🗑', 'sucesso');
+  await loadResponsaveisWa();
+  
+  const fichaAlunoId = document.getElementById('ficha-aluno-id')?.value;
+  if (fichaAlunoId) renderResponsaveisFicha(fichaAlunoId);
+}
+
+async function renderResponsaveisFicha(alunoId) {
+  const container = document.getElementById('ficha-responsaveis-lista');
+  if (!container) return;
+  
+  container.innerHTML = '<div style="font-size:12px;color:var(--gray5)">Carregando...</div>';
+  const { data, error } = await supabaseClient.from('responsaveis').select('*').eq('aluno_id', alunoId);
+  
+  if (error) {
+    console.error('[renderResponsaveisFicha] Error:', error);
+    container.innerHTML = '<div style="font-size:12px;color:var(--red)">Erro ao carregar responsáveis.</div>';
+    return;
+  }
+  
+  if (!data || data.length === 0) {
+    container.innerHTML = `
+      <div style="font-size:12.5px;color:var(--gray5);display:flex;justify-content:space-between;align-items:center;width:100%">
+        <span>Nenhum responsável cadastrado.</span>
+        <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Vincular</button>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = data.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--gray2);padding:6px 10px;border-radius:8px;font-size:12px;width:100%">
+      <div>
+        <span style="font-weight:600;color:var(--gray8)">${r.nome}</span>
+        <span style="color:var(--gray5);font-size:11px"> (${r.parentesco || 'Responsável'})</span>
+        <div style="color:var(--green);font-size:11px;margin-top:2px;display:flex;align-items:center;gap:4px">
+          <i data-lucide="phone" style="width:10px;height:10px"></i> ${r.whatsapp}
+        </div>
+      </div>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-outline btn-xs" style="padding:2px 4px;font-size:10px" onclick="editarWaResponsavel('${r.id}')">✏️</button>
+        <button class="btn btn-red btn-xs" style="padding:2px 4px;font-size:10px" onclick="excluirWaResponsavel('${r.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('') + `
+    <div style="text-align:right;margin-top:4px;width:100%">
+      <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Novo Responsável</button>
+    </div>
+  `;
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function abrirAddResponsavelFicha(alunoId) {
+  openWaNovoResponsavelModal();
+  document.getElementById('wa-resp-aluno-id').value = alunoId;
+  document.getElementById('wa-resp-aluno-group').style.display = 'none';
+}
+
+async function loadWaRules() {
+  const { data, error } = await supabaseClient.from('automation_rules').select('*').order('name');
+  if (error) {
+    console.error('[loadWaRules] Error:', error);
+    return;
+  }
+  WA_RULES = data || [];
+  renderWaRules();
+}
+
+function renderWaRules() {
+  const grid = document.getElementById('wa-automacoes-grid');
+  if (!grid) return;
+  if (WA_RULES.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--gray5)">Nenhuma regra configurada.</div>`;
+    return;
+  }
+  grid.innerHTML = WA_RULES.map(r => {
+    const icon = r.event_type === 'ENTRADA' ? '🔔' : (r.event_type === 'SAIDA' ? '🔕' : (r.event_type === 'EVASAO' ? '⚠️' : '📋'));
+    const statusLabel = r.active ? '<span class="metric-badge badge-green">Ativo</span>' : '<span class="metric-badge badge-red">Inativo</span>';
+    return `
+      <div class="profile-card" style="margin:0; display:flex; flex-direction:column; justify-content:space-between">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <span style="font-weight:700; font-size:14px; color:var(--gray7)">${icon} ${r.name}</span>
+            ${statusLabel}
+          </div>
+          <div style="background:var(--gray2); padding:10px; border-radius:8px; font-family:monospace; font-size:11px; white-space:pre-wrap; color:var(--gray6); margin-top:8px; max-height:120px; overflow-y:auto; border:1px solid var(--gray3)">${r.message_template}</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="openWaEditRule('${r.id}')" style="margin-top:12px; width:100%">⚙️ Ajustar Template</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function openWaEditRule(id) {
+  const r = WA_RULES.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('wa-rule-id').value = r.id;
+  document.getElementById('wa-rule-name').value = r.name;
+  document.getElementById('wa-rule-template').value = r.message_template;
+  document.getElementById('wa-rule-active').checked = r.active;
+  openModal('modal-wa-edit-rule');
+}
+
+async function salvarRuleWa() {
+  const id = document.getElementById('wa-rule-id').value;
+  const message_template = document.getElementById('wa-rule-template').value.trim();
+  const active = document.getElementById('wa-rule-active').checked;
+
+  if (!message_template) {
+    showToast('O template da mensagem não pode ser vazio!', 'alerta');
+    return;
+  }
+
+  const { error } = await supabaseClient.from('automation_rules').update({ message_template, active }).eq('id', id);
+  if (error) {
+    console.error('[salvarRuleWa] Error:', error);
+    showToast('Erro ao salvar regra: ' + error.message, 'erro');
+    return;
+  }
+
+  showToast('Regra de automação atualizada! ✅', 'sucesso');
+  closeModal('modal-wa-edit-rule');
+  await loadWaRules();
+}
+
+function popularWaCampanhaTurmas() {
+  const select = document.getElementById('wa-campanha-turmas');
+  if (!select) return;
+  const turmas = [...new Set(ALUNOS_DATA.map(a => a.turma).filter(Boolean))].sort();
+  select.innerHTML = '<option value="TODOS" selected>Todos os Responsáveis Cadastrados</option>' + 
+    turmas.map(t => {
+      const tObj = TURMAS_DATA.find(x => x.code === t);
+      const desc = tObj ? ` (${tObj.serie} - ${tObj.turno})` : '';
+      return `<option value="${t}">${t}${desc}</option>`;
+    }).join('');
+}
+
+async function iniciarDisparoMassa() {
+  const titulo = document.getElementById('wa-campanha-titulo').value.trim();
+  const mensagem = document.getElementById('wa-campanha-mensagem').value.trim();
+  const selectTurmas = document.getElementById('wa-campanha-turmas');
+  
+  if (!titulo || !mensagem) {
+    showToast('Título e Mensagem são obrigatórios!', 'alerta');
+    return;
+  }
+
+  let destTurmas = 'TODOS';
+  const selectedOptions = Array.from(selectTurmas.selectedOptions).map(o => o.value);
+  if (selectedOptions.length > 0 && !selectedOptions.includes('TODOS')) {
+    destTurmas = selectedOptions.map(code => {
+      const tObj = TURMAS_DATA.find(x => x.code === code);
+      return tObj ? tObj.id : null;
+    }).filter(Boolean);
+    
+    if (destTurmas.length === 0) {
+      showToast('Erro ao resolver turmas selecionadas.', 'erro');
+      return;
+    }
+  }
+
+  const btn = document.querySelector('button[onclick="iniciarDisparoMassa()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando disparos...'; }
+
+  try {
+    const res = await fetch('http://localhost:3001/api/comunicados/disparar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, mensagem, destinatariosTurmas: destTurmas })
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      if (data.sucesso) {
+        showToast('Disparos em massa iniciados! 🚀', 'sucesso');
+        const container = document.getElementById('wa-campanha-progresso-container');
+        if (container) container.style.display = 'block';
+        
+        monitorarProgressoCampanha(data.campanhaId);
+        
+        document.getElementById('wa-campanha-titulo').value = '';
+        document.getElementById('wa-campanha-mensagem').value = '';
+      } else {
+        showToast('Nenhum destinatário elegível encontrado.', 'alerta');
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+      }
+    } else {
+      const errData = await res.json();
+      showToast('Erro no servidor: ' + (errData.erro || 'erro'), 'erro');
+      if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+    }
+  } catch (err) {
+    console.error('[iniciarDisparoMassa] Error:', err);
+    showToast('Erro ao conectar com o servidor WhatsApp local.', 'erro');
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+  }
+}
+
+function monitorarProgressoCampanha(campanhaId) {
+  const statusEl = document.getElementById('wa-campanha-status');
+  const percentEl = document.getElementById('wa-campanha-progresso-percent');
+  const barEl = document.getElementById('wa-campanha-progresso-bar');
+  const sucessosEl = document.getElementById('wa-campanha-progresso-sucessos');
+  const falhasEl = document.getElementById('wa-campanha-progresso-falhas');
+  const btn = document.querySelector('button[onclick="iniciarDisparoMassa()"]');
+
+  const pollInterval = setInterval(async () => {
+    try {
+      const { data, error } = await supabaseClient.from('comunicados').select('*').eq('id', campanhaId).single();
+      if (error) {
+        console.error('[monitorarProgressoCampanha] Supabase fetch error:', error);
+        return;
+      }
+
+      if (data) {
+        const total = data.total_destinatarios || 0;
+        const sucessos = data.enviados_sucesso || 0;
+        const falhas = data.falhas || 0;
+        const processed = sucessos + falhas;
+        const percent = total > 0 ? Math.round((processed / total) * 100) : 100;
+
+        if (statusEl) statusEl.textContent = `Status: ${data.status || 'Processando'}`;
+        if (percentEl) percentEl.textContent = `${percent}%`;
+        if (barEl) barEl.style.width = `${percent}%`;
+        if (sucessosEl) sucessosEl.textContent = `Sucesso: ${sucessos}`;
+        if (falhasEl) falhasEl.textContent = `Falhas: ${falhas}`;
+
+        if (data.status === 'CONCLUIDO' || data.status === 'FALHA' || percent >= 100) {
+          clearInterval(pollInterval);
+          if (statusEl) statusEl.textContent = 'Disparos finalizados!';
+          showToast('Campanha de WhatsApp finalizada com sucesso! ✅', 'sucesso');
+          if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+          
+          await loadWhatsAppStats();
+          await loadWaHistory();
+        }
+      }
+    } catch (err) {
+      console.error('[monitorarProgressoCampanha] Error:', err);
+    }
+  }, 3000);
+}
+
+async function loadWaHistory() {
+  const { data, error } = await supabaseClient
+    .from('whatsapp_envios')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  
+  if (error) {
+    console.error('[loadWaHistory] Error:', error);
+    return;
+  }
+  WA_HISTORY = data || [];
+  renderWaHistory();
+}
+
+function renderWaHistory() {
+  const tbody = document.getElementById('wa-historico-tbody');
+  if (!tbody) return;
+  if (WA_HISTORY.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--gray5)">Nenhum log de disparo encontrado.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = WA_HISTORY.map(h => {
+    const dateFormatted = new Date(h.created_at).toLocaleString('pt-BR');
+    const statusClass = h.status === 'ENVIADO' ? 'badge-green' : (h.status === 'PENDENTE' ? 'badge-yellow' : 'badge-red');
+    
+    const resp = WA_RESPONSAIVEIS.find(x => x.id === h.responsavel_id);
+    const respNome = resp ? resp.nome : 'Responsável';
+
+    return `
+      <tr>
+        <td style="color:var(--gray5); font-size:12px">${dateFormatted}</td>
+        <td>
+          <span style="font-weight:600">${respNome}</span>
+          <div style="font-size:11px; color:var(--gray4)">${h.whatsapp_destino}</div>
+        </td>
+        <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${h.tipo_evento}</span></td>
+        <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${h.mensagem}">${h.mensagem}</td>
+        <td><span class="metric-badge ${statusClass}">${h.status}</span></td>
+        <td style="color:var(--red); font-size:11.5px; max-width:200px; word-wrap:break-word">${h.erro_log || '—'}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
