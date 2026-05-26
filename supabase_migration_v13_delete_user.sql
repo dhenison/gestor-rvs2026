@@ -1,28 +1,9 @@
--- ══════════════════════════════════════════════════════════════════════
---  RVS ESCOLAR — Migração v13 (Exclusão Segura e Correção Geral de Login)
---  PROBLEMAS: 
---    1. Exclusão de usuário no painel não o remove do Supabase Auth (e-mail duplicado)
---    2. Usuários cadastrados não conseguem logar (erro 500 ou senha rejeitada)
---    3. Erro "function gen_salt(unknown) does not exist" ao cadastrar ou atualizar senha
---    4. Erro "column confirmed_at is a generated column" ao rodar a migração
---  Execute no Supabase: SQL Editor → Cole tudo → Run
--- ══════════════════════════════════════════════════════════════════════
-
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---  1. GARANTE EXTENSÃO DE CRIPTOGRAFIA
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---  2. CORREÇÃO DE IDENTIDADES E CONFIRMAÇÕES DE LOGIN EXISTENTES
---  Garante que todos os usuários tenham sua identidade e status de confirmação corretos
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- A) Atualiza o provider_id para user_id::text (evita crash do GoTrue/Auth)
 UPDATE auth.identities
 SET provider_id = user_id::text
 WHERE provider = 'email' AND (provider_id IS NULL OR provider_id <> user_id::text);
 
--- B) Cria identidade faltante para usuários que por ventura estejam sem registro na auth.identities
 INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at)
 SELECT 
   gen_random_uuid(), 
@@ -36,16 +17,11 @@ FROM auth.users u
 LEFT JOIN auth.identities i ON u.id = i.user_id
 WHERE i.user_id IS NULL;
 
--- C) Garante que a coluna email_confirmed_at esteja preenchida (confirmed_at é autogerada pelo Supabase)
 UPDATE auth.users
 SET 
   email_confirmed_at = COALESCE(email_confirmed_at, NOW())
 WHERE email_confirmed_at IS NULL;
 
-
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---  3. RECRIA A FUNÇÃO DE CRIAÇÃO DE USUÁRIOS GARANTINDO CONFIRMAÇÃO E SCHEMA CORRETOS
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATE OR REPLACE FUNCTION public.admin_criar_usuario(
   p_nome TEXT,
   p_email TEXT,
@@ -55,15 +31,14 @@ CREATE OR REPLACE FUNCTION public.admin_criar_usuario(
   p_cargo TEXT
 ) RETURNS JSONB
 LANGUAGE plpgsql
-SECURITY DEFINER -- Executa com privilégios de superuser
-SET search_path = public, auth, extensions -- Adiciona extensions para localizar gen_salt e crypt
+SECURITY DEFINER
+SET search_path = public, auth, extensions
 AS $$
 DECLARE
   new_uid UUID := gen_random_uuid();
   encrypted_pw TEXT;
   final_email TEXT;
 BEGIN
-  -- Validação de domínio
   IF p_email NOT LIKE '%@escola.seduc.pa.gov.br' THEN
     final_email := split_part(p_email, '@', 1) || '@escola.seduc.pa.gov.br';
   ELSE
@@ -72,7 +47,6 @@ BEGIN
 
   encrypted_pw := crypt(p_senha, gen_salt('bf'));
 
-  -- 1. Insere em auth.users (Garantindo email_confirmed_at, confirmed_at é gerada automaticamente)
   INSERT INTO auth.users (
     instance_id, id, aud, role, email, encrypted_password, 
     email_confirmed_at, raw_app_meta_data, raw_user_meta_data, 
@@ -84,14 +58,12 @@ BEGIN
     NOW(), NOW()
   );
 
-  -- 2. Insere na auth.identities com o provider_id CORRETO (user_id::text)
   INSERT INTO auth.identities (
     id, user_id, identity_data, provider, provider_id, created_at, updated_at
   ) VALUES (
     gen_random_uuid(), new_uid, jsonb_build_object('sub', new_uid, 'email', final_email), 'email', new_uid::text, NOW(), NOW()
   );
 
-  -- 3. Insere em public.usuarios
   INSERT INTO public.usuarios (id, nome, email, senha, perfil, turno, cargo)
   VALUES (new_uid, p_nome, final_email, p_senha, p_perfil, p_turno, p_cargo);
 
@@ -101,31 +73,24 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---  4. RECRIA A FUNÇÃO DE ATUALIZAÇÃO DE SENHA GARANTINDO SCHEMA CORRETO
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATE OR REPLACE FUNCTION public.admin_atualizar_senha(
   p_user_id UUID,
   p_nova_senha TEXT
 )
 RETURNS JSONB
 LANGUAGE plpgsql
-SECURITY DEFINER -- Executa com privilégios de superuser
-SET search_path = public, auth, extensions -- Adiciona extensions para localizar gen_salt e crypt
+SECURITY DEFINER
+SET search_path = public, auth, extensions
 AS $$
 DECLARE
   encrypted_pw TEXT;
 BEGIN
-  -- Validação mínima
   IF p_nova_senha IS NULL OR length(p_nova_senha) < 6 THEN
     RETURN jsonb_build_object('status', 'error', 'message', 'Senha deve ter ao menos 6 caracteres.');
   END IF;
 
-  -- Criptografa com bcrypt (mesmo algoritmo do Supabase Auth)
   encrypted_pw := crypt(p_nova_senha, gen_salt('bf'));
 
-  -- 1. Atualiza a senha real no Supabase Auth
   UPDATE auth.users
   SET 
     encrypted_password = encrypted_pw,
@@ -136,7 +101,6 @@ BEGIN
     RETURN jsonb_build_object('status', 'error', 'message', 'Usuário não encontrado no Auth.');
   END IF;
 
-  -- 2. Atualiza também na tabela pública (referência)
   UPDATE public.usuarios
   SET senha = p_nova_senha
   WHERE id = p_user_id;
@@ -148,24 +112,18 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Garante permissões de execução
 REVOKE ALL ON FUNCTION public.admin_atualizar_senha(UUID, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_atualizar_senha(UUID, TEXT) TO authenticated;
 
-
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
---  5. RECRIA A FUNÇÃO DE EXCLUSÃO DE USUÁRIO GARANTINDO SCHEMA CORRETO
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATE OR REPLACE FUNCTION public.admin_deletar_usuario(
   p_user_id UUID
 )
 RETURNS JSONB
 LANGUAGE plpgsql
-SECURITY DEFINER -- Executa com privilégios de superuser
+SECURITY DEFINER
 SET search_path = public, auth, extensions
 AS $$
 BEGIN
-  -- Segurança: verifica se o usuário executor está autenticado e é coordenador/admin
   IF NOT EXISTS (
     SELECT 1 FROM public.usuarios 
     WHERE id = auth.uid() AND perfil IN ('admin', 'coordenador')
@@ -173,18 +131,12 @@ BEGIN
     RETURN jsonb_build_object('status', 'error', 'message', 'Acesso negado: Apenas administradores ou coordenadores podem excluir usuários.');
   END IF;
 
-  -- Impede exclusão própria acidental
   IF p_user_id = auth.uid() THEN
     RETURN jsonb_build_object('status', 'error', 'message', 'Não é permitido excluir a si mesmo.');
   END IF;
 
-  -- 1. Remove da tabela pública de usuários
   DELETE FROM public.usuarios WHERE id = p_user_id;
-
-  -- 2. Remove da auth.identities
   DELETE FROM auth.identities WHERE user_id = p_user_id;
-
-  -- 3. Remove de auth.users (isso automaticamente libera o e-mail para novo cadastro)
   DELETE FROM auth.users WHERE id = p_user_id;
 
   RETURN jsonb_build_object('status', 'success', 'message', 'Usuário excluído com sucesso.');
@@ -193,9 +145,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Garante permissões de execução
 REVOKE ALL ON FUNCTION public.admin_deletar_usuario(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.admin_deletar_usuario(UUID) TO authenticated;
 
--- Força reload do schema do Supabase
 NOTIFY pgrst, 'reload schema';
