@@ -2516,95 +2516,103 @@ function renderOcorrencias(){
 }
 
 async function saveOcorrencia(){
-  const tipo=document.getElementById('input-ocorr-tipo')?.value;
-  const turma=document.getElementById('input-ocorr-turma')?.value;
-  const desc=document.getElementById('input-ocorr-desc')?.value.trim();
-  const comunicarPais=document.querySelector('input[name="comunicar-pais"]:checked')?.value==='sim';
-  const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰',liberado_coord:'🟢',suspensao_celular:'📵'};
-  const alunoSel=document.getElementById('sel-aluno-principal')?.value;
-  const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
-  const user = getCurrentUser();
+  const btn = document.querySelector('button[onclick="saveOcorrencia()"]');
+  if (btn && btn.disabled) return; // Evita reentrada se já estiver salvando
   
-  // Buscar aluno principal e turma no banco
-  const alunoObj = ALUNOS_DATA.find(a => a.nome === alunoSel);
-  const turmaObj = TURMAS_DATA.find(t => t.code === turma);
-  
-  let tipoDb = tipo;
-  let prefixoOcorr = '';
-  if (tipo === 'atraso') {
-    tipoDb = 'indisciplina'; // Mapeia para uma categoria existente no banco
-    prefixoOcorr = '[ATRASO] ';
-  } else if (tipo === 'liberado_coord') {
-    tipoDb = 'indisciplina';
-    prefixoOcorr = '[LIBERADO] ';
-  } else if (tipo === 'suspensao_celular') {
-    tipoDb = 'indisciplina';
-    prefixoOcorr = '[SUSP_CELULAR] ';
-  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Gravando...'; }
 
-  const descFinal = prefixoOcorr + desc + 
-    (comunicarPais ? '\n[AGUARDANDO PAIS]' : '') + 
-    '\nResponsável: ' + (user?.nome || 'Usuário');
-
-  const payload = {
-    tipo: tipoDb,
-    aluno_id: alunoObj?.id || null,
-    turma_id: turmaObj?.id || null,
-    participante: nomes,
-    descricao: descFinal,
-    auto_gerada: false
-  };
-  
-  const { data: insertedOcorr, error } = await supabaseClient.from('ocorrencias').insert(payload).select().single();
-  
-  if (error) {
-    console.error('[saveOcorrencia] Erro:', error);
-    showToast('Erro ao salvar ocorrência: ' + error.message, 'evasao');
-    return;
-  }
-
-  // Se comunicarPais for verdadeiro, dispara o alerta via WhatsApp
-  if (comunicarPais && alunoObj) {
-    const envolvidosPayload = [
-      { alunoId: alunoObj.id, papel: 'AGRESSOR' } // Papel padrão
-    ];
-    if (typeof envolvidos !== 'undefined' && envolvidos.length > 0) {
-      envolvidos.forEach(env => {
-        const envAluno = ALUNOS_DATA.find(a => a.nome === env.nome);
-        if (envAluno) envolvidosPayload.push({ alunoId: envAluno.id, papel: env.papel || 'NEUTRO' });
-      });
+  try {
+    const tipo=document.getElementById('input-ocorr-tipo')?.value;
+    const turma=document.getElementById('input-ocorr-turma')?.value;
+    const desc=document.getElementById('input-ocorr-desc')?.value.trim();
+    const comunicarPais=document.querySelector('input[name="comunicar-pais"]:checked')?.value==='sim';
+    const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰',liberado_coord:'🟢',suspensao_celular:'📵'};
+    const alunoSel=document.getElementById('sel-aluno-principal')?.value;
+    const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
+    const user = getCurrentUser();
+    
+    // Buscar aluno principal e turma no banco
+    const alunoObj = ALUNOS_DATA.find(a => a.nome === alunoSel);
+    const turmaObj = TURMAS_DATA.find(t => t.code === turma);
+    
+    let tipoDb = tipo;
+    let prefixoOcorr = '';
+    if (tipo === 'atraso') {
+      tipoDb = 'indisciplina'; // Mapeia para uma categoria existente no banco
+      prefixoOcorr = '[ATRASO] ';
+    } else if (tipo === 'liberado_coord') {
+      tipoDb = 'indisciplina';
+      prefixoOcorr = '[LIBERADO] ';
+    } else if (tipo === 'suspensao_celular') {
+      tipoDb = 'indisciplina';
+      prefixoOcorr = '[SUSP_CELULAR] ';
     }
 
-    fetch('http://localhost:3001/api/ocorrencias/registrar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ocorrenciaId: insertedOcorr.id,
-        tipo: tipo,
-        parecer: desc, // passa o parecer limpo
-        envolvidos: envolvidosPayload
-      })
-    }).then(r => r.json())
-      .then(data => console.log('[Save Ocorrencia WhatsApp Trigger] Success:', data))
-      .catch(err => console.error('[Save Ocorrencia WhatsApp Trigger] Error:', err));
-  }
-  
-  // Atualiza cache local com os dados reais do banco
-  const oData = new Date().toLocaleDateString('pt-BR');
-  const oHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
-  OCORR_DATA.push({
-    id: insertedOcorr?.id || Date.now(),
-    tipo, icon: icons[tipo]||'⚠️', aluno: nomes||'—', turma,
-    desc: descFinal, hora: oHora, data: oData,
-    tratada: false, aguardandoPais: comunicarPais, origem: 'manual'
-  });
+    const descFinal = prefixoOcorr + desc + 
+      (comunicarPais ? '\n[AGUARDANDO PAIS]' : '') + 
+      '\nResponsável: ' + (user?.nome || 'Usuário');
 
-  envolvidos=[];
-  const el=document.getElementById('envolvidos-list-ocorr');
-  if(el) el.innerHTML='';
-  closeModal('modal-ocorr');
-  showToast('Ocorrência registrada! ✅','sucesso');
-  renderOcorrencias(); renderDashOcorr();
+    const payload = {
+      tipo: tipoDb,
+      aluno_id: alunoObj?.id || null,
+      turma_id: turmaObj?.id || null,
+      participante: nomes,
+      descricao: descFinal,
+      auto_gerada: false
+    };
+    
+    const { data: insertedOcorr, error } = await supabaseClient.from('ocorrencias').insert(payload).select().single();
+    
+    if (error) throw error;
+
+    // Se comunicarPais for verdadeiro, dispara o alerta via WhatsApp
+    if (comunicarPais && alunoObj) {
+      const envolvidosPayload = [
+        { alunoId: alunoObj.id, papel: 'AGRESSOR' } // Papel padrão
+      ];
+      if (typeof envolvidos !== 'undefined' && envolvidos.length > 0) {
+        envolvidos.forEach(env => {
+          const envAluno = ALUNOS_DATA.find(a => a.nome === env.nome);
+          if (envAluno) envolvidosPayload.push({ alunoId: envAluno.id, papel: env.papel || 'NEUTRO' });
+        });
+      }
+
+      fetch('http://localhost:3001/api/ocorrencias/registrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ocorrenciaId: insertedOcorr.id,
+          tipo: tipo,
+          parecer: desc, // passa o parecer limpo
+          envolvidos: envolvidosPayload
+        })
+      }).then(r => r.json())
+        .then(data => console.log('[Save Ocorrencia WhatsApp Trigger] Success:', data))
+        .catch(err => console.error('[Save Ocorrencia WhatsApp Trigger] Error:', err));
+    }
+    
+    // Atualiza cache local com os dados reais do banco
+    const oData = new Date().toLocaleDateString('pt-BR');
+    const oHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    OCORR_DATA.push({
+      id: insertedOcorr?.id || Date.now(),
+      tipo, icon: icons[tipo]||'⚠️', aluno: nomes||'—', turma,
+      desc: descFinal, hora: oHora, data: oData,
+      tratada: false, aguardandoPais: comunicarPais, origem: 'manual'
+    });
+
+    envolvidos=[];
+    const el=document.getElementById('envolvidos-list-ocorr');
+    if(el) el.innerHTML='';
+    closeModal('modal-ocorr');
+    showToast('Ocorrência registrada! ✅','sucesso');
+    renderOcorrencias(); renderDashOcorr();
+  } catch (error) {
+    console.error('[saveOcorrencia] Erro:', error);
+    showToast('Erro ao salvar ocorrência: ' + error.message, 'evasao');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Registrar Ocorrência'; }
+  }
 }
 
 function abrirTratarOcorr(id){
