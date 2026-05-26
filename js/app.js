@@ -5785,9 +5785,8 @@ function gerarPDFFichaAluno() {
     w.document.write(html);
     w.document.close();
     setTimeout(() => w.print(), 500);
-    } else {
-      showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
-    }
+  } else {
+    showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
   }
 }
 
