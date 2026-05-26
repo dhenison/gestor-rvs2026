@@ -5211,7 +5211,30 @@ async function buscarAluno() {
 
 // Ficha de Ocorrência Individual em PDF
 function gerarPDFIndividual(oId) {
-  const o = OCORR_DATA.find(item => item.id === oId);
+  let o = OCORR_DATA.find(item => String(item.id) === String(oId));
+  
+  if (!o) {
+    for (const item of TO_ALUNOS_CRITICOS) {
+      const found = item.ocorrencias.find(x => String(x.id) === String(oId));
+      if (found) {
+        const al = item.aluno;
+        o = {
+          id: found.id,
+          aluno_id: found.aluno_id,
+          tipo: found.tipo,
+          aluno: found.participante || al.nome,
+          cpf: al.cpf || '',
+          turma: al.turma || '',
+          desc: found.descricao || '',
+          hora: new Date(found.created_at || found.data_ocorr).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
+          data: new Date(found.created_at || found.data_ocorr).toLocaleDateString('pt-BR'),
+          tratada: found.descricao && found.descricao.includes('[TRATADA]')
+        };
+        break;
+      }
+    }
+  }
+
   if (!o) { showToast('Ocorrência não encontrada', 'alerta'); return; }
 
   // Buscar dados completos do aluno
@@ -6105,9 +6128,12 @@ function renderTratamentoOcorrencias() {
       
       return `
         <div style="background:var(--gray1); padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid ${isSuspensa ? 'var(--red)' : 'var(--orange)'}; font-size:12.5px">
-          <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px; align-items:center">
             <span style="font-weight:600; color:var(--gray7)">${tipoLabel}</span>
-            <span style="color:var(--gray4); font-size:11px">${data}</span>
+            <div style="display:flex; align-items:center; gap:8px">
+              <span style="color:var(--gray4); font-size:11px">${data}</span>
+              <button class="btn btn-xs btn-outline" style="padding:2px 6px; font-size:10px; height:auto; border-color:var(--blue); color:var(--blue)" onclick="event.stopPropagation();gerarPDFIndividual('${o.id}')" title="Imprimir Ocorrência Individual">🖨️ PDF</button>
+            </div>
           </div>
           <p style="color:var(--gray5); font-size:12px; margin:0">${desc}</p>
         </div>
@@ -6152,6 +6178,9 @@ function renderTratamentoOcorrencias() {
             </button>
             <button class="btn btn-red btn-sm" onclick="abrirSuspensaoOcorr('${a.id}')" style="width:100%; justify-content:center; background:var(--red)">
               🚫 Aplicar Suspensão
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="gerarPDFTratamento('${a.id}')" style="width:100%; justify-content:center; border-color:var(--orange); color:var(--orange)">
+              🖨️ Imprimir Termo/Ata
             </button>
             <button class="btn btn-outline btn-xs" onclick="verFicha('${a.cpf}')" style="width:100%; justify-content:center; margin-top:8px">
               🔍 Ver Ficha Completa
@@ -6354,6 +6383,12 @@ async function salvarSuspensaoOcorr() {
         .catch(err => console.error('[Suspensao Auto-Notif WhatsApp] Error:', err));
     }
 
+    if (insertedOcorr && insertedOcorr.id) {
+      setTimeout(() => {
+        gerarPDFIndividual(insertedOcorr.id);
+      }, 800);
+    }
+
   } catch (err) {
     console.error('[salvarSuspensaoOcorr] Error:', err);
     showToast('Erro ao salvar suspensão disciplinar: ' + err.message, 'erro');
@@ -6363,6 +6398,155 @@ async function salvarSuspensaoOcorr() {
     await loadTratamentoOcorrencias();
     renderOcorrencias();
     renderDashOcorr();
+  }
+}
+
+// Relatório Consolidado de Ocorrências e Acompanhamento Disciplinar (PDF)
+function gerarPDFTratamento(alunoId) {
+  const item = TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId);
+  if (!item) { showToast('Ficha não encontrada', 'alerta'); return; }
+
+  const a = item.aluno;
+  const ocorrs = item.ocorrencias;
+  
+  const listHtml = ocorrs.map((o, index) => {
+    const data = new Date(o.created_at || o.data_ocorr).toLocaleDateString('pt-BR');
+    const label = {
+      evasao: 'Evasão Escolar',
+      indisciplina: 'Indisciplina',
+      bullying: 'Bullying',
+      agressao: 'Agressão Física',
+      atraso: 'Atraso',
+      liberado_coord: 'Liberado pela Coordenação',
+      suspensao_celular: 'Suspensão por Uso de Celular'
+    }[o.tipo] || o.tipo;
+    return `
+      <tr>
+        <td style="border: 1px solid #ccc; padding: 6px; text-align: center;">${index + 1}</td>
+        <td style="border: 1px solid #ccc; padding: 6px; text-align: center;">${data}</td>
+        <td style="border: 1px solid #ccc; padding: 6px; font-weight: bold;">${label}</td>
+        <td style="border: 1px solid #ccc; padding: 6px; font-size: 11px;">${o.descricao || ''}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Termo de Alerta e Acompanhamento Pedagógico - ${a.nome}</title>
+      <style>
+        @page { size: portrait; margin: 15mm; margin-top: 8mm; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.5; font-size: 12px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; margin-top: -20px; }
+        .logo-escola { max-height: 100px; width: auto; object-fit: contain; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto; }
+        .header h2 { font-size: 15px; margin: 0 0 4px; font-weight: bold; text-transform: uppercase; }
+        .header .subtitle { font-size: 11px; text-transform: uppercase; color: #666; font-weight: bold; }
+        
+        .section-title { font-size: 12px; font-weight: bold; text-transform: uppercase; background: #f2f2f2; padding: 5px 10px; margin-top: 15px; margin-bottom: 8px; border-left: 4px solid #333; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .field { margin-bottom: 6px; }
+        .label { font-weight: bold; font-size: 10px; text-transform: uppercase; color: #555; display: block; }
+        .value { font-size: 12px; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 12px; font-size: 11.5px; }
+        th { background: #e6e6e6; border: 1px solid #ccc; padding: 6px; font-weight: bold; text-transform: uppercase; font-size: 10px; }
+        
+        .signatures { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .signature-line { text-align: center; margin-top: 25px; }
+        .signature-line div { border-top: 1px solid #333; width: 85%; margin: 0 auto; padding-top: 4px; font-size: 10px; text-transform: uppercase; font-weight: bold; color: #555; }
+        
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 6px; font-size: 9px; color: #888; }
+        .logo-seduc { max-height: 35px; width: auto; object-fit: contain; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <img class="logo-escola" src="assets/marca_dagua.png" alt="Escola Dr. Romildo Veloso e Silva">
+        <h2>Ata de Acompanhamento Pedagógico e Alerta Disciplinar</h2>
+        <div class="subtitle">Coordenação de Disciplina e Apoio Pedagógico</div>
+      </div>
+      
+      <p style="text-align: justify; text-indent: 30px; font-size: 12.5px; margin-bottom: 15px;">
+        Ao(s) <strong>${new Date().getDate()}</strong> dia(s) do mês de <strong>${new Date().toLocaleString('pt-BR', {month: 'long'})}</strong> de <strong>${new Date().getFullYear()}</strong>, na Coordenação Pedagógica da <strong>Escola Dr. Romildo Veloso e Silva</strong>, reuniram-se os membros do corpo docente, coordenação e o responsável legal do estudante abaixo identificado, a fim de tratar de medidas orientadoras referentes ao excessivo acúmulo de infrações disciplinares registradas no regimento escolar.
+      </p>
+
+      <div class="section-title">Identificação do Estudante</div>
+      <div class="grid">
+        <div class="field"><span class="label">Nome do Aluno</span><div class="value">${a.nome}</div></div>
+        <div class="field"><span class="label">CPF / Matrícula</span><div class="value">${a.cpf || '—'}</div></div>
+      </div>
+      <div class="grid-3">
+        <div class="field"><span class="label">Turma</span><div class="value">${a.turma || '—'}</div></div>
+        <div class="field"><span class="label">Turno</span><div class="value">${a.turno || '—'}</div></div>
+        <div class="field"><span class="label">Rota / Transporte</span><div class="value">${a.rota || '—'}</div></div>
+      </div>
+      
+      <div class="section-title">Ocorrências Disciplinares Registradas (Acumulado Crítico)</div>
+      <p style="margin-top: 4px; margin-bottom: 8px; color: #666; font-size: 11px;">O estudante citado apresenta o seguinte histórico de registros pedagógicos/disciplinares ativos:</p>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 5%;">Item</th>
+            <th style="width: 15%;">Data</th>
+            <th style="width: 25%;">Infração</th>
+            <th style="width: 55%;">Parecer Descritivo / Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${listHtml}
+        </tbody>
+      </table>
+      
+      <div class="section-title">Resoluções e Encaminhamentos da Coordenação</div>
+      <p style="margin-top: 4px; margin-bottom: 4px;">Fica acordado entre as partes as seguintes condutas e providências:</p>
+      <ul style="margin: 0; padding-left: 20px; font-size: 11.5px; line-height: 1.6;">
+        <li>O aluno assume formalmente o compromisso de respeitar as normas escolares descritas no regimento da instituição.</li>
+        <li>O responsável legal compromete-se a acompanhar diariamente a assiduidade e a conduta disciplinar do estudante.</li>
+        <li>Fica a coordenação autorizada a aplicar penalidades regulamentares mais severas, incluindo suspensão escolar imediata, no caso de reincidência de conduta inadequada.</li>
+        <li>Encaminhamento pedagógico complementar para acompanhamento da coordenação e orientação psicológica, se necessário.</li>
+      </ul>
+      
+      <div class="signatures" style="margin-top: 35px;">
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura do Aluno</div>
+        </div>
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura do Responsável Legal</div>
+        </div>
+      </div>
+      
+      <div class="signatures" style="margin-top: 25px;">
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura da Coordenação Pedagógica</div>
+        </div>
+        <div class="signature-line">
+          <br><br>
+          <div>Assinatura da Direção Escolar</div>
+        </div>
+      </div>
+      
+      <div class="footer">
+        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
+        <div>Relatório consolidado via RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 500);
+  } else {
+    showToast('Bloqueador de pop-ups ativo. Permita pop-ups para imprimir.', 'alerta');
   }
 }
 
