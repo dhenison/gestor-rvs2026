@@ -82,7 +82,6 @@
       <div class="nav-section-title">Gestão</div>
       <div class="nav-item" onclick="showPage('livros',this)"><i data-lucide="book-open" class="nav-item-icon"></i>Livros Didáticos</div>
       <div class="nav-item" onclick="showPage('relatorios',this)"><i data-lucide="bar-chart-2" class="nav-item-icon"></i>Relatórios</div>
-      <div class="nav-item" onclick="showPage('chat',this)"><i data-lucide="message-square" class="nav-item-icon"></i>Chat RVS</div>
       <div class="nav-item" onclick="showPage('whatsapp',this)"><i data-lucide="send" class="nav-item-icon"></i>WhatsApp RVS</div>
       <div class="nav-item" onclick="showPage('permissoes',this)"><i data-lucide="lock" class="nav-item-icon"></i>Permissões</div>
       <div class="nav-item" id="nav-usuarios" onclick="showPage('usuarios',this)"><i data-lucide="user-cog" class="nav-item-icon"></i>Usuários</div>
@@ -795,43 +794,6 @@
           </div>
         </div>
       </div>
-
-            <!-- ══════════════════ CHAT ══════════════════ -->
-      <div class="page" id="page-chat">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-          <div class="section-title">Chat RVS — Mensagens Internas</div>
-          <button class="btn btn-orange btn-sm" onclick="openModal('modal-alerta-chat')">⚡ Enviar Alerta</button>
-        </div>
-        <div class="tabs">
-          <div class="tab active" onclick="setChatSegment('coord',this)">Coordenação</div>
-          <div class="tab" onclick="setChatSegment('sec',this)">Secretaria</div>
-          <div class="tab" onclick="setChatSegment('prof',this)">Professores</div>
-          <div class="tab" onclick="setChatSegment('geral',this)">Geral</div>
-        </div>
-        <div class="chat-wrap">
-          <div class="chat-contacts" id="chat-contacts"></div>
-          <div class="chat-area">
-            <div class="chat-header" style="display:flex;align-items:center;justify-content:space-between">
-              <div>
-                <div style="font-size:14px;font-weight:700" id="chat-current-name">Selecione um contato</div>
-                <div style="font-size:12px;color:var(--green);margin-top:2px">● Online</div>
-              </div>
-            </div>
-            <div class="chat-messages" id="chat-messages"></div>
-            <div class="chat-input" style="flex-direction:column;gap:8px">
-              <div style="display:flex;gap:8px;align-items:center">
-                <label class="btn btn-gray btn-xs" style="cursor:pointer;padding:7px 10px" title="Enviar foto da galeria ou câmera">
-                  📷
-                  <input type="file" id="chat-foto-input" accept="image/*" capture="environment" style="display:none" onchange="enviarFotoChat(this)">
-                </label>
-                <input type="text" id="chat-input-field" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter')sendChatMsg()" style="flex:1">
-                <button class="btn btn-primary btn-sm" onclick="sendChatMsg()">Enviar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- ══════════════════ PERMISSÕES ══════════════════ -->
       <div class="page" id="page-permissoes">
         <div class="section-title" style="margin-bottom:16px">Controle de Acesso — RBAC</div>
@@ -1666,56 +1628,6 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-excluir-aluno')">Cancelar</button>
       <button class="btn btn-red" onclick="excluirAluno()">Excluir Definitivamente</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Alerta no Chat -->
-<div class="modal-overlay" id="modal-alerta-chat" onclick="if(event.target===this)closeModal('modal-alerta-chat')">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header">
-      <span class="modal-title">⚡ Enviar Alerta Automático</span>
-      <button class="modal-close" onclick="closeModal('modal-alerta-chat')">✕</button>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Tipo de Alerta</label>
-      <select class="form-input form-select" id="alerta-tipo" onchange="toggleAlertaFiltros()">
-        <option value="fora-sala">🚶 Aluno Fora de Sala</option>
-        <option value="emergencia">🚨 Emergência</option>
-        <option value="aviso">📢 Aviso Geral</option>
-      </select>
-    </div>
-    <div id="alerta-fora-sala-filtros">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Turma</label>
-          <select class="form-input form-select select-turmas" id="alerta-turma" onchange="popularAlunosAlerta()">
-            <option value="">Selecione</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Aluno</label>
-          <select class="form-input form-select" id="alerta-aluno">
-            <option value="">Selecione a turma primeiro</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Mensagem adicional (opcional)</label>
-      <input class="form-input" id="alerta-msg-extra" placeholder="Detalhes adicionais...">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Enviar para</label>
-      <select class="form-input form-select" id="alerta-destino">
-        <option value="coord">Coordenação</option>
-        <option value="geral">Todos (Geral)</option>
-        <option value="sec">Secretaria</option>
-      </select>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('modal-alerta-chat')">Cancelar</button>
-      <button class="btn btn-orange" onclick="enviarAlertaChat()">⚡ Enviar Alerta</button>
     </div>
   </div>
 </div>

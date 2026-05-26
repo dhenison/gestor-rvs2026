@@ -185,7 +185,6 @@ let PERMS = [
   {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
   {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-  {func:'Chat RVS',                 id:'page-chat',         coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
 ];
@@ -281,11 +280,6 @@ async function fetchAllRows(tableName, select = '*', builderFn = (q)=>q) {
 
 async function carregarDados(){
   try {
-    // 1. Acionar rotina de limpeza de mensagens antigas
-    supabaseClient.rpc('limpar_chat_antigo').then(({error}) => {
-       if(error) console.warn('Erro ao limpar chat antigo:', error);
-    });
-
     const [
       {data: turmas}, 
       {data: alunos}, 
@@ -568,7 +562,6 @@ async function _entrarNoSistema(usuario){
   
   updateSidebarProfile();
   await initApp(); // Agora espera carregar permissões do banco
-  initChatRealtime();
   initPresenceRealtime();
   initOcorrenciaRealtime(); // Notificações em tempo real de ocorrências
 }
@@ -657,7 +650,6 @@ async function initApp(){
   renderTransporte();
   renderOcorrencias();
   renderLivros();
-  renderChat('coord');
   renderPermissoes();
   renderCalendar();
   
@@ -2985,341 +2977,23 @@ async function toggleLivroAluno(cpf, liIdx, checkbox){
 
 function fecharLivroAlunos(){
   document.getElementById('livros-grid').classList.remove('hidden');
-  document.getElementById('livros-alunos-section').classList.add('hidden');
+  document.getElementById('livros-alunos-section').classList.remove('hidden');
   livroAtualIdx=-1;
 }
 
-// ─── CHAT RVS (Sincronizado Supabase Realtime) ───────────────────────────────
+// ─── CHAT RVS (Removido por solicitação) ───────────────────────────────────────
 let chatSubscription = null;
-let presenceChannel = null;
-let onlineUsers = {};
 let currentChatMessages = [];
-
-function initPresenceRealtime() {
-  if (presenceChannel) return;
-  const user = getCurrentUser() || {nome: 'Visitante', perfil: 'Geral'};
-  const sessionId = Math.random().toString(36).substring(2, 15);
-  
-  presenceChannel = supabaseClient.channel('online-users', {
-    config: { presence: { key: sessionId } },
-  });
-
-  presenceChannel
-    .on('presence', { event: 'sync' }, () => {
-      onlineUsers = presenceChannel.presenceState();
-      if(document.getElementById('page-chat')?.classList.contains('active')) {
-          renderChatContacts();
-      }
-    })
-    .subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await presenceChannel.track({
-          nome: user.nome,
-          perfil: user.perfil,
-          online_at: new Date().toISOString()
-        });
-      }
-    });
-}
-
-function renderChatContacts() {
-  const el = document.getElementById('chat-contacts');
-  if(!el) return;
-  
-  const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
-  let html = `<div class="chat-contact active">
-        <div class="chat-contact-avatar" style="background:var(--primary)">👥</div>
-        <div class="chat-contact-info"><h4>Grupo ${titles[chatSegment] || chatSegment}</h4><p>Chat Coletivo</p></div>
-      </div>`;
-      
-  const uniqueUsers = {};
-  Object.values(onlineUsers).forEach(presences => {
-     presences.forEach(p => {
-       if (p.nome) uniqueUsers[p.nome] = p;
-     });
-  });
-  
-  const myName = getCurrentUser()?.nome || 'Visitante';
-  const usersList = Object.values(uniqueUsers).filter(u => u.nome !== myName);
-  
-  if (usersList.length > 0) {
-      html += `<div style="font-size:11px;font-weight:bold;color:var(--gray5);margin:15px 0 5px 10px;text-transform:uppercase;">Usuários Online</div>`;
-      usersList.forEach(u => {
-          const avatar = u.nome.substring(0,2).toUpperCase();
-          html += `<div class="chat-contact" style="pointer-events:none;opacity:0.8">
-            <div class="chat-contact-avatar" style="background:var(--gray4);position:relative;color:#fff;font-weight:bold;font-size:14px;display:flex;align-items:center;justify-content:center">
-               ${avatar}
-               <div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;background:var(--green);border-radius:50%;border:2px solid #fff"></div>
-            </div>
-            <div class="chat-contact-info"><h4>${u.nome}</h4><p style="color:var(--green);font-size:11px">Online agora</p></div>
-          </div>`;
-      });
-  }
-  
-  el.innerHTML = html;
-}
-
-function initChatRealtime() {
-  if (chatSubscription) return;
-  chatSubscription = supabaseClient
-    .channel('public:chat_mensagens')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensagens' }, payload => {
-      const novaMsg = payload.new;
-      
-      if (novaMsg.segmento === chatSegment) {
-        currentChatMessages.push(novaMsg);
-        renderChatMsgsUI();
-      }
-      
-      const myName = getCurrentUser()?.nome || 'Dhenison Carlos';
-      if (novaMsg.remetente !== myName) {
-        const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
-        const segName = titles[novaMsg.segmento] || novaMsg.segmento;
-        const isCurrentlyLooking = document.getElementById('page-chat')?.classList.contains('active') && chatSegment === novaMsg.segmento;
-        
-        if (!isCurrentlyLooking) {
-            let resumoMsg = novaMsg.mensagem.substring(0,50);
-            if(novaMsg.mensagem.length>50) resumoMsg += '...';
-            if(novaMsg.tipo === 'image') resumoMsg = '📸 Imagem recebida';
-            if(novaMsg.tipo === 'alert') resumoMsg = '🚨 ALERTA CRÍTICO';
-
-            // Adiciona ao painel de notificações
-            addNotification({
-              type: 'chat',
-              title: `${novaMsg.remetente} — ${segName}`,
-              body: resumoMsg,
-              action: () => {
-                showPage('chat', document.querySelector(".nav-item[onclick*=\'chat\']"));
-                const targetTab = document.querySelector(`#page-chat .tab[onclick*="'${novaMsg.segmento}'"]`) || document.querySelector('#page-chat .tab');
-                if (targetTab) setChatSegment(novaMsg.segmento, targetTab);
-              }
-            });
-            
-            showToast(`${novaMsg.remetente} (${segName}):<br/>${resumoMsg}`, 'chat', () => {
-              showPage('chat', document.querySelector(".nav-item[onclick*=\"showPage('chat')\"]"));
-              const targetTab = document.querySelector(`#page-chat .tab[onclick*="'${novaMsg.segmento}'"]`) || document.querySelector('#page-chat .tab');
-              if (targetTab) {
-                setChatSegment(novaMsg.segmento, targetTab);
-              }
-            });
-        }
-      }
-    })
-    .subscribe();
-}
-
-async function carregarMensagensSegmento() {
-  const m = document.getElementById('chat-messages');
-  if(m) m.innerHTML = '<div style="padding:20px;text-align:center;color:var(--gray4);font-size:13px">Carregando mensagens...</div>';
-  const { data, error } = await supabaseClient
-    .from('chat_mensagens')
-    .select('*')
-    .eq('segmento', chatSegment)
-    .order('created_at', { ascending: true });
-  
-  if (error) {
-    console.error('Erro ao carregar chat:', error);
-    if(m) m.innerHTML = '<div style="padding:20px;text-align:center;color:var(--red);font-size:13px">Erro ao carregar mensagens</div>';
-    return;
-  }
-  currentChatMessages = data || [];
-  renderChatMsgsUI();
-}
-
-function renderChat(seg){
-  chatSegment=seg; 
-  const titles = { coord: 'Coordenação', sec: 'Secretaria', prof: 'Professores', geral: 'Geral' };
-  document.getElementById('chat-current-name').textContent = 'Grupo ' + titles[seg];
-  
-  renderChatContacts();
-  carregarMensagensSegmento();
-}
-
-function setChatSegment(seg,tab){
-  document.querySelectorAll('#page-chat .tab').forEach(t=>t.classList.remove('active'));
-  tab.classList.add('active'); renderChat(seg);
-}
-
-function renderChatMsgsUI(){
-  const m=document.getElementById('chat-messages'); if(!m)return;
-  const myName = getCurrentUser()?.nome || 'Dhenison Carlos';
-  
-  if(!currentChatMessages.length){
-    m.innerHTML=emptyState('💬','Nenhuma mensagem nas últimas 48h','Comece a conversar!');
-    return;
-  }
-  
-  m.innerHTML = currentChatMessages.map(msg => {
-    const isMe = msg.remetente === myName;
-    const tClass = isMe ? 'sent' : 'received';
-    const timeStr = new Date(msg.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    let content = msg.mensagem;
-    
-    // Formatação especial se for alerta
-    if(msg.tipo === 'alert') {
-      content = `<strong style="color:var(--orange)">🚨 ALERTA:</strong><br/>${msg.mensagem}`;
-    }
-    
-    return `<div class="msg ${tClass}">
-      ${!isMe ? `<div style="font-size:10px;font-weight:bold;margin-bottom:4px;color:var(--primary)">${msg.remetente}</div>` : ''}
-      ${content}
-      <div class="msg-time">${timeStr}</div>
-    </div>`;
-  }).join('');
-  m.scrollTop=m.scrollHeight;
-}
-
-async function sendChatMsg(){
-  const inp=document.getElementById('chat-input-field');
-  const val=inp?.value.trim(); if(!val)return;
-  const user = getCurrentUser() || {nome: 'Admin', perfil: 'admin'};
-  
-  inp.value='';
-  const novaMsg = {
-    segmento: chatSegment,
-    remetente: user.nome,
-    perfil_remetente: user.perfil,
-    mensagem: val,
-    tipo: 'text'
-  };
-  
-  // Exibição otimista
-  currentChatMessages.push({...novaMsg, created_at: new Date().toISOString()});
-  renderChatMsgsUI();
-  
-  const { error } = await supabaseClient.from('chat_mensagens').insert([novaMsg]);
-  if(error) {
-    console.error('Erro ao enviar mensagem:', error);
-    showToast('Erro ao enviar! O banco de dados foi configurado?', 'alerta');
-  }
-}
-
-// ─── ALERTAS DO CHAT ──────────────────────────────────────────────────────────
-function toggleAlertaFiltros(){
-  const tipo = document.getElementById('alerta-tipo')?.value;
-  const filtros = document.getElementById('alerta-fora-sala-filtros');
-  if(filtros) filtros.style.display = tipo === 'fora-sala' ? 'block' : 'none';
-}
-
-async function popularAlunosAlerta(){
-  const turmaCode = document.getElementById('alerta-turma')?.value;
-  const sel = document.getElementById('alerta-aluno');
-  if(!sel)return;
-  
-  if (!turmaCode) {
-    sel.innerHTML = '<option value="">Selecione o aluno principal</option>';
-    return;
-  }
-  
-  sel.innerHTML = '<option value="">Carregando alunos do banco...</option>';
-  
-  // Buscar a turma selecionada no banco para pegar o ID exato
-  const { data: turmaData, error: errTurma } = await supabaseClient
-    .from('turmas')
-    .select('id')
-    .eq('code', turmaCode.trim())
-    .maybeSingle();
-    
-  if(errTurma || !turmaData) {
-    showToast('Erro ao consultar turma no banco de dados.', 'alerta');
-    sel.innerHTML = '<option value="">Selecione o aluno principal</option>';
-    return;
-  }
-  
-  // Buscar todos os alunos que tem o ID da turma
-  const { data: alunosData, error: errAlunos } = await supabaseClient
-    .from('alunos')
-    .select('nome')
-    .eq('turma_id', turmaData.id)
-    .order('nome', {ascending: true});
-  
-  if (errAlunos) {
-    console.error('Erro alunos:', errAlunos);
-    showToast('Erro ao puxar alunos do banco.', 'alerta');
-    return;
-  }
-  
-  if (!alunosData || alunosData.length === 0) {
-    showToast('O banco de dados não tem alunos vinculados a esta turma.', 'alerta');
-    sel.innerHTML = '<option value="">Nenhum aluno (Verifique a aba Alunos)</option>';
-    return;
-  }
-  
-  sel.innerHTML = '<option value="">Selecione o aluno principal</option>' + 
-    alunosData.map(a => `<option value="${a.nome}">${a.nome}</option>`).join('');
-}
-
-async function enviarAlertaChat(){
-  const tipo = document.getElementById('alerta-tipo')?.value;
-  const destino = document.getElementById('alerta-destino')?.value;
-  const msgExtra = document.getElementById('alerta-msg-extra')?.value.trim();
-  const turma = document.getElementById('alerta-turma')?.value;
-  const aluno = document.getElementById('alerta-aluno')?.value;
-  
-  if(tipo === 'fora-sala' && (!turma || !aluno)) {
-    showToast('Selecione a turma e o aluno!', 'alerta');
-    return;
-  }
-  
-  let msgFinal = '';
-  if(tipo === 'fora-sala') msgFinal = `Aluno(a) ${aluno} (Turma ${turma}) está fora de sala sem permissão. `;
-  if(tipo === 'emergencia') msgFinal = `EMERGÊNCIA solicitada! `;
-  if(tipo === 'aviso') msgFinal = `AVISO GERAL: `;
-  if(msgExtra) msgFinal += msgExtra;
-  
-  const user = getCurrentUser() || {nome: 'Admin', perfil: 'admin'};
-  
-  // 1. Enviar mensagem pro Chat
-  const novaMsg = {
-    segmento: destino,
-    remetente: user.nome,
-    perfil_remetente: user.perfil,
-    mensagem: msgFinal,
-    tipo: 'alert'
-  };
-  const { error } = await supabaseClient.from('chat_mensagens').insert([novaMsg]);
-  if(error) {
-    console.error('Erro ao enviar alerta para o chat:', error);
-    showToast('Erro no banco de dados do Chat!', 'alerta');
-    return;
-  }
-  
-  // 2. Se for fora de sala, registrar nas ocorrências para ficarem salvas
-  if(tipo === 'fora-sala' && aluno) {
-    const oData = new Date().toLocaleDateString('pt-BR');
-    const al = ALUNOS_DATA.find(a => a.nome === aluno);
-    if(al) {
-      al.historico = al.historico || [];
-      al.historico.push({
-        tipo: 'ocorrencia',
-        titulo: 'Alerta Rápido: Fora de Sala',
-        desc: msgExtra || 'Aluno avistado fora de sala sem permissão.',
-        data: oData
-      });
-      OCORR_DATA.push({
-        id: Date.now(), tipo: 'evasao', icon: '🚨', aluno: aluno, turma: turma,
-        desc: msgFinal,
-        hora: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
-        data: oData,
-        tratada: false, aguardandoPais: false, origem: 'manual'
-      });
-      // Persiste ocorrência no Supabase
-      if(al.id) {
-        supabaseClient.from('ocorrencias').insert({
-          tipo: 'evasao', aluno_id: al.id, turma_id: al.turma_id,
-          descricao: msgFinal, data_ocorr: new Date().toISOString().split('T')[0],
-          responsavel: user.nome, origem: 'manual'
-        }).then(({error}) => { if(error) console.error('Erro ocorr alerta:', error); });
-      }
-    }
-  }
-  
-  closeModal('modal-alerta-chat');
-  showToast('Alerta enviado e registrado!', 'sucesso');
-  if(document.getElementById('page-chat')?.classList.contains('active')) {
-    setChatSegment(destino, document.querySelector(`.tab[onclick*="${destino}"]`));
-  }
-}
+function renderChatContacts() {}
+function initChatRealtime() {}
+async function carregarMensagensSegmento() {}
+function renderChat(seg) {}
+function setChatSegment(seg, tab) {}
+function renderChatMsgsUI() {}
+async function sendChatMsg() {}
+function toggleAlertaFiltros() {}
+async function popularAlunosAlerta() {}
+async function enviarAlertaChat() {}
 
 // ─── PERFIL DO USUÁRIO ────────────────────────────────────────────────────────
 const DRIVE_FOTO_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
