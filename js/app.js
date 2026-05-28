@@ -6692,9 +6692,79 @@ function gerarPDFTratamento(alunoId) {
 
 
 
-// ==============================================================================
-// 📊 MÓDULO DE BOLETINS ESCOLARES INTELIGENTES - CÓDIGO CORE (v3 - SUPORTE A IMPRESSÃO E CONTRASTE ALTO)
-// ==============================================================================
+// Exibe um modal de carregamento bonito e moderno com spinner CSS
+function showLoading(msg = 'Carregando...') {
+  hideLoading(); // Garante que não duplique
+
+  const overlay = document.createElement('div');
+  overlay.id = 'rvs-loading-overlay';
+  overlay.style = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 15px;
+    animation: fadeIn 0.2s ease;
+    backdrop-filter: blur(4px);
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+      max-width: 320px;
+      width: 90%;
+      text-align: center;
+    ">
+      <div class="spinner-loader" style="
+        width: 40px;
+        height: 40px;
+        border: 4px solid #cbd5e1;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: rvs-spin 0.8s linear infinite;
+      "></div>
+      <span style="
+        font-family: 'Outfit', sans-serif;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #000000 !important;
+        margin: 0;
+      " id="rvs-loading-text">${msg}</span>
+    </div>
+  `;
+
+  if (!document.getElementById('rvs-spinner-style')) {
+    const style = document.createElement('style');
+    style.id = 'rvs-spinner-style';
+    style.innerHTML = `
+      @keyframes rvs-spin {
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(overlay);
+}
+
+// Oculta o modal de carregamento
+function hideLoading() {
+  const overlay = document.getElementById('rvs-loading-overlay');
+  if (overlay) {
+    overlay.remove();
+  }
+}
 
 let currentUploadedPdfBytes = null; // ArrayBuffer do PDF original
 let currentMatches = [];            // Mapeamento atual de pág ➔ aluno

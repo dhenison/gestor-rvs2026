@@ -7,7 +7,7 @@
 //  🔄 BG Sync       → Sincroniza fila offline automaticamente
 // ══════════════════════════════════════════════════════
 
-const CACHE_NAME    = 'rvs-gestor-v3';
+const CACHE_NAME    = 'rvs-gestor-v5';
 const SYNC_TAG_FREQ = 'rvs-sync-frequencias';
 
 // Arquivos estáticos que serão cacheados (carregados offline)
