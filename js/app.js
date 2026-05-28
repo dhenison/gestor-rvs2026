@@ -7051,7 +7051,7 @@ async function processarBoletimPDF() {
     }
 
     hideLoading();
-    showToast(`PDF com ${numPages} páginas analisado com sucesso!`, 'sucesso');
+    showToast(`PDF com ${numPages} páginas analisado com sucesso! Revise o mapeamento abaixo e clique em 'Confirmar e Salvar' para disponibilizar os boletins na Ficha do Aluno e no Portal.`, 'sucesso');
     
     // 4. Renderiza a Grid de Resultados
     renderGridMapeamento(matches, alunos);
@@ -7361,7 +7361,7 @@ async function salvarBoletinsMapeados() {
     // Fecha o modal de progresso
     progressModal.remove();
     
-    showToast(`Sucesso! O arquivo da turma e ${sucessos} de ${activeMatches.length} boletins individuais foram salvos com sucesso!`, 'sucesso');
+    showToast(`Sucesso! Os boletins foram salvos e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!`, 'sucesso');
     
     // Limpa UI e volta para a aba de listagem
     document.getElementById('boletim-pdf-file').value = '';
