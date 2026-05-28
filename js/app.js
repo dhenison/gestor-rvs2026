@@ -7091,7 +7091,7 @@ async function processarBoletimPDF() {
       console.warn("GlobalWorkerOptions workerSrc error:", e);
     }
 
-    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes) }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes.slice(0)) }).promise;
     const numPages = pdf.numPages;
 
     const matches = [];
@@ -7376,7 +7376,7 @@ function renderGridMapeamento(matches, alunos) {
 async function abrirPrevisualizacaoPagina(pageNum) {
   showLoading('Carregando pré-visualização...');
   try {
-    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes) }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes.slice(0)) }).promise;
     const page = await pdf.getPage(pageNum);
     
     const canvas = document.createElement('canvas');
