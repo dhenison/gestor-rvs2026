@@ -276,49 +276,103 @@
           <div class="section-title">📊 Módulo de Boletins Escolares</div>
         </div>
         
-        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; margin-bottom: 24px; animation: fadeIn 0.4s ease;">
-          <h3 style="font-size: 15px; font-weight: 700; color: white; margin-bottom: 15px; font-family: 'Outfit', sans-serif;">📤 Upload e Divisão de PDF de Notas</h3>
-          
-          <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <label style="font-size:11px; color:var(--gray5); font-weight:600;">Turma</label>
-              <select id="boletim-turma-select" class="form-input form-select select-turmas" style="width:200px; margin:0;"></select>
+        <!-- Abas de Navegação -->
+        <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom: 1.5px solid var(--gray3); padding-bottom:10px;">
+          <button class="filter-btn active" id="btn-boletins-listagem" onclick="switchBoletinsSubTab('listagem')">📂 Status das Turmas</button>
+          <button class="filter-btn" id="btn-boletins-upload" onclick="switchBoletinsSubTab('upload')">📤 Enviar Novo Boletim</button>
+        </div>
+
+        <!-- ABA 1: LISTAGEM E STATUS DAS TURMAS -->
+        <div id="subtab-boletins-listagem" style="animation: fadeIn 0.3s ease;">
+          <div class="table-card" style="padding: 20px; background: white;">
+            <div style="display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap; align-items:center;">
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Ano Letivo</label>
+                <input id="boletins-filtro-ano" class="form-input" type="number" value="2026" style="width:90px; margin:0;" onchange="renderStatusBoletinsTurmas()">
+              </div>
+              
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Período / Bimestre</label>
+                <select id="boletins-filtro-periodo" class="form-input form-select" style="width:160px; margin:0;" onchange="renderStatusBoletinsTurmas()">
+                  <option value="1º Bimestre">1º Bimestre</option>
+                  <option value="2º Bimestre">2º Bimestre</option>
+                  <option value="3º Bimestre">3º Bimestre</option>
+                  <option value="4º Bimestre">4º Bimestre</option>
+                  <option value="Recuperação">Recuperação</option>
+                  <option value="Final">Final</option>
+                </select>
+              </div>
+              
+              <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+                <span style="font-size:12px; color:var(--gray5); font-weight:600;" id="boletins-contador-status"></span>
+              </div>
             </div>
-            
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <label style="font-size:11px; color:var(--gray5); font-weight:600;">Ano Letivo</label>
-              <input id="boletim-ano" class="form-input" type="number" value="2026" style="width:90px; margin:0;">
+
+            <div class="table-responsive">
+              <table class="table" style="width:100%; border-collapse:collapse;">
+                <thead>
+                  <tr style="border-bottom:2px solid var(--gray3);">
+                    <th style="padding:12px; text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Código</th>
+                    <th style="padding:12px; text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Série</th>
+                    <th style="padding:12px; text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Turno</th>
+                    <th style="padding:12px; text-align:center; font-size:12.5px; font-weight:700; color:var(--gray7);">Status do Boletim</th>
+                    <th style="padding:12px; text-align:center; font-size:12.5px; font-weight:700; color:var(--gray7); width:320px;">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="boletins-status-tbody">
+                  <!-- Preenchido dinamicamente -->
+                </tbody>
+              </table>
             </div>
-            
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <label style="font-size:11px; color:var(--gray5); font-weight:600;">Período / Bimestre</label>
-              <select id="boletim-periodo-select" class="form-input form-select" style="width:160px; margin:0;">
-                <option value="1º Bimestre">1º Bimestre</option>
-                <option value="2º Bimestre">2º Bimestre</option>
-                <option value="3º Bimestre">3º Bimestre</option>
-                <option value="4º Bimestre">4º Bimestre</option>
-                <option value="Recuperação">Recuperação</option>
-                <option value="Final">Final</option>
-              </select>
-            </div>
-          </div>
-          
-          <input id="boletim-pdf-file" type="file" accept="application/pdf" class="form-input" style="display:none;" onchange="handleBoletimFileSelected(this)">
-          
-          <div id="boletim-dropzone" onclick="document.getElementById('boletim-pdf-file').click()" style="border: 2px dashed rgba(255,255,255,0.15); border-radius: 12px; padding: 40px 20px; text-align: center; background: rgba(255,255,255,0.01); cursor: pointer; transition: all 0.3s ease;">
-            <div id="boletim-dropzone-icon" style="font-size: 32px; margin-bottom: 12px; transition: transform 0.2s;">📤</div>
-            <div id="boletim-dropzone-text" style="font-size: 13.5px; font-weight: 600; color: white;">Clique aqui para selecionar o arquivo PDF da turma</div>
-            <div style="font-size: 11.5px; color: var(--gray5); margin-top: 6px;">O sistema vai analisar cada página para mapear os boletins de cada aluno</div>
-          </div>
-          
-          <div style="margin-top:15px; display:none; justify-content:space-between; align-items:center;" id="boletim-file-info-bar">
-            <span style="font-size:12.5px; color:white; font-weight:600;" id="boletim-file-name-label">📄 arquivo.pdf</span>
-            <button class="btn btn-primary" onclick="processarBoletimPDF()">⚙️ Analisar e Mapear Boletins</button>
           </div>
         </div>
 
-        <!-- Resultados do Mapeamento -->
-        <div id="boletim-mapeamento-container" style="display:none;"></div>
+        <!-- ABA 2: UPLOAD E PROCESSAMENTO -->
+        <div id="subtab-boletins-upload" style="display:none; animation: fadeIn 0.3s ease;">
+          <div class="table-card" style="padding: 25px; background: white;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--gray7); margin-bottom: 15px; font-family: 'Outfit', sans-serif;">📤 Enviar Boletim Completo da Turma</h3>
+            
+            <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Turma de Destino</label>
+                <select id="boletim-turma-select" class="form-input form-select select-turmas" style="width:200px; margin:0;"></select>
+              </div>
+              
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Ano Letivo</label>
+                <input id="boletim-ano" class="form-input" type="number" value="2026" style="width:90px; margin:0;">
+              </div>
+              
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Período / Bimestre</label>
+                <select id="boletim-periodo-select" class="form-input form-select" style="width:160px; margin:0;">
+                  <option value="1º Bimestre">1º Bimestre</option>
+                  <option value="2º Bimestre">2º Bimestre</option>
+                  <option value="3º Bimestre">3º Bimestre</option>
+                  <option value="4º Bimestre">4º Bimestre</option>
+                  <option value="Recuperação">Recuperação</option>
+                  <option value="Final">Final</option>
+                </select>
+              </div>
+            </div>
+            
+            <input id="boletim-pdf-file" type="file" accept="application/pdf" class="form-input" style="display:none;" onchange="handleBoletimFileSelected(this)">
+            
+            <div id="boletim-dropzone" onclick="document.getElementById('boletim-pdf-file').click()" style="border: 2.5px dashed var(--gray3); border-radius: 12px; padding: 40px 20px; text-align: center; background: var(--gray); cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='var(--blue)'; this.style.background='white';" onmouseout="this.style.borderColor='var(--gray3)'; this.style.background='var(--gray)';">
+              <div id="boletim-dropzone-icon" style="font-size: 36px; margin-bottom: 12px;">📤</div>
+              <div id="boletim-dropzone-text" style="font-size: 14.5px; font-weight: 700; color: var(--gray7);">Clique ou arraste o arquivo PDF da turma aqui</div>
+              <div style="font-size: 12.5px; color: var(--gray5); margin-top: 6px;">O sistema dividirá e enviará o boletim de cada aluno com base no nome impresso na página</div>
+            </div>
+            
+            <div style="margin-top:18px; display:none; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;" id="boletim-file-info-bar">
+              <span style="font-size:13.5px; color:var(--gray7); font-weight:700;" id="boletim-file-name-label">📄 arquivo.pdf</span>
+              <button class="btn btn-primary" onclick="processarBoletimPDF()">⚙️ Analisar e Mapear Boletins</button>
+            </div>
+          </div>
+
+          <!-- Resultados do Mapeamento -->
+          <div id="boletim-mapeamento-container" style="display:none;"></div>
+        </div>
       </div>
 
       <div class="page" id="page-frequencia">

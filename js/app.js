@@ -723,6 +723,7 @@ function showPage(p, el) {
   const overlay = document.getElementById('sidebar-overlay');
   if(overlay) overlay.classList.remove('show');
   if(p==='solicitacoes') renderSolicitacoes();
+  if(p==='boletins') { switchBoletinsSubTab('listagem'); renderStatusBoletinsTurmas(); }
   if(p==='topo-saber'){ carregarOlimpiadas().then(()=>renderTopoSaber()); }
   if(p==='usuarios'){ carregarUsuarios(); }
   if(p==='rvs-agenda'){ popularDatasAtividade(); popularTurmasAtividade(); renderAgendaMural(); }
@@ -6692,12 +6693,254 @@ function gerarPDFTratamento(alunoId) {
 
 
 // ==============================================================================
-// 📊 MÓDULO DE BOLETINS ESCOLARES INTELIGENTES - CÓDIGO CORE
+// 📊 MÓDULO DE BOLETINS ESCOLARES INTELIGENTES - CÓDIGO CORE (v2 - COMPLETO)
 // ==============================================================================
 
 let currentUploadedPdfBytes = null; // ArrayBuffer do PDF original
 let currentMatches = [];            // Mapeamento atual de pág ➔ aluno
 let currentAlunosTurma = [];        // Alunos carregados da turma
+
+// Alterna entre a Aba de Status das Turmas e o Envio de Boletim
+function switchBoletinsSubTab(tabId) {
+  document.getElementById('btn-boletins-listagem').classList.remove('active');
+  document.getElementById('btn-boletins-upload').classList.remove('active');
+  document.getElementById('subtab-boletins-listagem').style.display = 'none';
+  document.getElementById('subtab-boletins-upload').style.display = 'none';
+
+  document.getElementById(`btn-boletins-${tabId}`).classList.add('active');
+  document.getElementById(`subtab-boletins-${tabId}`).style.display = 'block';
+  
+  if (tabId === 'listagem') {
+    renderStatusBoletinsTurmas();
+  }
+}
+
+// Busca a situação de todas as turmas em relação a boletins publicados
+async function renderStatusBoletinsTurmas() {
+  const tbody = document.getElementById('boletins-status-tbody');
+  const counterEl = document.getElementById('boletins-contador-status');
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="5" style="text-align:center; padding:30px; color:var(--gray5);">
+        <div style="width:20px;height:20px;border:2px solid rgba(0,0,0,.05);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;"></div>
+        Carregando status dos boletins...
+      </td>
+    </tr>
+  `;
+
+  const ano = parseInt(document.getElementById('boletins-filtro-ano').value) || 2026;
+  const periodo = document.getElementById('boletins-filtro-periodo').value;
+
+  try {
+    // 1. Busca os boletins completos publicados para esse período
+    const { data: published, error } = await supabaseClient
+      .from('boletins_turmas')
+      .select('id, turma_id')
+      .eq('ano', ano)
+      .eq('periodo', periodo);
+
+    if (error) throw error;
+
+    const publishedMap = {};
+    if (published) {
+      published.forEach(p => {
+        publishedMap[p.turma_id] = p.id;
+      });
+    }
+
+    let publicadosQtd = 0;
+
+    if (TURMAS_DATA.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--gray5);">Nenhuma turma cadastrada no sistema.</td></tr>`;
+      counterEl.textContent = '0 de 0 Publicados';
+      return;
+    }
+
+    tbody.innerHTML = TURMAS_DATA.map(t => {
+      const boletimTurmaId = publishedMap[t.id];
+      const temBoletim = !!boletimTurmaId;
+
+      let badge = '';
+      let actions = '';
+
+      if (temBoletim) {
+        publicadosQtd++;
+        badge = `<span class="badge badge-green" style="font-weight:700; padding:4px 10px; border-radius:12px;">🟢 Publicado</span>`;
+        actions = `
+          <div style="display:flex; gap:6px; justify-content:center;">
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="visualizarBoletimCompleto('${boletimTurmaId}', '${t.code}')">👁️ Ver PDF</button>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="baixarBoletimCompleto('${boletimTurmaId}', 'Boletim_Completo_${t.code}_${periodo.replace(/ /g, '_')}.pdf')">📥 Baixar</button>
+            <button class="btn btn-red btn-sm" style="padding:4px 8px; font-size:11px; background:#f43f5e;" onclick="excluirBoletimCompleto('${boletimTurmaId}', '${t.code}', '${t.id}')">🗑️ Excluir</button>
+          </div>
+        `;
+      } else {
+        badge = `<span class="badge badge-yellow" style="font-weight:700; padding:4px 10px; border-radius:12px;">🔴 Pendente</span>`;
+        actions = `
+          <div style="display:flex; justify-content:center;">
+            <button class="btn btn-primary btn-sm" style="padding:4px 12px; font-size:11px;" onclick="irParaUploadBoletimDeUmaTurma('${t.code}')">📤 Enviar Boletim</button>
+          </div>
+        `;
+      }
+
+      return `<tr style="border-bottom:1px solid var(--gray3);">
+        <td style="padding:12px; font-weight:700; color:var(--gray7);">${t.code}</td>
+        <td style="padding:12px; color:var(--gray6);">${t.serie}</td>
+        <td style="padding:12px; color:var(--gray6);">${t.turno}</td>
+        <td style="padding:12px; text-align:center;">${badge}</td>
+        <td style="padding:12px; text-align:center;">${actions}</td>
+      </tr>`;
+    }).join('');
+
+    counterEl.textContent = `${publicadosQtd} de ${TURMAS_DATA.length} Publicados`;
+
+  } catch (err) {
+    console.error('[renderStatusBoletinsTurmas] Erro:', err);
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--red);">Erro ao carregar o status dos boletins.</td></tr>`;
+  }
+}
+
+// Atalho para enviar o boletim de uma turma específica a partir da tabela de status
+function irParaUploadBoletimDeUmaTurma(turmaCode) {
+  switchBoletinsSubTab('upload');
+  
+  const select = document.getElementById('boletim-turma-select');
+  if (select) {
+    select.value = turmaCode;
+    const event = new Event('change');
+    select.dispatchEvent(event);
+  }
+}
+
+// Visualiza o boletim completo da turma
+async function visualizarBoletimCompleto(boletimTurmaId, turmaCode) {
+  showLoading('Buscando arquivo completo no sistema...');
+  try {
+    const { data, error } = await supabaseClient
+      .from('boletins_turmas')
+      .select('pdf_completo, periodo, ano')
+      .eq('id', boletimTurmaId)
+      .single();
+
+    if (error || !data) throw error;
+    hideLoading();
+
+    const canvas = document.createElement('canvas'); // Apenas para placeholder, ou abrimos direto o visualizador
+    exibirModalPrevisualizacaoCompleta(data.pdf_completo, `${turmaCode} - ${data.periodo} (${data.ano})`);
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Não foi possível obter o PDF completo da turma.', 'erro');
+  }
+}
+
+// Abre um visualizador modal para o PDF completo
+function exibirModalPrevisualizacaoCompleta(base64, label) {
+  const old = document.getElementById('boletim-preview-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'boletim-preview-modal';
+  modal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn 0.2s ease;';
+  
+  const content = document.createElement('div');
+  content.style = 'background:white; border:1px solid var(--gray3); border-radius:16px; max-width:800px; width:100%; display:flex; flex-direction:column; height:85vh; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); overflow:hidden;';
+  
+  const header = document.createElement('div');
+  header.style = 'padding:14px 20px; border-bottom:1px solid var(--gray3); display:flex; justify-content:space-between; align-items:center; background:var(--gray);';
+  header.innerHTML = `<h4 style="font-size:14px; font-weight:700; color:var(--gray7); margin:0">👁️ Visualizando Boletim Completo — ${label}</h4>
+    <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:24px; cursor:pointer;">&times;</button>`;
+  
+  const body = document.createElement('div');
+  body.style = 'padding:0; flex:1; background:#ebebeb; overflow:hidden;';
+  
+  const iframe = document.createElement('iframe');
+  iframe.src = `data:application/pdf;base64,${base64}`;
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+  body.appendChild(iframe);
+  
+  content.appendChild(header);
+  content.appendChild(body);
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+}
+
+// Faz o download do arquivo PDF completo do banco de dados
+async function baixarBoletimCompleto(boletimTurmaId, filename) {
+  showLoading('Baixando PDF completo...');
+  try {
+    const { data, error } = await supabaseClient
+      .from('boletins_turmas')
+      .select('pdf_completo')
+      .eq('id', boletimTurmaId)
+      .single();
+
+    if (error || !data) throw error;
+    hideLoading();
+
+    const byteCharacters = atob(data.pdf_completo);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], {type: 'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Erro ao baixar o arquivo PDF completo.', 'erro');
+  }
+}
+
+// Exclui o arquivo completo do banco e cascateia a exclusão para boletins individuais
+async function excluirBoletimCompleto(boletimTurmaId, turmaCode, turmaId) {
+  const confirmacao = confirm(`ATENÇÃO: Tem certeza que deseja excluir o boletim completo da turma ${turmaCode}? Isso apagará permanentemente o PDF completo E todos os boletins individuais gerados para os alunos neste período.`);
+  if (!confirmacao) return;
+
+  showLoading('Excluindo boletins da turma...');
+  const ano = parseInt(document.getElementById('boletins-filtro-ano').value) || 2026;
+  const periodo = document.getElementById('boletins-filtro-periodo').value;
+
+  try {
+    // 1. Deleta o boletim completo da turma
+    const { error: err1 } = await supabaseClient
+      .from('boletins_turmas')
+      .delete()
+      .eq('id', boletimTurmaId);
+
+    if (err1) throw err1;
+
+    // 2. Deleta os boletins individuais dos alunos daquela turma, ano e período
+    const { error: err2 } = await supabaseClient
+      .from('boletins')
+      .delete()
+      .eq('turma_id', turmaId)
+      .eq('ano', ano)
+      .eq('periodo', periodo);
+
+    if (err2) throw err2;
+
+    hideLoading();
+    showToast(`Boletins da turma ${turmaCode} excluídos com sucesso.`, 'sucesso');
+    renderStatusBoletinsTurmas();
+
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Ocorreu um erro ao excluir os boletins do banco de dados.', 'erro');
+  }
+}
 
 function handleBoletimFileSelected(input) {
   const fileBar = document.getElementById('boletim-file-info-bar');
@@ -6823,34 +7066,35 @@ async function processarBoletimPDF() {
   }
 }
 
+// RENDERIZA A GRID COM CORES COM ALTO CONTRASTE (LIGHT THEME)
 function renderGridMapeamento(matches, alunos) {
   currentMatches = matches;
   const container = document.getElementById('boletim-mapeamento-container');
   container.style.display = 'block';
 
   let html = `
-    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 16px; padding: 22px; margin-top: 25px; animation: fadeIn 0.4s ease;">
+    <div style="background: #f8fafc; border: 1.5px solid var(--gray3); border-radius: 16px; padding: 22px; margin-top: 25px; animation: fadeIn 0.4s ease;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-        <h3 style="font-size:15px; font-weight:700; color:white; font-family:'Outfit',sans-serif; margin:0">📊 Mapeamento das Páginas do PDF</h3>
+        <h3 style="font-size:15px; font-weight:850; color:var(--gray7); font-family:'Outfit',sans-serif; margin:0">📊 Mapeamento das Páginas do PDF</h3>
         <div style="display:flex; gap:10px;">
-          <button class="btn btn-secondary btn-sm" onclick="mapearOrdemAlfabetica()" style="font-size: 11.5px; padding: 6px 12px;">✍️ Preencher Ordem Alfabética</button>
+          <button class="btn btn-secondary btn-sm" onclick="mapearOrdemAlfabetica()" style="font-size: 11.5px; padding: 6px 12px; background:white; border: 1.5px solid var(--gray3); color:var(--gray7);">✍️ Preencher Ordem Alfabética</button>
           <button class="btn btn-red btn-sm" onclick="limparMapeamento()" style="font-size: 11.5px; padding: 6px 12px; background:#f43f5e;">❌ Limpar Tudo</button>
         </div>
       </div>
       
-      <p style="font-size:12px; color:var(--gray5); margin-bottom:18px; line-height: 1.5;">
-        Confira o aluno associado a cada página. Você pode alterar a seleção manualmente ou ignorar páginas específicas (como capas ou anexos).
+      <p style="font-size:12.5px; color:var(--gray5); margin-bottom:18px; line-height: 1.5; font-weight:500;">
+        Confira o aluno associado a cada página. Você pode alterar a seleção manualmente ou marcar páginas a serem ignoradas (ex: capas ou informativos gerais).
       </p>
       
-      <div style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.15);">
+      <div style="max-height: 480px; overflow-y: auto; border: 1.5px solid var(--gray3); border-radius: 12px; margin-bottom: 20px; background: white;">
         <table style="width:100%; border-collapse:collapse; text-align: left;">
-          <thead style="background: rgba(17, 24, 39, 0.95); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border-color);">
+          <thead style="background: var(--gray); position: sticky; top: 0; z-index: 2; border-bottom: 2px solid var(--gray3);">
             <tr>
-              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 80px;">Página</th>
-              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 90px;">Ver</th>
-              <th style="padding:12px; font-size:12px; color:white; font-weight:700;">Aluno da Página</th>
-              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 130px;">Correspondência</th>
-              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 80px;">Ignorar</th>
+              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 80px;">Página</th>
+              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 90px;">Ver</th>
+              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700;">Aluno da Página</th>
+              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 140px;">Correspondência</th>
+              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 80px;">Ignorar</th>
             </tr>
           </thead>
           <tbody>
@@ -6859,12 +7103,12 @@ function renderGridMapeamento(matches, alunos) {
   matches.forEach((m, idx) => {
     const isMatched = m.matchedAluno !== null;
     const matchBadge = m.matchType === 'matricula'
-      ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Matrícula</span>'
+      ? '<span style="background:rgba(16,185,129,0.15); color:#047857; border:1px solid rgba(16,185,129,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Matrícula</span>'
       : m.matchType === 'nome'
-      ? '<span style="background:rgba(99,102,241,0.1); color:#6366f1; border:1px solid rgba(99,102,241,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nome</span>'
+      ? '<span style="background:rgba(79,70,229,0.12); color:#4f46e5; border:1px solid rgba(79,70,229,0.25); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nome</span>'
       : m.matchType === 'manual'
-      ? '<span style="background:rgba(245,158,11,0.1); color:#f59e0b; border:1px solid rgba(245,158,11,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Manual</span>'
-      : '<span style="background:rgba(244,63,94,0.1); color:#f43f5e; border:1px solid rgba(244,63,94,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nenhum</span>';
+      ? '<span style="background:rgba(245,158,11,0.15); color:#b45309; border:1px solid rgba(245,158,11,0.25); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Manual</span>'
+      : '<span style="background:rgba(244,63,94,0.15); color:#be123c; border:1px solid rgba(244,63,94,0.25); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nenhum</span>';
 
     // Cria as opções do Select
     let options = '<option value="">-- Ignorar página / Sem Aluno --</option>';
@@ -6874,17 +7118,17 @@ function renderGridMapeamento(matches, alunos) {
     });
 
     html += `
-      <tr style="border-bottom:1px solid var(--border-color); transition:opacity 0.2s; ${m.ignored ? 'opacity:0.4;' : ''}">
-        <td style="padding:12px; text-align:center; font-weight:700; color:white;">Pág. ${m.pageNum}</td>
+      <tr style="border-bottom:1px solid var(--gray3); transition:opacity 0.2s; ${m.ignored ? 'opacity:0.45; background:#f1f5f9;' : ''}">
+        <td style="padding:12px; text-align:center; font-weight:700; color:var(--gray7);">Pág. ${m.pageNum}</td>
         <td style="padding:12px; text-align:center;">
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:10.5px;" onclick="abrirPrevisualizacaoPagina(${m.pageNum})">👁️ Ver</button>
+          <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:10.5px; background:white; border:1px solid var(--gray3); color:var(--gray7);" onclick="abrirPrevisualizacaoPagina(${m.pageNum})">👁️ Ver</button>
         </td>
         <td style="padding:12px;">
-          <select class="form-input form-select" style="width:100%; margin:0; padding:6px 10px;" onchange="alterarMapeamentoManual(${idx}, this.value)" ${m.ignored ? 'disabled' : ''}>
+          <select class="form-input form-select" style="width:100%; margin:0; padding:6px 10px; border:1.5px solid var(--gray3);" onchange="alterarMapeamentoManual(${idx}, this.value)" ${m.ignored ? 'disabled' : ''}>
             ${options}
           </select>
         </td>
-        <td style="padding:12px; text-align:center;">${m.ignored ? '—' : matchBadge}</td>
+        <td style="padding:12px; text-align:center;">${m.ignored ? '<span style="color:var(--gray5); font-weight:600;">Ignorada</span>' : matchBadge}</td>
         <td style="padding:12px; text-align:center;">
           <input type="checkbox" ${m.ignored ? 'checked' : ''} onchange="toggleIgnorarPagina(${idx}, this.checked)" style="width:16px; height:16px; cursor:pointer;">
         </td>
@@ -6898,7 +7142,7 @@ function renderGridMapeamento(matches, alunos) {
       </div>
       
       <div style="display:flex; justify-content:flex-end;">
-        <button class="btn btn-primary" onclick="salvarBoletinsMapeados()" style="padding: 10px 20px; font-weight: 600;">💾 Confirmar e Salvar Boletins</button>
+        <button class="btn btn-primary" onclick="salvarBoletinsMapeados()" style="padding: 10px 22px; font-weight: 700; font-size:13.5px;">💾 Confirmar e Salvar Boletins</button>
       </div>
     </div>
   `;
@@ -6938,12 +7182,12 @@ function exibirModalPrevisualizacao(canvas, pageNum) {
   modal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn 0.2s ease;';
   
   const content = document.createElement('div');
-  content.style = 'background:var(--dark-bg); border:1px solid var(--border-color); border-radius:16px; max-width:600px; width:100%; display:flex; flex-direction:column; max-height:90vh; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); overflow:hidden;';
+  content.style = 'background:white; border:1px solid var(--gray3); border-radius:16px; max-width:600px; width:100%; display:flex; flex-direction:column; max-height:90vh; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); overflow:hidden;';
   
   const header = document.createElement('div');
-  header.style = 'padding:14px 20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;';
-  header.innerHTML = `<h4 style="font-size:14px; font-weight:700; color:white; margin:0">👁️ Pré-visualização da Página ${pageNum}</h4>
-    <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:20px; cursor:pointer;">&times;</button>`;
+  header.style = 'padding:14px 20px; border-bottom:1px solid var(--gray3); display:flex; justify-content:space-between; align-items:center; background:var(--gray);';
+  header.innerHTML = `<h4 style="font-size:14px; font-weight:700; color:var(--gray7); margin:0">👁️ Pré-visualização da Página subt${pageNum}</h4>
+    <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:24px; cursor:pointer;">&times;</button>`;
   
   const body = document.createElement('div');
   body.style = 'padding:15px; overflow-y:auto; display:flex; align-items:center; justify-content:center; background:#1e293b;';
@@ -6961,7 +7205,6 @@ function exibirModalPrevisualizacao(canvas, pageNum) {
 function mapearOrdemAlfabetica() {
   if (currentAlunosTurma.length === 0) return;
   
-  // Mapeia sequencialmente alunos alfabéticos para páginas
   currentMatches.forEach((m, idx) => {
     if (idx < currentAlunosTurma.length) {
       m.matchedAluno = currentAlunosTurma[idx];
@@ -6970,7 +7213,7 @@ function mapearOrdemAlfabetica() {
     } else {
       m.matchedAluno = null;
       m.matchType = 'nenhum';
-      m.ignored = true; // ignora excedentes
+      m.ignored = true;
     }
   });
 
@@ -7004,6 +7247,7 @@ function limparMapeamento() {
   renderGridMapeamento(currentMatches, currentAlunosTurma);
 }
 
+// SALVA AMBOS: O ARQUIVO COMPLETO EM boletins_turmas E OS BOLETINS INDIVIDUAIS EM boletins!
 async function salvarBoletinsMapeados() {
   const select = document.getElementById('boletim-turma-select');
   const turmaCode = select.value;
@@ -7020,19 +7264,19 @@ async function salvarBoletinsMapeados() {
   const turmaObj = TURMAS_DATA.find(t => t.code === turmaCode);
   const turmaId = turmaObj ? turmaObj.id : null;
 
-  // Abre Modal de Progresso customizado
+  // Abre Modal de Progresso
   const progressModal = document.createElement('div');
   progressModal.id = 'boletim-progress-modal';
   progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
   progressModal.innerHTML = `
-    <div style="background:var(--dark-bg); border:1px solid var(--border-color); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-      <h4 style="font-size:15px; font-weight:700; color:white; margin:0 0 10px;">💾 Salvando Boletins...</h4>
-      <p style="font-size:12px; color:var(--gray5); margin-bottom:20px;" id="boletim-progress-text">Processando primeiro boletim...</p>
+    <div style="background:white; border:1px solid var(--gray3); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h4 style="font-size:15px; font-weight:700; color:var(--gray7); margin:0 0 10px;">💾 Salvando Boletins no Banco...</h4>
+      <p style="font-size:12.5px; color:var(--gray5); margin-bottom:20px;" id="boletim-progress-text">Codificando arquivo completo...</p>
       
-      <div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden; margin-bottom:10px;">
-        <div id="boletim-progress-bar" style="width:0%; height:100%; background:var(--accent); transition:width 0.1s ease;"></div>
+      <div style="width:100%; height:8px; background:var(--gray); border-radius:4px; overflow:hidden; margin-bottom:10px;">
+        <div id="boletim-progress-bar" style="width:0%; height:100%; background:var(--blue); transition:width 0.1s ease;"></div>
       </div>
-      <div style="font-size:11px; color:var(--text-muted);" id="boletim-progress-counter">0 de ${activeMatches.length} salvos</div>
+      <div style="font-size:11px; color:var(--gray5);" id="boletim-progress-counter">Preparando upload...</div>
     </div>
   `;
   document.body.appendChild(progressModal);
@@ -7041,9 +7285,38 @@ async function salvarBoletinsMapeados() {
     const { PDFDocument } = PDFLib;
     const srcDoc = await PDFDocument.load(currentUploadedPdfBytes);
 
+    // A) SALVA O ARQUIVO COMPLETO DA TURMA NA TABELA boletins_turmas
+    document.getElementById('boletim-progress-text').textContent = 'Salvando arquivo completo da turma...';
+    
+    let completeBinary = '';
+    const completeLen = currentUploadedPdfBytes.byteLength;
+    const completeBytes = new Uint8Array(currentUploadedPdfBytes);
+    for (let j = 0; j < completeLen; j++) {
+      completeBinary += String.fromCharCode(completeBytes[j]);
+    }
+    const completeBase64 = window.btoa(completeBinary);
+
+    const completePayload = {
+      turma_id: turmaId,
+      ano: ano,
+      periodo: periodo,
+      pdf_completo: completeBase64
+    };
+
+    const { error: completeErr } = await supabaseClient
+      .from('boletins_turmas')
+      .upsert(completePayload, { onConflict: 'turma_id,ano,periodo' });
+
+    if (completeErr) {
+      console.error('Erro ao salvar boletim completo:', completeErr);
+      progressModal.remove();
+      showToast('Erro ao salvar o arquivo PDF completo da turma.', 'erro');
+      return;
+    }
+
+    // B) SALVA OS BOLETINS INDIVIDUAIS DE CADA ALUNO
     let sucessos = 0;
     
-    // Processamento sequencial seguro e de alta performance
     for (let i = 0; i < activeMatches.length; i++) {
       const match = activeMatches[i];
       const pageIndex = match.pageNum - 1;
@@ -7052,7 +7325,7 @@ async function salvarBoletinsMapeados() {
       document.getElementById('boletim-progress-text').textContent = `Processando: ${match.matchedAluno.nome}`;
       const pct = Math.round((i / activeMatches.length) * 100);
       document.getElementById('boletim-progress-bar').style.width = `${pct}%`;
-      document.getElementById('boletim-progress-counter').textContent = `${i} de ${activeMatches.length} salvos`;
+      document.getElementById('boletim-progress-counter').textContent = `${i} de subt${activeMatches.length} boletins salvos`;
 
       // Cria um novo PDF de apenas 1 página
       const newDoc = await PDFDocument.create();
@@ -7091,13 +7364,15 @@ async function salvarBoletinsMapeados() {
     // Fecha o modal de progresso
     progressModal.remove();
     
-    showToast(`Sucesso! ${sucessos} de ${activeMatches.length} boletins foram salvos com sucesso!`, 'sucesso');
+    showToast(`Sucesso! O arquivo da turma e ${sucessos} de ${activeMatches.length} boletins individuais foram salvos com sucesso!`, 'sucesso');
     
-    // Limpa UI
+    // Limpa UI e volta para a aba de listagem
     document.getElementById('boletim-pdf-file').value = '';
     document.getElementById('boletim-file-info-bar').style.display = 'none';
     document.getElementById('boletim-mapeamento-container').style.display = 'none';
-    document.getElementById('boletim-dropzone-text').textContent = 'Clique aqui para selecionar o arquivo PDF da turma';
+    document.getElementById('boletim-dropzone-text').textContent = 'Clique ou arraste o arquivo PDF da turma aqui';
+    
+    switchBoletinsSubTab('listagem');
 
   } catch (err) {
     console.error(err);
@@ -7111,11 +7386,13 @@ function irParaUploadBoletimDaTurma() {
   closeModal('modal-editar-turma');
   showPage('boletins'); // Navega para a aba de boletins
   
+  // Abre a sub-aba de Upload
+  switchBoletinsSubTab('upload');
+  
   // Seleciona a turma correspondente no dropdown
   const select = document.getElementById('boletim-turma-select');
   if (select) {
     select.value = code;
-    // Dispara evento onchange para aplicar
     const event = new Event('change');
     select.dispatchEvent(event);
   }
