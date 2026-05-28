@@ -4317,6 +4317,7 @@ async function excluirSolicit(id){
 
 // ─── OLIMPÍADAS (TOPO DO SABER) ──────────────────────────────────────────────
 let OLIMPIADAS_DATA = [];
+let olResultadosDadosPendente = [];
 
 async function carregarOlimpiadas(){
   try {
@@ -4336,13 +4337,20 @@ async function salvarOlimpiada(){
   const linkEdital= (document.getElementById('ol-link-edital')?.value||'').trim();
   const inscrita  = document.getElementById('ol-inscrita')?.value||'nao';
 
+  const descricao = (document.getElementById('ol-descricao')?.value||'').trim();
+  const resultados = (document.getElementById('ol-resultados')?.value||'').trim();
   const flyerData = (document.getElementById('ol-flyer-data')?.value||'').trim();
+  const colunasModelo = (document.getElementById('ol-colunas-modelo')?.value || 'Aluno, Escola, Olimpíada, Acertos, Classificação, Nível').trim();
 
   if(!nome || !area || !diaProva){ showToast('Preencha Nome, Área e Dia da Prova!','alerta'); return; }
 
   const payload = { nome, area, insc_inicio: inscIni, insc_fim: inscFim, dia_prova: diaProva,
                     qtd_alunos: qtdAlunos, link_edital: linkEdital, inscrita,
-                    flyer_url: flyerData || null };
+                    flyer_url: flyerData || null,
+                    descricao: descricao || null,
+                    resultados: resultados || null,
+                    colunas_modelo: colunasModelo,
+                    resultados_dados: olResultadosDadosPendente || [] };
 
   const editId = document.getElementById('ol-edit-id')?.value||'';
   let error;
@@ -4358,6 +4366,72 @@ async function salvarOlimpiada(){
   closeModal('modal-olimpiada');
   showToast('Olimpíada salva com sucesso!','sucesso');
   renderTopoSaber();
+}
+
+function baixarModeloResultados(event) {
+  if (event) event.preventDefault();
+  const colunasInput = document.getElementById('ol-colunas-modelo')?.value || '';
+  const headers = colunasInput.split(',').map(s => s.trim()).filter(Boolean);
+  if (headers.length === 0) {
+    showToast('Configure ao menos uma coluna para o modelo!', 'alerta');
+    return;
+  }
+  
+  const ws = XLSX.utils.aoa_to_sheet([headers]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Resultados");
+  
+  const nomeOl = (document.getElementById('ol-nome')?.value || 'olimpiada').trim().replace(/[^a-zA-Z0-9]/g, '_');
+  XLSX.writeFile(wb, `modelo_resultados_${nomeOl}.xlsx`);
+  showToast('Modelo de planilha baixado com sucesso!', 'sucesso');
+}
+
+function importarPlanilhaResultados(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, {type: 'array'});
+      const sheetName = workbook.SheetNames[0];
+      const ws = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval: ''});
+      
+      if (rows.length === 0) {
+        showToast('A planilha está vazia!', 'alerta');
+        input.value = '';
+        return;
+      }
+      
+      const colunasInput = document.getElementById('ol-colunas-modelo')?.value || '';
+      const colunasEsperadas = colunasInput.split(',').map(s => s.trim()).filter(Boolean);
+      if (colunasEsperadas.length === 0) {
+        showToast('Configure as colunas do modelo primeiro!', 'alerta');
+        input.value = '';
+        return;
+      }
+      
+      const firstRowKeys = Object.keys(rows[0]);
+      const colunasFaltando = colunasEsperadas.filter(col => !firstRowKeys.includes(col));
+      
+      if (colunasFaltando.length > 0) {
+        showToast('A planilha não possui as seguintes colunas: ' + colunasFaltando.join(', '), 'evasao');
+        input.value = '';
+        return;
+      }
+      
+      olResultadosDadosPendente = rows;
+      document.getElementById('ol-resultados-status').innerHTML = `<span style="color:#16a34a">✅ Planilha carregada: ${rows.length} alunos prontos para importar! Salve para confirmar.</span>`;
+      showToast(`Planilha carregada: ${rows.length} registros prontos!`, 'sucesso');
+    } catch (err) {
+      console.error('[importarPlanilhaResultados]', err);
+      showToast('Erro ao ler a planilha: ' + err.message, 'evasao');
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function handleFlyerUpload(input){
@@ -4393,6 +4467,21 @@ function abrirModalOlimpiada(id){
   document.getElementById('ol-qtd-alunos').value = '0';
   document.getElementById('ol-link-edital').value = '';
   document.getElementById('ol-inscrita').value = 'nao';
+  
+  // Limpar flyer, textareas, colunas e resultados pendentes
+  document.getElementById('ol-flyer-data').value = '';
+  const prev = document.getElementById('ol-flyer-preview');
+  if(prev) { prev.src = ''; prev.style.display = 'none'; }
+  const nameEl = document.getElementById('ol-flyer-nome');
+  if(nameEl) nameEl.textContent = '';
+  
+  document.getElementById('ol-descricao').value = '';
+  document.getElementById('ol-resultados').value = '';
+  document.getElementById('ol-colunas-modelo').value = 'Aluno, Escola, Olimpíada, Acertos, Classificação, Nível';
+  
+  olResultadosDadosPendente = [];
+  document.getElementById('ol-resultados-status').innerHTML = '<span style="color:#6b7280">Nenhum resultado importado por planilha.</span>';
+  
   document.getElementById('modal-olimpiada-title').textContent = '+ Nova Olimpíada';
 
   if(id){
@@ -4407,6 +4496,22 @@ function abrirModalOlimpiada(id){
     document.getElementById('ol-qtd-alunos').value  = ol.qtd_alunos||0;
     document.getElementById('ol-link-edital').value = ol.link_edital||'';
     document.getElementById('ol-inscrita').value    = ol.inscrita||'nao';
+    document.getElementById('ol-descricao').value   = ol.descricao||'';
+    document.getElementById('ol-resultados').value  = ol.resultados||'';
+    document.getElementById('ol-colunas-modelo').value = ol.colunas_modelo || 'Aluno, Escola, Olimpíada, Acertos, Classificação, Nível';
+    
+    // Carregar flyer preview se existir
+    if(ol.flyer_url) {
+      document.getElementById('ol-flyer-data').value = ol.flyer_url;
+      if(prev) { prev.src = ol.flyer_url; prev.style.display = 'block'; }
+      if(nameEl) nameEl.textContent = 'Flyer carregado';
+    }
+    
+    olResultadosDadosPendente = ol.resultados_dados || [];
+    document.getElementById('ol-resultados-status').innerHTML = olResultadosDadosPendente.length > 0
+      ? `<span style="color:#16a34a">✅ Total de ${olResultadosDadosPendente.length} resultados importados da planilha.</span>`
+      : '<span style="color:#6b7280">Nenhum resultado importado por planilha.</span>';
+    
     document.getElementById('modal-olimpiada-title').textContent = '✏️ Editar Olimpíada';
   }
   openModal('modal-olimpiada');

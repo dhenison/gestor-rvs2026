@@ -1386,7 +1386,7 @@
           <option>Sem transporte</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">E-mail Institucional</label><input class="form-input" id="input-aluno-email" placeholder="aluno@escola.seduc.pa.gov.br"></div>
+      <div class="form-group"><label class="form-label">E-mail Institucional</label><input class="form-input" id="input-aluno-email" placeholder="aluno@aluno.seduc.pa.gov.br"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-aluno')">Cancelar</button>
@@ -1828,6 +1828,40 @@
         <span id="ol-flyer-nome" style="font-size:12px;color:#6b7280"></span>
       </div>
     </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Descrição / Informações (Syllabus, etc.)</label>
+      <textarea class="form-input" id="ol-descricao" rows="2" placeholder="Digite as informações gerais, fases da olimpíada, conteúdos..." style="width:100%;height:60px;resize:vertical;font-family:inherit;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;"></textarea>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">Resultados (Medalhas / Mensagem Final)</label>
+      <textarea class="form-input" id="ol-resultados" rows="2" placeholder="Digite os resultados, medalhistas ou status final da olimpíada..." style="width:100%;height:60px;resize:vertical;font-family:inherit;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;"></textarea>
+    </div>
+    
+    <!-- Seção de Planilha de Resultados -->
+    <div style="margin-top:18px; padding-top:14px; border-top:1px dashed #d1d5db">
+      <div style="font-size:13.5px; font-weight:700; color:#374151; margin-bottom:8px; display:flex; align-items:center; gap:6px">📊 Resultados da Olimpíada (Planilha)</div>
+      
+      <div class="form-group">
+        <label class="form-label">Colunas do Modelo de Planilha (separadas por vírgula)</label>
+        <input class="form-input" id="ol-colunas-modelo" placeholder="Ex: Aluno, Escola, Acertos, Classificação" value="Aluno, Escola, Olimpíada, Acertos, Classificação, Nível">
+        <small style="color:#6b7280; font-size:11px; display:block; margin-top:4px">O modelo de planilha para download será gerado automaticamente com estas colunas.</small>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap">
+        <button type="button" class="btn btn-outline" onclick="baixarModeloResultados(event)" style="margin:0; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px">
+          📥 Baixar Modelo Planilha
+        </button>
+        <label class="btn btn-primary" style="cursor:pointer; margin:0; padding:6px 12px; font-size:12px; display:flex; align-items:center; gap:6px; background:#2563eb">
+          📤 Importar Planilha de Resultados
+          <input type="file" id="ol-resultados-file" accept=".xlsx, .xls" style="display:none" onchange="importarPlanilhaResultados(this)">
+        </label>
+      </div>
+
+      <div id="ol-resultados-status" style="margin-top:8px; font-size:12px; color:#4b5563; font-weight:600; display:flex; align-items:center; gap:6px">
+        Nenhum resultado importado por planilha.
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-olimpiada')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarOlimpiada()">Salvar Olimpiada</button>
