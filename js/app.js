@@ -6958,6 +6958,8 @@ function handleBoletimFileSelected(input) {
 async function processarBoletimPDF() {
   const select = document.getElementById('boletim-turma-select');
   const turmaCode = select.value;
+  const ano = parseInt(document.getElementById('boletim-ano').value) || 2026;
+  const periodo = document.getElementById('boletim-periodo-select').value;
   const fileInput = document.getElementById('boletim-pdf-file');
 
   if (!turmaCode) {
@@ -6985,7 +6987,7 @@ async function processarBoletimPDF() {
       return;
     }
 
-    // Ordena alfabeticamente para a UI
+    // Ordena alfabeticamente para a UI e para o fallback alfabético
     alunos.sort((a, b) => a.nome.localeCompare(b.nome));
     currentAlunosTurma = alunos;
 
@@ -7042,24 +7044,147 @@ async function processarBoletimPDF() {
         }
       }
 
-      matches.push({
-        pageNum: i,
-        matchedAluno: matchedAluno,
-        matchType: matchType,
-        ignored: false
-      });
+      // C) Se não achar por texto (ex: folha escaneada ou sem texto), faz fallback para a ordem alfabética da turma
+      if (!matchedAluno) {
+        const studentIndex = i - 1;
+        if (studentIndex < alunos.length) {
+          matchedAluno = alunos[studentIndex];
+          matchType = 'manual'; // Sinaliza mapeamento automático/alfabético
+        }
+      }
+
+      if (matchedAluno) {
+        matches.push({
+          pageNum: i,
+          matchedAluno: matchedAluno,
+          matchType: matchType,
+          ignored: false
+        });
+      }
     }
 
     hideLoading();
-    showToast(`PDF com ${numPages} páginas analisado com sucesso! Revise o mapeamento abaixo e clique em 'Confirmar e Salvar' para disponibilizar os boletins na Ficha do Aluno e no Portal.`, 'sucesso');
+
+    if (matches.length === 0) {
+      showToast('Não foi possível associar nenhuma página aos alunos da turma.', 'alerta');
+      return;
+    }
+
+    const turmaObj = TURMAS_DATA.find(t => t.code === turmaCode);
+    const turmaId = turmaObj ? turmaObj.id : null;
+
+    // 4. Inicia o Salvamento Automático com Barra de Progresso
+    const progressModal = document.createElement('div');
+    progressModal.id = 'boletim-progress-modal';
+    progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
+    progressModal.innerHTML = `
+      <div style="background:white; border:1px solid var(--gray3); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+        <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">💾 Gravando Boletins no Banco...</h4>
+        <p style="font-size:12.5px; color:#000000 !important; font-weight:700; margin-bottom:20px;" id="boletim-progress-text">Codificando arquivo completo...</p>
+        
+        <div style="width:100%; height:8px; background:var(--gray); border-radius:4px; overflow:hidden; margin-bottom:10px;">
+          <div id="boletim-progress-bar" style="width:0%; height:100%; background:var(--blue); transition:width 0.1s ease;"></div>
+        </div>
+        <div style="font-size:11px; color:var(--gray5);" id="boletim-progress-counter">Preparando upload...</div>
+      </div>
+    `;
+    document.body.appendChild(progressModal);
+
+    const { PDFDocument } = PDFLib;
+    const srcDoc = await PDFDocument.load(currentUploadedPdfBytes);
+
+    // A) SALVA O ARQUIVO COMPLETO DA TURMA NA TABELA boletins_turmas
+    document.getElementById('boletim-progress-text').textContent = 'Salvando arquivo completo da turma...';
     
-    // 4. Renderiza a Grid de Resultados
-    renderGridMapeamento(matches, alunos);
+    let completeBinary = '';
+    const completeLen = currentUploadedPdfBytes.byteLength;
+    const completeBytes = new Uint8Array(currentUploadedPdfBytes);
+    for (let j = 0; j < completeLen; j++) {
+      completeBinary += String.fromCharCode(completeBytes[j]);
+    }
+    const completeBase64 = window.btoa(completeBinary);
+
+    const completePayload = {
+      turma_id: turmaId,
+      ano: ano,
+      periodo: periodo,
+      pdf_completo: completeBase64
+    };
+
+    const { error: completeErr } = await supabaseClient
+      .from('boletins_turmas')
+      .upsert(completePayload, { onConflict: 'turma_id,ano,periodo' });
+
+    if (completeErr) {
+      console.error('Erro ao salvar boletim completo:', completeErr);
+      progressModal.remove();
+      showToast('Erro ao salvar o arquivo PDF completo da turma.', 'erro');
+      return;
+    }
+
+    // B) SALVA OS BOLETINS INDIVIDUAIS DE CADA ALUNO
+    let sucessos = 0;
+    
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      const pageIndex = match.pageNum - 1;
+
+      // Progresso UI
+      document.getElementById('boletim-progress-text').textContent = `Processando: ${match.matchedAluno.nome}`;
+      const pct = Math.round((i / matches.length) * 100);
+      document.getElementById('boletim-progress-bar').style.width = `${pct}%`;
+      document.getElementById('boletim-progress-counter').textContent = `${i} de ${matches.length} boletins salvos`;
+
+      // Cria um novo PDF de apenas 1 página
+      const newDoc = await PDFDocument.create();
+      const [copiedPage] = await newDoc.copyPages(srcDoc, [pageIndex]);
+      newDoc.addPage(copiedPage);
+      const pdfBytes = await newDoc.save();
+
+      // Transforma em Base64
+      let binary = '';
+      const len = pdfBytes.byteLength;
+      for (let j = 0; j < len; j++) {
+        binary += String.fromCharCode(pdfBytes[j]);
+      }
+      const base64String = window.btoa(binary);
+
+      // Salva no banco de dados (upsert)
+      const payload = {
+        aluno_id: match.matchedAluno.id,
+        turma_id: turmaId,
+        ano: ano,
+        periodo: periodo,
+        pdf_base64: base64String
+      };
+
+      const { error: indErr } = await supabaseClient
+        .from('boletins')
+        .upsert(payload, { onConflict: 'aluno_id,ano,periodo' });
+
+      if (indErr) {
+        console.error(`Erro ao salvar boletim para ${match.matchedAluno.nome}:`, indErr);
+      } else {
+        sucessos++;
+      }
+    }
+
+    // Fecha o modal de progresso
+    progressModal.remove();
+    
+    showToast(`Sucesso! Os boletins foram analisados, mapeados e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!`, 'sucesso');
+    
+    // Limpa UI e volta para a aba de listagem
+    document.getElementById('boletim-pdf-file').value = '';
+    document.getElementById('boletim-file-info-bar').style.display = 'none';
+    document.getElementById('boletim-dropzone-text').textContent = 'Clique ou arraste o arquivo PDF da turma aqui';
+    
+    switchBoletinsSubTab('listagem');
 
   } catch (err) {
     console.error(err);
     hideLoading();
-    showToast('Erro ao processar PDF. Verifique se o PDF contém texto legível.', 'erro');
+    showToast('Erro inesperado ao processar e salvar boletins.', 'erro');
   }
 }
 
