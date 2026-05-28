@@ -7004,7 +7004,7 @@ async function processarBoletimPDF() {
     }
     
     const pdfjsLib = lib;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
 
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes) }).promise;
     const numPages = pdf.numPages;
