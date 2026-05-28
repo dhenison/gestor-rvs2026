@@ -1519,64 +1519,66 @@
     details.style.display = 'block';
     
     const match = meusDadosIndividuais;
+    let statsHtml = '';
+    let temMedalha = false;
+    
     if (match) {
       const classif = (match['Classificação'] || match['Medalha'] || '').toLowerCase().trim();
-      const temMedalha = classif.includes('ouro') || classif.includes('prata') || classif.includes('bronze') || classif.includes('medalha') || classif.includes('honra') || classif.includes('destaque');
+      temMedalha = classif.includes('ouro') || classif.includes('prata') || classif.includes('bronze') || classif.includes('medalha') || classif.includes('honra') || classif.includes('destaque');
       
-      const colunasInput = activeOlimpiada.colunas_modelo || 'Aluno, Escola, Olimpíada, Acertos, Classificação, Nível';
-      const cols = colunasInput.split(',').map(s => s.trim()).filter(Boolean);
-      
-      let statsHtml = cols
-        .filter(c => c !== 'Aluno')
+      // Loop dinâmico por todas as colunas reais da planilha (e.g. Acertos, Classificação, Nível, Nota, Pontuação, etc.)
+      statsHtml = Object.keys(match)
+        .filter(c => c.toLowerCase() !== 'aluno' && match[c] !== null && String(match[c]).trim() !== '')
         .map(c => {
           return `
             <div class="info-card-item" style="margin-bottom: 6px; padding: 8px 10px; background: rgba(255,255,255,0.01);">
               <div class="info-label" style="font-size: 8px; color: #a5b4fc; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;">${c}</div>
-              <div class="info-value" style="font-size: 12.5px; color: white; font-weight: 600;">${match[c] !== undefined ? match[c] : '—'}</div>
+              <div class="info-value" style="font-size: 12.5px; color: white; font-weight: 600;">${match[c]}</div>
             </div>
           `;
         }).join('');
-        
-      if (temMedalha) {
-        details.innerHTML = `
-          <div style="text-align: center; padding: 10px 0;">
-            <div style="font-size: 40px; margin-bottom: 6px; animation: bounce-y 2.5s ease-in-out infinite;">🥇</div>
-            <div style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; color: #f59e0b; text-shadow: 0 0 10px rgba(245,158,11,0.3);">🎉 Parabéns Medalhista!</div>
-            <div style="font-size: 12px; color: #cbd5e1; margin-top: 4px; line-height: 1.4;">
-              Você conquistou um resultado brilhante nesta olimpíada!
-            </div>
+    }
+    
+    if (match && temMedalha) {
+      // 1. Estado: Medalhista (Card Dourado Premium)
+      details.innerHTML = `
+        <div style="text-align: center; padding: 10px 0;">
+          <div style="font-size: 40px; margin-bottom: 6px; animation: bounce-y 2.5s ease-in-out infinite;">🥇</div>
+          <div style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; color: #f59e0b; text-shadow: 0 0 10px rgba(245,158,11,0.3);">🎉 Parabéns Medalhista!</div>
+          <div style="font-size: 12px; color: #cbd5e1; margin-top: 4px; line-height: 1.4;">
+            Você conquistou um resultado brilhante nesta olimpíada!
           </div>
-          <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 6px;">
-            ${statsHtml}
-          </div>
-        `;
-        pCard.style.boxShadow = '0 0 25px rgba(245, 158, 11, 0.2)';
-        pCard.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-      } else {
-        details.innerHTML = `
-          <div style="text-align: center; padding: 10px 0;">
-            <div style="font-size: 32px; margin-bottom: 4px;">🌟</div>
-            <div style="font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 800; color: #38bdf8;">Resultado Conquistado</div>
-          </div>
-          <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr; gap: 6px;">
-            ${statsHtml}
-          </div>
-          <div style="text-align: center; margin-top: 12px; font-size: 12px; color: #94a3b8; font-style: italic; line-height: 1.5; padding: 0 8px;">
-            ✨ Parabéns pela sua dedicação! O aprendizado obtido ao se desafiar é o seu maior troféu. Continue brilhando! 🚀
-          </div>
-        `;
-        pCard.style.boxShadow = '0 0 20px rgba(56, 189, 248, 0.15)';
-        pCard.style.borderColor = 'rgba(56, 189, 248, 0.25)';
-      }
+        </div>
+        <div style="margin-top: 12px; display: grid; grid-template-columns: 1fr; gap: 6px;">
+          ${statsHtml}
+        </div>
+      `;
+      pCard.style.boxShadow = '0 0 25px rgba(245, 158, 11, 0.2)';
+      pCard.style.borderColor = 'rgba(245, 158, 11, 0.3)';
     } else {
+      // 2. Estado: Participante com ou sem nota na planilha (Card de Participação)
+      let scoreSection = '';
+      if (match && statsHtml) {
+        scoreSection = `
+          <div style="margin-top: 14px; display: grid; grid-template-columns: 1fr; gap: 6px; text-align: left; max-width: 360px; margin-left: auto; margin-right: auto; margin-bottom: 14px;">
+            ${statsHtml}
+          </div>
+        `;
+      }
+      
       details.innerHTML = `
         <div style="text-align: center; padding: 14px 10px;">
           <div style="font-size: 40px; margin-bottom: 10px; animation: bounce-y 3s ease-in-out infinite;">✨</div>
           <div style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; color: var(--accent); margin-bottom: 8px;">Parabéns pela sua participação!</div>
-          <div style="font-size: 12.5px; color: #cbd5e1; line-height: 1.6; max-width: 340px; margin: 0 auto;">
+          <div style="font-size: 12.5px; color: #cbd5e1; line-height: 1.6; max-width: 340px; margin: 0 auto; margin-bottom: 12px;">
             Olá, <strong>${studentProfile.nome}</strong>!<br>
-            Cada desafio enfrentado é um passo gigante rumo ao seu crescimento. A E.E. Dr. Romildo Veloso e Silva se orgulha imensamente de sua coragem e dedicação ao participar desta olimpíada! 🎓💙<br><br>
-            <span style="font-size: 11px; color: var(--text-muted); font-style: italic;">"O conhecimento é o único tesouro que nos acompanha para sempre."</span>
+            Cada desafio enfrentado é um passo gigante rumo ao seu crescimento. A E.E. Dr. Romildo Veloso e Silva se orgulha imensamente de sua coragem e dedicação ao participar desta olimpíada! 🎓💙
+          </div>
+          
+          ${scoreSection}
+          
+          <div style="text-align: center; font-size: 11px; color: var(--text-muted); font-style: italic; margin-top: 12px;">
+            "O conhecimento é o único tesouro que nos acompanha para sempre."
           </div>
         </div>
       `;

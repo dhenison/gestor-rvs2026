@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════
---  RVS ESCOLAR – Migração v17 (Segurança e Privacidade dos Resultados)
+--  RVS ESCOLAR – Migração v17 (Segurança e Privacidade dos Resultados com Smart Name Matching)
 --  Execute no Supabase: SQL Editor → Cole tudo → Run
 -- ══════════════════════════════════════════════════════════════
 
@@ -20,6 +20,14 @@ DECLARE
   v_classif TEXT;
   v_nome_planilha TEXT;
   v_nome_busca TEXT := lower(trim(p_aluno_nome));
+  
+  -- Variáveis para o Smart Name Matching (evita falhas de acentos, abreviações ou nomes do meio omitidos)
+  v_busca_arr TEXT[];
+  v_planilha_arr TEXT[];
+  v_matches INT := 0;
+  v_i INT;
+  v_j INT;
+  v_match_ok BOOLEAN := FALSE;
 BEGIN
   -- 1. Buscar os dados brutos e colunas da olimpíada
   SELECT resultados_dados, colunas_modelo
@@ -40,8 +48,39 @@ BEGIN
     v_classif := lower(trim(coalesce(v_linha->>'Classificação', v_linha->>'Medalha', '')));
     v_nome_planilha := lower(trim(coalesce(v_linha->>'Aluno', '')));
     
-    -- a) Verificar se é a linha do próprio aluno (match inteligente de nome)
-    IF v_nome_busca <> '' AND v_nome_planilha <> '' AND (v_nome_busca LIKE '%' || v_nome_planilha || '%' OR v_nome_planilha LIKE '%' || v_nome_busca || '%') THEN
+    -- a) Verificar se é a linha do próprio aluno (Smart Name Matching inteligente)
+    v_match_ok := FALSE;
+    IF v_nome_busca <> '' AND v_nome_planilha <> '' THEN
+      -- Se houver match exato simples ou contém parcial simples
+      IF v_nome_busca = v_nome_planilha OR v_nome_busca LIKE '%' || v_nome_planilha || '%' OR v_nome_planilha LIKE '%' || v_nome_busca || '%' THEN
+        v_match_ok := TRUE;
+      ELSE
+        -- Quebrar os nomes em palavras para comparar abreviações ou nomes do meio ausentes
+        v_busca_arr := regexp_split_to_array(v_nome_busca, '\s+');
+        v_planilha_arr := regexp_split_to_array(v_nome_planilha, '\s+');
+        
+        -- O primeiro nome deve coincidir exatamente
+        IF array_length(v_busca_arr, 1) > 0 AND array_length(v_planilha_arr, 1) > 0 AND v_busca_arr[1] = v_planilha_arr[1] THEN
+          v_matches := 0;
+          
+          -- Comparar os sobrenomes (ignora conectores curtos como 'de', 'da', 'do' de tamanho <= 2)
+          FOR v_i IN 2..coalesce(array_length(v_busca_arr, 1), 0) LOOP
+            FOR v_j IN 2..coalesce(array_length(v_planilha_arr, 1), 0) LOOP
+              IF v_busca_arr[v_i] = v_planilha_arr[v_j] AND length(v_busca_arr[v_i]) > 2 THEN
+                v_matches := v_matches + 1;
+              END IF;
+            END LOOP;
+          END LOOP;
+          
+          -- Se coincidir o primeiro nome + pelo menos 1 sobrenome, ou se um dos nomes for composto de apenas uma palavra
+          IF v_matches >= 1 OR array_length(v_busca_arr, 1) = 1 OR array_length(v_planilha_arr, 1) = 1 THEN
+            v_match_ok := TRUE;
+          END IF;
+        END IF;
+      END IF;
+    END IF;
+    
+    IF v_match_ok THEN
       v_resultado_pessoal := v_linha;
     END IF;
     
