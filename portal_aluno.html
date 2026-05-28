@@ -1288,7 +1288,7 @@
   // ── Details Overlay & Tabs Logic ──
   let activeOlimpiada = null;
 
-  function verDetalhesOlimpiada(id) {
+  async function verDetalhesOlimpiada(id) {
     const ol = olimpiadasLocais.find(o => o.id === id);
     if (!ol) return;
 
