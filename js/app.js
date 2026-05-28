@@ -7041,14 +7041,22 @@ async function processarBoletimPDF() {
     return;
   }
 
+  const turmaObj = TURMAS_DATA.find(t => t.code === turmaCode);
+  const turmaId = turmaObj ? turmaObj.id : null;
+
+  if (!turmaId) {
+    showToast('Turma inválida ou não encontrada no sistema.', 'alerta');
+    return;
+  }
+
   showLoading('Buscando alunos da turma e analisando PDF...');
   
   try {
-    // 1. Busca alunos ativos da turma
+    // 1. Busca alunos ativos da turma utilizando o turma_id (chave estrangeira correta no Supabase)
     const { data: alunos, error } = await supabaseClient
       .from('alunos')
       .select('id, nome, matricula')
-      .eq('turma', turmaCode)
+      .eq('turma_id', turmaId)
       .eq('status', 'ativo');
 
     if (error || !alunos || alunos.length === 0) {
@@ -7109,7 +7117,7 @@ async function processarBoletimPDF() {
         }
       }
 
-      // B) Se não achar, busca por Nome Completo
+      // B) Se não achar, busca por Nome Completo Exato
       if (!matchedAluno) {
         for (const al of alunos) {
           const nomeNorm = normalizarTexto(al.nome);
@@ -7121,7 +7129,23 @@ async function processarBoletimPDF() {
         }
       }
 
-      // C) Se não achar por texto (ex: folha escaneada ou sem texto), faz fallback para a ordem alfabética da turma
+      // C) Se não achar por nome exato, faz busca super resiliente por palavras principais (ignora números e preposições)
+      if (!matchedAluno) {
+        for (const al of alunos) {
+          const nomeNorm = normalizarTexto(al.nome);
+          const palavras = nomeNorm.split(/\s+/).filter(p => {
+            return p.length > 2 && !['de', 'da', 'do', 'dos', 'das', 'com', 'para'].includes(p);
+          });
+          
+          if (palavras.length > 0 && palavras.every(p => normalizedPageText.includes(p))) {
+            matchedAluno = al;
+            matchType = 'nome';
+            break;
+          }
+        }
+      }
+
+      // D) Se não achar por texto (ex: folha escaneada ou sem texto), faz fallback para a ordem alfabética da turma
       if (!matchedAluno) {
         const studentIndex = i - 1;
         if (studentIndex < alunos.length) {
