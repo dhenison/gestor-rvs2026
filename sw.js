@@ -7,7 +7,7 @@
 //  🔄 BG Sync       → Sincroniza fila offline automaticamente
 // ══════════════════════════════════════════════════════
 
-const CACHE_NAME    = 'rvs-gestor-v2';
+const CACHE_NAME    = 'rvs-gestor-v3';
 const SYNC_TAG_FREQ = 'rvs-sync-frequencias';
 
 // Arquivos estáticos que serão cacheados (carregados offline)
@@ -16,6 +16,9 @@ const STATIC_ASSETS = [
   '/index.html',
   '/css/style.css',
   '/js/app.js',
+  '/js/pdf.min.js',
+  '/js/pdf.worker.min.js',
+  '/js/pdf-lib.min.js',
   '/assets/logo.png',
   '/assets/icon-192.png',
   '/assets/icon-512.png',
