@@ -1066,7 +1066,7 @@
   let meusDadosIndividuais = null;
 
   // ── Protection Route & Startup ──
-  window.addEventListener('DOMContentLoaded', () => {
+  function inicializarPortal() {
     const raw = sessionStorage.getItem('portal_aluno');
 
     if (!raw) {
@@ -1103,7 +1103,14 @@
       sessionStorage.removeItem('portal_aluno');
       window.location.href = 'portal_login.html';
     }
-  });
+  }
+
+  // Executa imediatamente se o DOM já estiver pronto
+  if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', inicializarPortal);
+  } else {
+    inicializarPortal();
+  }
 
   // ── Panel Switcher ──
   function mostrarView(id) {
