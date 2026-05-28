@@ -271,9 +271,9 @@
       <!-- ========================================== -->
       <!--            BOLETINS ESCOLARES              -->
       <!-- ========================================== -->
-      <div class="page" id="page-boletins">
+      <div class="page" id="page-boletins" style="color: #000000 !important;">
         <div class="section-header">
-          <div class="section-title">📊 Módulo de Boletins Escolares</div>
+          <div class="section-title" style="color: #000000 !important;">📊 Módulo de Boletins Escolares</div>
         </div>
         
         <!-- Abas de Navegação -->
@@ -330,7 +330,7 @@
         <!-- ABA 2: UPLOAD E PROCESSAMENTO -->
         <div id="subtab-boletins-upload" style="display:none; animation: fadeIn 0.3s ease;">
           <div class="table-card" style="padding: 25px; background: white;">
-            <h3 style="font-size: 15px; font-weight: 700; color: var(--gray7); margin-bottom: 15px; font-family: 'Outfit', sans-serif;">📤 Enviar Boletim Completo da Turma</h3>
+            <h3 style="font-size: 15px; font-weight: 700; color: #000000 !important; margin-bottom: 15px; font-weight: 800; font-family: 'Outfit', sans-serif;">📤 Enviar Boletim Completo da Turma</h3>
             
             <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
               <div style="display:flex; flex-direction:column; gap:4px;">
@@ -360,7 +360,7 @@
             
             <div id="boletim-dropzone" onclick="document.getElementById('boletim-pdf-file').click()" style="border: 2.5px dashed var(--gray3); border-radius: 12px; padding: 40px 20px; text-align: center; background: var(--gray); cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='var(--blue)'; this.style.background='white';" onmouseout="this.style.borderColor='var(--gray3)'; this.style.background='var(--gray)';">
               <div id="boletim-dropzone-icon" style="font-size: 36px; margin-bottom: 12px;">📤</div>
-              <div id="boletim-dropzone-text" style="font-size: 14.5px; font-weight: 700; color: var(--gray7);">Clique ou arraste o arquivo PDF da turma aqui</div>
+              <div id="boletim-dropzone-text" style="font-size: 14.5px; font-weight: 800; color: #000000 !important;">Clique ou arraste o arquivo PDF da turma aqui</div>
               <div style="font-size: 12.5px; color: var(--gray5); margin-top: 6px;">O sistema dividirá e enviará o boletim de cada aluno com base no nome impresso na página</div>
             </div>
             
@@ -1539,6 +1539,11 @@
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray3)">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--gray6)">⚠️ Ocorrências do Aluno</div>
       <div id="ficha-ocorrencias" style="max-height:180px;overflow-y:auto"></div>
+    </div>
+    <!-- Seção de Boletins na Ficha -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gray3)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#000000 !important; font-weight: 850;">📊 Boletim Escolar / Notas</div>
+      <div id="ficha-boletins-lista" style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline btn-sm" onclick="closeModal('modal-ficha')">Fechar</button>

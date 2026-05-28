@@ -1495,7 +1495,7 @@ function verFicha(cpf){
 
   renderTimeline(a);
   renderFichaOcorrencias(a);
-  renderResponsaveisFicha(a.id);
+  renderResponsaveisFicha(a.id); renderFichaBoletins(a);
   document.getElementById('modal-ficha').dataset.cpf=cpf;
   openModal('modal-ficha');
 }
@@ -6693,7 +6693,7 @@ function gerarPDFTratamento(alunoId) {
 
 
 // ==============================================================================
-// 📊 MÓDULO DE BOLETINS ESCOLARES INTELIGENTES - CÓDIGO CORE (v2 - COMPLETO)
+// 📊 MÓDULO DE BOLETINS ESCOLARES INTELIGENTES - CÓDIGO CORE (v3 - SUPORTE A IMPRESSÃO E CONTRASTE ALTO)
 // ==============================================================================
 
 let currentUploadedPdfBytes = null; // ArrayBuffer do PDF original
@@ -6710,6 +6710,9 @@ function switchBoletinsSubTab(tabId) {
   document.getElementById(`btn-boletins-${tabId}`).classList.add('active');
   document.getElementById(`subtab-boletins-${tabId}`).style.display = 'block';
   
+  // Força cor de texto do contêiner geral em preto
+  document.getElementById('page-boletins').style.color = '#000000';
+  
   if (tabId === 'listagem') {
     renderStatusBoletinsTurmas();
   }
@@ -6721,9 +6724,15 @@ async function renderStatusBoletinsTurmas() {
   const counterEl = document.getElementById('boletins-contador-status');
   if (!tbody) return;
 
+  // Garante cor preta para o contador
+  if (counterEl) {
+    counterEl.style.color = '#000000';
+    counterEl.style.fontWeight = '800';
+  }
+
   tbody.innerHTML = `
     <tr>
-      <td colspan="5" style="text-align:center; padding:30px; color:var(--gray5);">
+      <td colspan="5" style="text-align:center; padding:30px; color:#000000 !important; font-weight:700;">
         <div style="width:20px;height:20px;border:2px solid rgba(0,0,0,.05);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;"></div>
         Carregando status dos boletins...
       </td>
@@ -6753,7 +6762,7 @@ async function renderStatusBoletinsTurmas() {
     let publicadosQtd = 0;
 
     if (TURMAS_DATA.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--gray5);">Nenhuma turma cadastrada no sistema.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#000000 !important; font-weight:700;">Nenhuma turma cadastrada no sistema.</td></tr>`;
       counterEl.textContent = '0 de 0 Publicados';
       return;
     }
@@ -6767,27 +6776,27 @@ async function renderStatusBoletinsTurmas() {
 
       if (temBoletim) {
         publicadosQtd++;
-        badge = `<span class="badge badge-green" style="font-weight:700; padding:4px 10px; border-radius:12px;">🟢 Publicado</span>`;
+        badge = `<span class="badge badge-green" style="font-weight:800; padding:4px 10px; border-radius:12px; font-size:11.5px; color:#047857 !important;">🟢 Publicado</span>`;
         actions = `
           <div style="display:flex; gap:6px; justify-content:center;">
-            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="visualizarBoletimCompleto('${boletimTurmaId}', '${t.code}')">👁️ Ver PDF</button>
-            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px;" onclick="baixarBoletimCompleto('${boletimTurmaId}', 'Boletim_Completo_${t.code}_${periodo.replace(/ /g, '_')}.pdf')">📥 Baixar</button>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1px solid var(--gray3);" onclick="visualizarBoletimCompleto('${boletimTurmaId}', '${t.code}')">👁️ Ver PDF</button>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1px solid var(--gray3);" onclick="baixarBoletimCompleto('${boletimTurmaId}', 'Boletim_Completo_${t.code}_${periodo.replace(/ /g, '_')}.pdf')">📥 Baixar</button>
             <button class="btn btn-red btn-sm" style="padding:4px 8px; font-size:11px; background:#f43f5e;" onclick="excluirBoletimCompleto('${boletimTurmaId}', '${t.code}', '${t.id}')">🗑️ Excluir</button>
           </div>
         `;
       } else {
-        badge = `<span class="badge badge-yellow" style="font-weight:700; padding:4px 10px; border-radius:12px;">🔴 Pendente</span>`;
+        badge = `<span class="badge badge-yellow" style="font-weight:800; padding:4px 10px; border-radius:12px; font-size:11.5px; color:#b45309 !important;">🔴 Pendente</span>`;
         actions = `
           <div style="display:flex; justify-content:center;">
-            <button class="btn btn-primary btn-sm" style="padding:4px 12px; font-size:11px;" onclick="irParaUploadBoletimDeUmaTurma('${t.code}')">📤 Enviar Boletim</button>
+            <button class="btn btn-primary btn-sm" style="padding:4px 12px; font-size:11px; font-weight:750;" onclick="irParaUploadBoletimDeUmaTurma('${t.code}')">📤 Enviar Boletim</button>
           </div>
         `;
       }
 
       return `<tr style="border-bottom:1px solid var(--gray3);">
-        <td style="padding:12px; font-weight:700; color:var(--gray7);">${t.code}</td>
-        <td style="padding:12px; color:var(--gray6);">${t.serie}</td>
-        <td style="padding:12px; color:var(--gray6);">${t.turno}</td>
+        <td style="padding:12px; font-weight:800; color:#000000 !important;">${t.code}</td>
+        <td style="padding:12px; color:#000000 !important; font-weight:600;">${t.serie}</td>
+        <td style="padding:12px; color:#000000 !important; font-weight:600;">${t.turno}</td>
         <td style="padding:12px; text-align:center;">${badge}</td>
         <td style="padding:12px; text-align:center;">${actions}</td>
       </tr>`;
@@ -6826,7 +6835,6 @@ async function visualizarBoletimCompleto(boletimTurmaId, turmaCode) {
     if (error || !data) throw error;
     hideLoading();
 
-    const canvas = document.createElement('canvas'); // Apenas para placeholder, ou abrimos direto o visualizador
     exibirModalPrevisualizacaoCompleta(data.pdf_completo, `${turmaCode} - ${data.periodo} (${data.ano})`);
   } catch (err) {
     console.error(err);
@@ -6849,7 +6857,7 @@ function exibirModalPrevisualizacaoCompleta(base64, label) {
   
   const header = document.createElement('div');
   header.style = 'padding:14px 20px; border-bottom:1px solid var(--gray3); display:flex; justify-content:space-between; align-items:center; background:var(--gray);';
-  header.innerHTML = `<h4 style="font-size:14px; font-weight:700; color:var(--gray7); margin:0">👁️ Visualizando Boletim Completo — ${label}</h4>
+  header.innerHTML = `<h4 style="font-size:14px; font-weight:800; color:#000000 !important; margin:0">👁️ Visualizando Boletim — ${label}</h4>
     <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:24px; cursor:pointer;">&times;</button>`;
   
   const body = document.createElement('div');
@@ -6881,21 +6889,7 @@ async function baixarBoletimCompleto(boletimTurmaId, filename) {
     if (error || !data) throw error;
     hideLoading();
 
-    const byteCharacters = atob(data.pdf_completo);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], {type: 'application/pdf'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    downloadBase64PDF(data.pdf_completo, filename);
   } catch (err) {
     console.error(err);
     hideLoading();
@@ -6950,7 +6944,9 @@ function handleBoletimFileSelected(input) {
   if (input.files && input.files.length > 0) {
     const file = input.files[0];
     fileLabel.textContent = `📄 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    fileLabel.style.color = '#000000';
     dropzoneText.textContent = `Arquivo carregado: ${file.name}`;
+    dropzoneText.style.color = '#000000';
     fileBar.style.display = 'flex';
     document.getElementById('boletim-mapeamento-container').style.display = 'none'; // Oculta anterior
     showToast('PDF selecionado! Clique em "Analisar e Mapear" para prosseguir.', 'sucesso');
@@ -6962,7 +6958,6 @@ function handleBoletimFileSelected(input) {
 async function processarBoletimPDF() {
   const select = document.getElementById('boletim-turma-select');
   const turmaCode = select.value;
-  const ano = document.getElementById('boletim-ano').value;
   const fileInput = document.getElementById('boletim-pdf-file');
 
   if (!turmaCode) {
@@ -6990,7 +6985,7 @@ async function processarBoletimPDF() {
       return;
     }
 
-    // Ordena alfabeticamente para a UI ficar perfeita
+    // Ordena alfabeticamente para a UI
     alunos.sort((a, b) => a.nome.localeCompare(b.nome));
     currentAlunosTurma = alunos;
 
@@ -6998,13 +6993,15 @@ async function processarBoletimPDF() {
     const file = fileInput.files[0];
     currentUploadedPdfBytes = await file.arrayBuffer();
 
-    // Configura o worker do PDF.js
-    if (typeof pdfjsLib === 'undefined') {
+    // RESOLVE O BUG DO CDF E Worker GLOBAL do PDF.js
+    const lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+    if (!lib) {
       hideLoading();
-      showToast('Biblioteca PDF.js não carregada.', 'erro');
+      showToast('Biblioteca de leitura de PDF ainda não foi carregada. Recarregue a página.', 'erro');
       return;
     }
     
+    const pdfjsLib = lib;
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes) }).promise;
@@ -7066,35 +7063,35 @@ async function processarBoletimPDF() {
   }
 }
 
-// RENDERIZA A GRID COM CORES COM ALTO CONTRASTE (LIGHT THEME)
+// RENDERIZA A GRID COM CORES COM ALTO CONTRASTE PRETO ABSOLUTO (#000000)
 function renderGridMapeamento(matches, alunos) {
   currentMatches = matches;
   const container = document.getElementById('boletim-mapeamento-container');
   container.style.display = 'block';
 
   let html = `
-    <div style="background: #f8fafc; border: 1.5px solid var(--gray3); border-radius: 16px; padding: 22px; margin-top: 25px; animation: fadeIn 0.4s ease;">
+    <div style="background: #f8fafc; border: 1.5px solid var(--gray3); border-radius: 16px; padding: 22px; margin-top: 25px; animation: fadeIn 0.4s ease; color: #000000 !important;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-        <h3 style="font-size:15px; font-weight:850; color:var(--gray7); font-family:'Outfit',sans-serif; margin:0">📊 Mapeamento das Páginas do PDF</h3>
+        <h3 style="font-size:15px; font-weight:850; color:#000000 !important; font-family:'Outfit',sans-serif; margin:0">📊 Mapeamento das Páginas do PDF</h3>
         <div style="display:flex; gap:10px;">
-          <button class="btn btn-secondary btn-sm" onclick="mapearOrdemAlfabetica()" style="font-size: 11.5px; padding: 6px 12px; background:white; border: 1.5px solid var(--gray3); color:var(--gray7);">✍️ Preencher Ordem Alfabética</button>
-          <button class="btn btn-red btn-sm" onclick="limparMapeamento()" style="font-size: 11.5px; padding: 6px 12px; background:#f43f5e;">❌ Limpar Tudo</button>
+          <button class="btn btn-secondary btn-sm" onclick="mapearOrdemAlfabetica()" style="font-size: 11.5px; padding: 6px 12px; background:white; border: 1.5px solid var(--gray3); color:#000000 !important; font-weight:700;">✍️ Preencher Ordem Alfabética</button>
+          <button class="btn btn-red btn-sm" onclick="limparMapeamento()" style="font-size: 11.5px; padding: 6px 12px; background:#f43f5e; font-weight:700;">❌ Limpar Tudo</button>
         </div>
       </div>
       
-      <p style="font-size:12.5px; color:var(--gray5); margin-bottom:18px; line-height: 1.5; font-weight:500;">
+      <p style="font-size:12.5px; color:#000000 !important; margin-bottom:18px; line-height: 1.5; font-weight:700;">
         Confira o aluno associado a cada página. Você pode alterar a seleção manualmente ou marcar páginas a serem ignoradas (ex: capas ou informativos gerais).
       </p>
       
       <div style="max-height: 480px; overflow-y: auto; border: 1.5px solid var(--gray3); border-radius: 12px; margin-bottom: 20px; background: white;">
-        <table style="width:100%; border-collapse:collapse; text-align: left;">
+        <table style="width:100%; border-collapse:collapse; text-align: left; color:#000000 !important;">
           <thead style="background: var(--gray); position: sticky; top: 0; z-index: 2; border-bottom: 2px solid var(--gray3);">
             <tr>
-              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 80px;">Página</th>
-              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 90px;">Ver</th>
-              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700;">Aluno da Página</th>
-              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 140px;">Correspondência</th>
-              <th style="padding:12px; font-size:12px; color:var(--gray7); font-weight:700; text-align:center; width: 80px;">Ignorar</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 80px;">Página</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 90px;">Ver</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800;">Aluno da Página</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 140px;">Correspondência</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 80px;">Ignorar</th>
             </tr>
           </thead>
           <tbody>
@@ -7103,12 +7100,12 @@ function renderGridMapeamento(matches, alunos) {
   matches.forEach((m, idx) => {
     const isMatched = m.matchedAluno !== null;
     const matchBadge = m.matchType === 'matricula'
-      ? '<span style="background:rgba(16,185,129,0.15); color:#047857; border:1px solid rgba(16,185,129,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Matrícula</span>'
+      ? '<span style="background:rgba(16,185,129,0.2); color:#047857 !important; border:1px solid rgba(16,185,129,0.4); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Matrícula</span>'
       : m.matchType === 'nome'
-      ? '<span style="background:rgba(79,70,229,0.12); color:#4f46e5; border:1px solid rgba(79,70,229,0.25); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nome</span>'
+      ? '<span style="background:rgba(79,70,229,0.15); color:#4f46e5 !important; border:1px solid rgba(79,70,229,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Nome</span>'
       : m.matchType === 'manual'
-      ? '<span style="background:rgba(245,158,11,0.15); color:#b45309; border:1px solid rgba(245,158,11,0.25); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Manual</span>'
-      : '<span style="background:rgba(244,63,94,0.15); color:#be123c; border:1px solid rgba(244,63,94,0.25); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nenhum</span>';
+      ? '<span style="background:rgba(245,158,11,0.2); color:#b45309 !important; border:1px solid rgba(245,158,11,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Manual</span>'
+      : '<span style="background:rgba(244,63,94,0.2); color:#be123c !important; border:1px solid rgba(244,63,94,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Nenhum</span>';
 
     // Cria as opções do Select
     let options = '<option value="">-- Ignorar página / Sem Aluno --</option>';
@@ -7119,16 +7116,16 @@ function renderGridMapeamento(matches, alunos) {
 
     html += `
       <tr style="border-bottom:1px solid var(--gray3); transition:opacity 0.2s; ${m.ignored ? 'opacity:0.45; background:#f1f5f9;' : ''}">
-        <td style="padding:12px; text-align:center; font-weight:700; color:var(--gray7);">Pág. ${m.pageNum}</td>
+        <td style="padding:12px; text-align:center; font-weight:800; color:#000000 !important;">Pág. ${m.pageNum}</td>
         <td style="padding:12px; text-align:center;">
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:10.5px; background:white; border:1px solid var(--gray3); color:var(--gray7);" onclick="abrirPrevisualizacaoPagina(${m.pageNum})">👁️ Ver</button>
+          <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:10.5px; background:white; border:1px solid var(--gray3); color:#000000 !important; font-weight:700;" onclick="abrirPrevisualizacaoPagina(${m.pageNum})">👁️ Ver</button>
         </td>
         <td style="padding:12px;">
-          <select class="form-input form-select" style="width:100%; margin:0; padding:6px 10px; border:1.5px solid var(--gray3);" onchange="alterarMapeamentoManual(${idx}, this.value)" ${m.ignored ? 'disabled' : ''}>
+          <select class="form-input form-select" style="width:100%; margin:0; padding:6px 10px; border:1.5px solid var(--gray3); color:#000000 !important; font-weight:600;" onchange="alterarMapeamentoManual(${idx}, this.value)" ${m.ignored ? 'disabled' : ''}>
             ${options}
           </select>
         </td>
-        <td style="padding:12px; text-align:center;">${m.ignored ? '<span style="color:var(--gray5); font-weight:600;">Ignorada</span>' : matchBadge}</td>
+        <td style="padding:12px; text-align:center; color:#000000 !important; font-weight:600;">${m.ignored ? '<span style="color:#f43f5e; font-weight:800;">Ignorada</span>' : matchBadge}</td>
         <td style="padding:12px; text-align:center;">
           <input type="checkbox" ${m.ignored ? 'checked' : ''} onchange="toggleIgnorarPagina(${idx}, this.checked)" style="width:16px; height:16px; cursor:pointer;">
         </td>
@@ -7142,7 +7139,7 @@ function renderGridMapeamento(matches, alunos) {
       </div>
       
       <div style="display:flex; justify-content:flex-end;">
-        <button class="btn btn-primary" onclick="salvarBoletinsMapeados()" style="padding: 10px 22px; font-weight: 700; font-size:13.5px;">💾 Confirmar e Salvar Boletins</button>
+        <button class="btn btn-primary" onclick="salvarBoletinsMapeados()" style="padding: 10px 22px; font-weight: 800; font-size:13.5px;">💾 Confirmar e Salvar Boletins</button>
       </div>
     </div>
   `;
@@ -7186,7 +7183,7 @@ function exibirModalPrevisualizacao(canvas, pageNum) {
   
   const header = document.createElement('div');
   header.style = 'padding:14px 20px; border-bottom:1px solid var(--gray3); display:flex; justify-content:space-between; align-items:center; background:var(--gray);';
-  header.innerHTML = `<h4 style="font-size:14px; font-weight:700; color:var(--gray7); margin:0">👁️ Pré-visualização da Página subt${pageNum}</h4>
+  header.innerHTML = `<h4 style="font-size:14px; font-weight:800; color:#000000 !important; margin:0">👁️ Pré-visualização da Página ${pageNum}</h4>
     <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:24px; cursor:pointer;">&times;</button>`;
   
   const body = document.createElement('div');
@@ -7270,8 +7267,8 @@ async function salvarBoletinsMapeados() {
   progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
   progressModal.innerHTML = `
     <div style="background:white; border:1px solid var(--gray3); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-      <h4 style="font-size:15px; font-weight:700; color:var(--gray7); margin:0 0 10px;">💾 Salvando Boletins no Banco...</h4>
-      <p style="font-size:12.5px; color:var(--gray5); margin-bottom:20px;" id="boletim-progress-text">Codificando arquivo completo...</p>
+      <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">💾 Salvando Boletins no Banco...</h4>
+      <p style="font-size:12.5px; color:#000000 !important; font-weight:700; margin-bottom:20px;" id="boletim-progress-text">Codificando arquivo completo...</p>
       
       <div style="width:100%; height:8px; background:var(--gray); border-radius:4px; overflow:hidden; margin-bottom:10px;">
         <div id="boletim-progress-bar" style="width:0%; height:100%; background:var(--blue); transition:width 0.1s ease;"></div>
@@ -7325,7 +7322,7 @@ async function salvarBoletinsMapeados() {
       document.getElementById('boletim-progress-text').textContent = `Processando: ${match.matchedAluno.nome}`;
       const pct = Math.round((i / activeMatches.length) * 100);
       document.getElementById('boletim-progress-bar').style.width = `${pct}%`;
-      document.getElementById('boletim-progress-counter').textContent = `${i} de subt${activeMatches.length} boletins salvos`;
+      document.getElementById('boletim-progress-counter').textContent = `${i} de ${activeMatches.length} boletins salvos`;
 
       // Cria um novo PDF de apenas 1 página
       const newDoc = await PDFDocument.create();
@@ -7396,6 +7393,148 @@ function irParaUploadBoletimDaTurma() {
     const event = new Event('change');
     select.dispatchEvent(event);
   }
+}
+
+// ------------------------------------------------------------------------------
+// Ficha de Aluno: Mapeamento de Boletins na Ficha (v3)
+// ------------------------------------------------------------------------------
+async function renderFichaBoletins(aluno) {
+  const el = document.getElementById('ficha-boletins-lista'); if (!el) return;
+  el.innerHTML = '<div style="font-size:12.5px;color:var(--gray5);padding:6px 0; font-weight:600;">🔍 Buscando boletins no sistema...</div>';
+  
+  try {
+    const { data, error } = await supabaseClient
+      .from('boletins')
+      .select('id, ano, periodo, pdf_base64')
+      .eq('aluno_id', aluno.id)
+      .order('ano', { ascending: false })
+      .order('periodo', { ascending: true });
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      el.innerHTML = '<div style="font-size:12.5px;color:var(--gray5);padding:6px 0; font-weight:600;">Nenhum boletim publicado para este aluno neste ano.</div>';
+      return;
+    }
+
+    el.innerHTML = data.map(b => {
+      // Escape simples das aspas no Base64 para passar na interpolação sem quebrar o HTML
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--gray); padding:8px 12px; border-radius:8px; font-size:12.5px; border:1px solid var(--gray3);">
+          <div>
+            <strong style="color:#000000 !important; font-weight: 800;">${b.periodo}</strong> <span style="color:#000000; font-weight:600;">(${b.ano})</span>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="visualizarBoletimFicha('${b.id}')">👁️ Ver</button>
+            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="baixarBoletimFicha('${b.id}', 'Boletim_${aluno.nome.replace(/ /g, '_')}_${b.periodo.replace(/ /g, '_')}.pdf')">📥 Baixar</button>
+            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="imprimirBoletimFicha('${b.id}')">🖨️ Imprimir</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (err) {
+    console.error('[renderFichaBoletins] Erro:', err);
+    el.innerHTML = '<div style="font-size:12.5px;color:var(--red);padding:6px 0; font-weight:600;">Erro ao buscar os boletins.</div>';
+  }
+}
+
+// Ações para os Boletins na Ficha do Aluno
+async function visualizarBoletimFicha(boletimId) {
+  showLoading('Carregando boletim...');
+  try {
+    const { data, error } = await supabaseClient
+      .from('boletins')
+      .select('pdf_base64, periodo, ano')
+      .eq('id', boletimId)
+      .single();
+
+    if (error || !data) throw error;
+    hideLoading();
+
+    exibirModalPrevisualizacaoCompleta(data.pdf_base64, `Boletim Escolar - ${data.periodo} (${data.ano})`);
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Erro ao carregar o boletim do aluno.', 'erro');
+  }
+}
+
+async function baixarBoletimFicha(boletimId, filename) {
+  showLoading('Baixando boletim...');
+  try {
+    const { data, error } = await supabaseClient
+      .from('boletins')
+      .select('pdf_base64')
+      .eq('id', boletimId)
+      .single();
+
+    if (error || !data) throw error;
+    hideLoading();
+
+    downloadBase64PDF(data.pdf_base64, filename);
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Erro ao baixar o boletim.', 'erro');
+  }
+}
+
+// IMPRIME O BOLETIM COM UM IFRAME OCULTO DE MANEIRA PERFEITA E NATIVA
+async function imprimirBoletimFicha(boletimId) {
+  showLoading('Preparando impressão...');
+  try {
+    const { data, error } = await supabaseClient
+      .from('boletins')
+      .select('pdf_base64')
+      .eq('id', boletimId)
+      .single();
+
+    if (error || !data) throw error;
+    hideLoading();
+
+    const base64 = data.pdf_base64;
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.src = `data:application/pdf;base64,${base64}`;
+    document.body.appendChild(iframe);
+    
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      // Remove o iframe da DOM após o início do spooler
+      setTimeout(() => iframe.remove(), 1500);
+    }, 600);
+
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Não foi possível inicializar a impressão do boletim.', 'erro');
+  }
+}
+
+// Reutilizável: Realiza download do Blob a partir do Base64
+function downloadBase64PDF(base64, filename) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], {type: 'application/pdf'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Auxiliares Úteis
