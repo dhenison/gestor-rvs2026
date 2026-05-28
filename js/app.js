@@ -188,7 +188,7 @@ let PERMS = [
   {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
-  {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false}
+  {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true}
 ];
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
@@ -318,7 +318,7 @@ async function carregarDados(){
           {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
-          {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
           {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
@@ -337,6 +337,23 @@ async function carregarDados(){
           const found = loaded.find(l => l.id === def.id);
           return found ? { ...def, ...found } : def;
         });
+
+        // Auto-correção/Self-healing para garantir que o módulo page-boletins esteja ativo para professores, coordenadores e secretaria no banco
+        const bPerm = PERMS.find(p => p.id === 'page-boletins');
+        if (bPerm && (!bPerm.prof || !bPerm.editar_prof || !bPerm.coord || !bPerm.sec)) {
+          bPerm.coord = true;
+          bPerm.sec = true;
+          bPerm.prof = true;
+          bPerm.editar_coord = true;
+          bPerm.editar_sec = true;
+          bPerm.editar_prof = true;
+          supabaseClient
+            .from('configuracoes')
+            .upsert({ chave: 'permissoes', valor: PERMS }, { onConflict: 'chave' })
+            .then(({ error }) => {
+              if (!error) console.log('[Permissões] Boletins sincronizado no banco de dados para todos os perfis');
+            });
+        }
       } else {
         console.warn('[carregarDados] Permissões não encontradas no banco, usando padrão.');
       }
