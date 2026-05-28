@@ -7003,8 +7003,15 @@ async function processarBoletimPDF() {
       return;
     }
     
-    const pdfjsLib = lib;
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+    try {
+      if (window.location.protocol !== 'file:') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+      } else {
+        delete pdfjsLib.GlobalWorkerOptions.workerSrc;
+      }
+    } catch (e) {
+      console.warn("GlobalWorkerOptions workerSrc error:", e);
+    }
 
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes) }).promise;
     const numPages = pdf.numPages;
@@ -7184,7 +7191,8 @@ async function processarBoletimPDF() {
   } catch (err) {
     console.error(err);
     hideLoading();
-    showToast('Erro inesperado ao processar e salvar boletins.', 'erro');
+    alert("ERRO DE PROCESSAMENTO:\n" + (err.stack || err.message || err));
+    showToast('Erro inesperado ao processar e salvar boletins: ' + err.message, 'erro');
   }
 }
 
