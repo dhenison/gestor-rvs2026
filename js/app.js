@@ -7171,8 +7171,7 @@ async function processarBoletimPDF() {
       return;
     }
 
-    const turmaObj = TURMAS_DATA.find(t => t.code === turmaCode);
-    const turmaId = turmaObj ? turmaObj.id : null;
+
 
     // 4. Inicia o Salvamento Automático com Barra de Progresso
     const progressModal = document.createElement('div');
