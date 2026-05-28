@@ -1070,7 +1070,7 @@
     const raw = sessionStorage.getItem('portal_aluno');
 
     if (!raw) {
-      window.location.href = 'portal_login.html';
+      window.location.href = 'aluno.html';
       return;
     }
 
@@ -1101,7 +1101,7 @@
 
     } catch (e) {
       sessionStorage.removeItem('portal_aluno');
-      window.location.href = 'portal_login.html';
+      window.location.href = 'aluno.html';
     }
   }
 
@@ -1603,7 +1603,7 @@
   // ── Sair (Logout) ──
   function sair() {
     sessionStorage.removeItem('portal_aluno');
-    window.location.href = 'portal_login.html';
+    window.location.href = 'aluno.html';
   }
 </script>
 </body>
