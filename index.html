@@ -71,6 +71,7 @@
       <div class="nav-section-title">Pedagógico</div>
       <div class="nav-item" onclick="showPage('turmas',this)"><i data-lucide="library" class="nav-item-icon"></i>Turmas</div>
       <div class="nav-item" onclick="showPage('alunos',this)"><i data-lucide="users" class="nav-item-icon"></i>Alunos</div>
+      <div class="nav-item" onclick="showPage('boletins',this)"><i data-lucide="file-spreadsheet" class="nav-item-icon"></i>Boletins</div>
       <div class="nav-item" onclick="showPage('frequencia',this)"><i data-lucide="check-square" class="nav-item-icon"></i>Frequência</div>
       <div class="nav-item" onclick="showPage('solicitacoes',this)"><i data-lucide="file-text" class="nav-item-icon"></i>Solicitações Pedagógicas</div>
       <div class="nav-item" onclick="showPage('rvs-agenda',this)"><i data-lucide="calendar-clock" class="nav-item-icon"></i>RVS Agenda</div>
@@ -267,6 +268,59 @@
       </div>
 
             <!-- ══════════════════ FREQUÊNCIA ══════════════════ -->
+      <!-- ========================================== -->
+      <!--            BOLETINS ESCOLARES              -->
+      <!-- ========================================== -->
+      <div class="page" id="page-boletins">
+        <div class="section-header">
+          <div class="section-title">📊 Módulo de Boletins Escolares</div>
+        </div>
+        
+        <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; margin-bottom: 24px; animation: fadeIn 0.4s ease;">
+          <h3 style="font-size: 15px; font-weight: 700; color: white; margin-bottom: 15px; font-family: 'Outfit', sans-serif;">📤 Upload e Divisão de PDF de Notas</h3>
+          
+          <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <label style="font-size:11px; color:var(--gray5); font-weight:600;">Turma</label>
+              <select id="boletim-turma-select" class="form-input form-select select-turmas" style="width:200px; margin:0;"></select>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <label style="font-size:11px; color:var(--gray5); font-weight:600;">Ano Letivo</label>
+              <input id="boletim-ano" class="form-input" type="number" value="2026" style="width:90px; margin:0;">
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <label style="font-size:11px; color:var(--gray5); font-weight:600;">Período / Bimestre</label>
+              <select id="boletim-periodo-select" class="form-input form-select" style="width:160px; margin:0;">
+                <option value="1º Bimestre">1º Bimestre</option>
+                <option value="2º Bimestre">2º Bimestre</option>
+                <option value="3º Bimestre">3º Bimestre</option>
+                <option value="4º Bimestre">4º Bimestre</option>
+                <option value="Recuperação">Recuperação</option>
+                <option value="Final">Final</option>
+              </select>
+            </div>
+          </div>
+          
+          <input id="boletim-pdf-file" type="file" accept="application/pdf" class="form-input" style="display:none;" onchange="handleBoletimFileSelected(this)">
+          
+          <div id="boletim-dropzone" onclick="document.getElementById('boletim-pdf-file').click()" style="border: 2px dashed rgba(255,255,255,0.15); border-radius: 12px; padding: 40px 20px; text-align: center; background: rgba(255,255,255,0.01); cursor: pointer; transition: all 0.3s ease;">
+            <div id="boletim-dropzone-icon" style="font-size: 32px; margin-bottom: 12px; transition: transform 0.2s;">📤</div>
+            <div id="boletim-dropzone-text" style="font-size: 13.5px; font-weight: 600; color: white;">Clique aqui para selecionar o arquivo PDF da turma</div>
+            <div style="font-size: 11.5px; color: var(--gray5); margin-top: 6px;">O sistema vai analisar cada página para mapear os boletins de cada aluno</div>
+          </div>
+          
+          <div style="margin-top:15px; display:none; justify-content:space-between; align-items:center;" id="boletim-file-info-bar">
+            <span style="font-size:12.5px; color:white; font-weight:600;" id="boletim-file-name-label">📄 arquivo.pdf</span>
+            <button class="btn btn-primary" onclick="processarBoletimPDF()">⚙️ Analisar e Mapear Boletins</button>
+          </div>
+        </div>
+
+        <!-- Resultados do Mapeamento -->
+        <div id="boletim-mapeamento-container" style="display:none;"></div>
+      </div>
+
       <div class="page" id="page-frequencia">
 
         <!-- ETAPA 1: Selecionar Turno + Turma -->
@@ -1306,6 +1360,7 @@
       <input class="form-input" id="edit-turma-professor" placeholder="Nome do professor responsável">
     </div>
     <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="irParaUploadBoletimDaTurma()" style="background-color: var(--accent); color: white; display: flex; align-items: center; gap: 6px;">📊 Upload de Boletins</button>
       <button class="btn btn-outline" onclick="closeModal('modal-editar-turma')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarEdicaoTurma()">💾 Salvar Alterações</button>
     </div>
@@ -2143,6 +2198,8 @@
 <!-- ── SCRIPTS ─────────────────────────────────────────────── -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 <script src="js/app.js?v=1.1"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->

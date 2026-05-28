@@ -187,7 +187,8 @@ let PERMS = [
   {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
-  {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
+  {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false}
 ];
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
@@ -310,7 +311,32 @@ async function carregarDados(){
       const permsObj = configData.find(c => c.chave === 'permissoes');
       if (permsObj && permsObj.valor) {
         console.log('[carregarDados] Permissões carregadas do banco:', permsObj.valor.length, 'itens');
-        PERMS = permsObj.valor;
+        const loaded = permsObj.valor;
+        // Fusão robusta de permissões para garantir que novos módulos no código (como page-boletins) não sumam
+        const defaultPerms = [
+          {func:'Dashboard',                id:'page-dashboard',    coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
+          {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
+          {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
+          {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+          {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+          {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+          {func:'Horário de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
+          {func:'Topo do Saber',            id:'page-topo-saber',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+          {func:'Transporte',               id:'page-transporte',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'OBAFOG RVS',               id:'page-obafog',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+          {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+          {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
+          {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+          {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
+        ];
+        PERMS = defaultPerms.map(def => {
+          const found = loaded.find(l => l.id === def.id);
+          return found ? { ...def, ...found } : def;
+        });
       } else {
         console.warn('[carregarDados] Permissões não encontradas no banco, usando padrão.');
       }
@@ -678,7 +704,7 @@ function showPage(p, el) {
   document.getElementById('page-' + p)?.classList.add('active');
 
   const titles = {
-    dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos',
+    dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', boletins: 'Boletins Escolares',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
     whatsapp: 'Comunicação Automática', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
@@ -6663,3 +6689,444 @@ function gerarPDFTratamento(alunoId) {
   }
 }
 
+
+
+// ==============================================================================
+// 📊 MÓDULO DE BOLETINS ESCOLARES INTELIGENTES - CÓDIGO CORE
+// ==============================================================================
+
+let currentUploadedPdfBytes = null; // ArrayBuffer do PDF original
+let currentMatches = [];            // Mapeamento atual de pág ➔ aluno
+let currentAlunosTurma = [];        // Alunos carregados da turma
+
+function handleBoletimFileSelected(input) {
+  const fileBar = document.getElementById('boletim-file-info-bar');
+  const fileLabel = document.getElementById('boletim-file-name-label');
+  const dropzoneText = document.getElementById('boletim-dropzone-text');
+  
+  if (input.files && input.files.length > 0) {
+    const file = input.files[0];
+    fileLabel.textContent = `📄 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    dropzoneText.textContent = `Arquivo carregado: ${file.name}`;
+    fileBar.style.display = 'flex';
+    document.getElementById('boletim-mapeamento-container').style.display = 'none'; // Oculta anterior
+    showToast('PDF selecionado! Clique em "Analisar e Mapear" para prosseguir.', 'sucesso');
+  } else {
+    fileBar.style.display = 'none';
+  }
+}
+
+async function processarBoletimPDF() {
+  const select = document.getElementById('boletim-turma-select');
+  const turmaCode = select.value;
+  const ano = document.getElementById('boletim-ano').value;
+  const fileInput = document.getElementById('boletim-pdf-file');
+
+  if (!turmaCode) {
+    showToast('Por favor, selecione uma turma primeiro.', 'alerta');
+    return;
+  }
+  if (!fileInput.files || fileInput.files.length === 0) {
+    showToast('Por favor, selecione um arquivo PDF.', 'alerta');
+    return;
+  }
+
+  showLoading('Buscando alunos da turma e analisando PDF...');
+  
+  try {
+    // 1. Busca alunos ativos da turma
+    const { data: alunos, error } = await supabaseClient
+      .from('alunos')
+      .select('id, nome, matricula')
+      .eq('turma', turmaCode)
+      .eq('status', 'ativo');
+
+    if (error || !alunos || alunos.length === 0) {
+      hideLoading();
+      showToast('Nenhum aluno ativo cadastrado nesta turma.', 'alerta');
+      return;
+    }
+
+    // Ordena alfabeticamente para a UI ficar perfeita
+    alunos.sort((a, b) => a.nome.localeCompare(b.nome));
+    currentAlunosTurma = alunos;
+
+    // 2. Lê os bytes do PDF
+    const file = fileInput.files[0];
+    currentUploadedPdfBytes = await file.arrayBuffer();
+
+    // Configura o worker do PDF.js
+    if (typeof pdfjsLib === 'undefined') {
+      hideLoading();
+      showToast('Biblioteca PDF.js não carregada.', 'erro');
+      return;
+    }
+    
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes) }).promise;
+    const numPages = pdf.numPages;
+
+    const matches = [];
+
+    // 3. Processa cada página do PDF
+    for (let i = 1; i <= numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+
+      // Normalização para busca sem acentos e case-insensitive
+      const normalizedPageText = normalizarTexto(pageText);
+
+      let matchedAluno = null;
+      let matchType = 'nenhum';
+
+      // A) Busca por Matrícula
+      for (const al of alunos) {
+        if (al.matricula && normalizedPageText.includes(normalizarTexto(al.matricula))) {
+          matchedAluno = al;
+          matchType = 'matricula';
+          break;
+        }
+      }
+
+      // B) Se não achar, busca por Nome Completo
+      if (!matchedAluno) {
+        for (const al of alunos) {
+          const nomeNorm = normalizarTexto(al.nome);
+          if (nomeNorm.length > 5 && normalizedPageText.includes(nomeNorm)) {
+            matchedAluno = al;
+            matchType = 'nome';
+            break;
+          }
+        }
+      }
+
+      matches.push({
+        pageNum: i,
+        matchedAluno: matchedAluno,
+        matchType: matchType,
+        ignored: false
+      });
+    }
+
+    hideLoading();
+    showToast(`PDF com ${numPages} páginas analisado com sucesso!`, 'sucesso');
+    
+    // 4. Renderiza a Grid de Resultados
+    renderGridMapeamento(matches, alunos);
+
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Erro ao processar PDF. Verifique se o PDF contém texto legível.', 'erro');
+  }
+}
+
+function renderGridMapeamento(matches, alunos) {
+  currentMatches = matches;
+  const container = document.getElementById('boletim-mapeamento-container');
+  container.style.display = 'block';
+
+  let html = `
+    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 16px; padding: 22px; margin-top: 25px; animation: fadeIn 0.4s ease;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+        <h3 style="font-size:15px; font-weight:700; color:white; font-family:'Outfit',sans-serif; margin:0">📊 Mapeamento das Páginas do PDF</h3>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-secondary btn-sm" onclick="mapearOrdemAlfabetica()" style="font-size: 11.5px; padding: 6px 12px;">✍️ Preencher Ordem Alfabética</button>
+          <button class="btn btn-red btn-sm" onclick="limparMapeamento()" style="font-size: 11.5px; padding: 6px 12px; background:#f43f5e;">❌ Limpar Tudo</button>
+        </div>
+      </div>
+      
+      <p style="font-size:12px; color:var(--gray5); margin-bottom:18px; line-height: 1.5;">
+        Confira o aluno associado a cada página. Você pode alterar a seleção manualmente ou ignorar páginas específicas (como capas ou anexos).
+      </p>
+      
+      <div style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.15);">
+        <table style="width:100%; border-collapse:collapse; text-align: left;">
+          <thead style="background: rgba(17, 24, 39, 0.95); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border-color);">
+            <tr>
+              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 80px;">Página</th>
+              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 90px;">Ver</th>
+              <th style="padding:12px; font-size:12px; color:white; font-weight:700;">Aluno da Página</th>
+              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 130px;">Correspondência</th>
+              <th style="padding:12px; font-size:12px; color:white; font-weight:700; text-align:center; width: 80px;">Ignorar</th>
+            </tr>
+          </thead>
+          <tbody>
+  `;
+
+  matches.forEach((m, idx) => {
+    const isMatched = m.matchedAluno !== null;
+    const matchBadge = m.matchType === 'matricula'
+      ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Matrícula</span>'
+      : m.matchType === 'nome'
+      ? '<span style="background:rgba(99,102,241,0.1); color:#6366f1; border:1px solid rgba(99,102,241,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nome</span>'
+      : m.matchType === 'manual'
+      ? '<span style="background:rgba(245,158,11,0.1); color:#f59e0b; border:1px solid rgba(245,158,11,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Manual</span>'
+      : '<span style="background:rgba(244,63,94,0.1); color:#f43f5e; border:1px solid rgba(244,63,94,0.25); padding:2px 8px; border-radius:10px; font-size:9.5px; font-weight:700;">Nenhum</span>';
+
+    // Cria as opções do Select
+    let options = '<option value="">-- Ignorar página / Sem Aluno --</option>';
+    alunos.forEach(al => {
+      const selected = isMatched && m.matchedAluno.id === al.id ? 'selected' : '';
+      options += `<option value="${al.id}" ${selected}>${al.nome} (${al.matricula})</option>`;
+    });
+
+    html += `
+      <tr style="border-bottom:1px solid var(--border-color); transition:opacity 0.2s; ${m.ignored ? 'opacity:0.4;' : ''}">
+        <td style="padding:12px; text-align:center; font-weight:700; color:white;">Pág. ${m.pageNum}</td>
+        <td style="padding:12px; text-align:center;">
+          <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:10.5px;" onclick="abrirPrevisualizacaoPagina(${m.pageNum})">👁️ Ver</button>
+        </td>
+        <td style="padding:12px;">
+          <select class="form-input form-select" style="width:100%; margin:0; padding:6px 10px;" onchange="alterarMapeamentoManual(${idx}, this.value)" ${m.ignored ? 'disabled' : ''}>
+            ${options}
+          </select>
+        </td>
+        <td style="padding:12px; text-align:center;">${m.ignored ? '—' : matchBadge}</td>
+        <td style="padding:12px; text-align:center;">
+          <input type="checkbox" ${m.ignored ? 'checked' : ''} onchange="toggleIgnorarPagina(${idx}, this.checked)" style="width:16px; height:16px; cursor:pointer;">
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `
+          </tbody>
+        </table>
+      </div>
+      
+      <div style="display:flex; justify-content:flex-end;">
+        <button class="btn btn-primary" onclick="salvarBoletinsMapeados()" style="padding: 10px 20px; font-weight: 600;">💾 Confirmar e Salvar Boletins</button>
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+async function abrirPrevisualizacaoPagina(pageNum) {
+  showLoading('Carregando pré-visualização...');
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes) }).promise;
+    const page = await pdf.getPage(pageNum);
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    const viewport = page.getViewport({ scale: 1.5 });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    
+    await page.render({ canvasContext: context, viewport: viewport }).promise;
+    hideLoading();
+    
+    exibirModalPrevisualizacao(canvas, pageNum);
+  } catch (err) {
+    console.error(err);
+    hideLoading();
+    showToast('Erro ao carregar imagem da página.', 'erro');
+  }
+}
+
+function exibirModalPrevisualizacao(canvas, pageNum) {
+  const old = document.getElementById('boletim-preview-modal');
+  if (old) old.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'boletim-preview-modal';
+  modal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:10000; display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn 0.2s ease;';
+  
+  const content = document.createElement('div');
+  content.style = 'background:var(--dark-bg); border:1px solid var(--border-color); border-radius:16px; max-width:600px; width:100%; display:flex; flex-direction:column; max-height:90vh; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5); overflow:hidden;';
+  
+  const header = document.createElement('div');
+  header.style = 'padding:14px 20px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;';
+  header.innerHTML = `<h4 style="font-size:14px; font-weight:700; color:white; margin:0">👁️ Pré-visualização da Página ${pageNum}</h4>
+    <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:20px; cursor:pointer;">&times;</button>`;
+  
+  const body = document.createElement('div');
+  body.style = 'padding:15px; overflow-y:auto; display:flex; align-items:center; justify-content:center; background:#1e293b;';
+  canvas.style.maxWidth = '100%';
+  canvas.style.height = 'auto';
+  canvas.style.borderRadius = '8px';
+  body.appendChild(canvas);
+  
+  content.appendChild(header);
+  content.appendChild(body);
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+}
+
+function mapearOrdemAlfabetica() {
+  if (currentAlunosTurma.length === 0) return;
+  
+  // Mapeia sequencialmente alunos alfabéticos para páginas
+  currentMatches.forEach((m, idx) => {
+    if (idx < currentAlunosTurma.length) {
+      m.matchedAluno = currentAlunosTurma[idx];
+      m.matchType = 'manual';
+      m.ignored = false;
+    } else {
+      m.matchedAluno = null;
+      m.matchType = 'nenhum';
+      m.ignored = true; // ignora excedentes
+    }
+  });
+
+  showToast('Ordem alfabética aplicada! Confirme os dados antes de salvar.', 'sucesso');
+  renderGridMapeamento(currentMatches, currentAlunosTurma);
+}
+
+function alterarMapeamentoManual(idx, value) {
+  if (value === '') {
+    currentMatches[idx].matchedAluno = null;
+    currentMatches[idx].matchType = 'nenhum';
+  } else {
+    const found = currentAlunosTurma.find(a => a.id === value);
+    currentMatches[idx].matchedAluno = found || null;
+    currentMatches[idx].matchType = 'manual';
+  }
+}
+
+function toggleIgnorarPagina(idx, checked) {
+  currentMatches[idx].ignored = checked;
+  renderGridMapeamento(currentMatches, currentAlunosTurma);
+}
+
+function limparMapeamento() {
+  currentMatches.forEach(m => {
+    m.matchedAluno = null;
+    m.matchType = 'nenhum';
+    m.ignored = false;
+  });
+  showToast('Mapeamento limpo!', 'alerta');
+  renderGridMapeamento(currentMatches, currentAlunosTurma);
+}
+
+async function salvarBoletinsMapeados() {
+  const select = document.getElementById('boletim-turma-select');
+  const turmaCode = select.value;
+  const ano = parseInt(document.getElementById('boletim-ano').value);
+  const periodo = document.getElementById('boletim-periodo-select').value;
+  
+  const activeMatches = currentMatches.filter(m => !m.ignored && m.matchedAluno !== null);
+  
+  if (activeMatches.length === 0) {
+    showToast('Nenhuma página associada a alunos para salvar.', 'alerta');
+    return;
+  }
+
+  const turmaObj = TURMAS_DATA.find(t => t.code === turmaCode);
+  const turmaId = turmaObj ? turmaObj.id : null;
+
+  // Abre Modal de Progresso customizado
+  const progressModal = document.createElement('div');
+  progressModal.id = 'boletim-progress-modal';
+  progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
+  progressModal.innerHTML = `
+    <div style="background:var(--dark-bg); border:1px solid var(--border-color); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h4 style="font-size:15px; font-weight:700; color:white; margin:0 0 10px;">💾 Salvando Boletins...</h4>
+      <p style="font-size:12px; color:var(--gray5); margin-bottom:20px;" id="boletim-progress-text">Processando primeiro boletim...</p>
+      
+      <div style="width:100%; height:8px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden; margin-bottom:10px;">
+        <div id="boletim-progress-bar" style="width:0%; height:100%; background:var(--accent); transition:width 0.1s ease;"></div>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted);" id="boletim-progress-counter">0 de ${activeMatches.length} salvos</div>
+    </div>
+  `;
+  document.body.appendChild(progressModal);
+
+  try {
+    const { PDFDocument } = PDFLib;
+    const srcDoc = await PDFDocument.load(currentUploadedPdfBytes);
+
+    let sucessos = 0;
+    
+    // Processamento sequencial seguro e de alta performance
+    for (let i = 0; i < activeMatches.length; i++) {
+      const match = activeMatches[i];
+      const pageIndex = match.pageNum - 1;
+
+      // Progresso UI
+      document.getElementById('boletim-progress-text').textContent = `Processando: ${match.matchedAluno.nome}`;
+      const pct = Math.round((i / activeMatches.length) * 100);
+      document.getElementById('boletim-progress-bar').style.width = `${pct}%`;
+      document.getElementById('boletim-progress-counter').textContent = `${i} de ${activeMatches.length} salvos`;
+
+      // Cria um novo PDF de apenas 1 página
+      const newDoc = await PDFDocument.create();
+      const [copiedPage] = await newDoc.copyPages(srcDoc, [pageIndex]);
+      newDoc.addPage(copiedPage);
+      const pdfBytes = await newDoc.save();
+
+      // Transforma em Base64
+      let binary = '';
+      const len = pdfBytes.byteLength;
+      for (let j = 0; j < len; j++) {
+        binary += String.fromCharCode(pdfBytes[j]);
+      }
+      const base64String = window.btoa(binary);
+
+      // Salva no banco de dados (upsert)
+      const payload = {
+        aluno_id: match.matchedAluno.id,
+        turma_id: turmaId,
+        ano: ano,
+        periodo: periodo,
+        pdf_base64: base64String
+      };
+
+      const { error } = await supabaseClient
+        .from('boletins')
+        .upsert(payload, { onConflict: 'aluno_id,ano,periodo' });
+
+      if (error) {
+        console.error(`Erro ao salvar boletim para ${match.matchedAluno.nome}:`, error);
+      } else {
+        sucessos++;
+      }
+    }
+
+    // Fecha o modal de progresso
+    progressModal.remove();
+    
+    showToast(`Sucesso! ${sucessos} de ${activeMatches.length} boletins foram salvos com sucesso!`, 'sucesso');
+    
+    // Limpa UI
+    document.getElementById('boletim-pdf-file').value = '';
+    document.getElementById('boletim-file-info-bar').style.display = 'none';
+    document.getElementById('boletim-mapeamento-container').style.display = 'none';
+    document.getElementById('boletim-dropzone-text').textContent = 'Clique aqui para selecionar o arquivo PDF da turma';
+
+  } catch (err) {
+    console.error(err);
+    progressModal.remove();
+    showToast('Erro inesperado ao dividir e salvar boletins.', 'erro');
+  }
+}
+
+function irParaUploadBoletimDaTurma() {
+  const code = document.getElementById('edit-turma-code').value;
+  closeModal('modal-editar-turma');
+  showPage('boletins'); // Navega para a aba de boletins
+  
+  // Seleciona a turma correspondente no dropdown
+  const select = document.getElementById('boletim-turma-select');
+  if (select) {
+    select.value = code;
+    // Dispara evento onchange para aplicar
+    const event = new Event('change');
+    select.dispatchEvent(event);
+  }
+}
+
+// Auxiliares Úteis
+function normalizarTexto(str) {
+  if (!str) return '';
+  return str.toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}

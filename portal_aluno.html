@@ -240,7 +240,7 @@
 
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 12px;
       margin-bottom: 28px;
     }
@@ -792,7 +792,7 @@
       .perfil-card { flex-direction: column; text-align: center; padding: 18px 14px; gap: 10px; }
       .perfil-nome { font-size: 16px; white-space: normal; }
 
-      .cards-grid { gap: 8px; }
+      .cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .card-label-title { font-size: 9.5px; }
       .card-label-sub { font-size: 8px; }
       
@@ -897,6 +897,22 @@
           </div>
         </div>
 
+        <!-- Card 4: Minhas Notas -->
+        <div class="portal-card" id="card-boletim" onclick="abrirBoletim()">
+          <div class="card-img-area">
+            <img src="assets/portal_boletim.png" alt="Minhas Notas"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="card-img-placeholder" style="display:none;">
+              <span class="placeholder-icon">📊</span>
+              <span class="placeholder-text">Imagem em breve</span>
+            </div>
+          </div>
+          <div class="card-label">
+            <div class="card-label-title">Minhas Notas</div>
+            <div class="card-label-sub">Meu Boletim</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -926,6 +942,15 @@
         <div class="view-title">📅 Agenda Escolar</div>
       </div>
       <div id="lista-agenda">Carregando...</div>
+    </div>
+
+    <!-- VIEW: MEU BOLETIM / MINHAS NOTAS -->
+    <div id="view-boletim" class="page-view">
+      <div class="view-header">
+        <button class="btn-voltar" onclick="voltarDashboard()">⬅ Voltar</button>
+        <div class="view-title">📊 Minhas Notas (Meu Boletim)</div>
+      </div>
+      <div id="boletim-container" style="margin-top:20px;"></div>
     </div>
 
   </main>
@@ -1606,6 +1631,157 @@
   function sair() {
     sessionStorage.removeItem('portal_aluno');
     window.location.href = 'aluno.html';
+  }
+
+  // ==============================================================================
+  // 📊 MÓDULO DE BOLETINS ESCOLARES (MINHAS NOTAS)
+  // ==============================================================================
+  async function abrirBoletim() {
+    mostrarView('view-boletim');
+    const container = document.getElementById('boletim-container');
+    container.innerHTML = `
+      <div style="display:flex; justify-content:center; align-items:center; min-height:200px; flex-direction:column; gap:12px;">
+        <div style="width:24px; height:24px; border:2px solid rgba(255,255,255,.05); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;"></div>
+        <span style="font-size:12px; color:var(--text-muted);">Buscando suas notas...</span>
+      </div>
+    `;
+
+    try {
+      // 1. Busca boletins para o aluno usando a RPC segura obter_boletim_aluno
+      const { data, error } = await supabaseClient.rpc('obter_boletim_aluno', { p_matricula: studentProfile.cpf });
+      
+      if (error) {
+        console.error('[abrirBoletim] Erro ao carregar:', error);
+        container.innerHTML = `
+          <div class="lista-vazia">
+            <span>⚠️</span>
+            <p>Não foi possível carregar as suas notas. Tente novamente mais tarde.</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = `
+          <div style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 16px; padding: 40px 20px; text-align: center; max-width: 480px; margin: 20px auto; animation: fadeIn 0.4s ease;">
+            <div style="font-size: 40px; margin-bottom: 15px;">📊</div>
+            <h3 style="font-size: 15px; font-weight: 700; color: white; margin-bottom: 8px;">Nenhum boletim disponível</h3>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0 0 20px;">
+              Seu boletim de notas deste período ainda não foi publicado pela coordenação escolar.
+            </p>
+            <button class="btn-edital" style="margin:0 auto" onclick="voltarDashboard()">Voltar ao Painel</button>
+          </div>
+        `;
+        return;
+      }
+
+      // 2. Renderiza a lista de boletins disponíveis
+      let html = `
+        <p style="font-size:12.5px; color:var(--text-muted); line-height:1.5; margin-bottom: 15px;">
+          Selecione o período abaixo para visualizar ou fazer o download do seu boletim de notas:
+        </p>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:14px; margin-bottom: 20px;">
+      `;
+
+      data.forEach(b => {
+        const dataUpload = b.created_at ? new Date(b.created_at).toLocaleDateString('pt-BR') : '—';
+        html += `
+          <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; gap:15px; transition: all 0.3s ease;" onmouseenter="this.style.borderColor='rgba(255,255,255,0.12)'" onmouseleave="this.style.borderColor='var(--border-color)'">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size: 15px; font-weight: 800; color: white; font-family:'Outfit',sans-serif;">${b.periodo}</span>
+                <span style="font-size: 10px; font-weight:600; background:rgba(99,102,241,0.1); color:#6366f1; border:1px solid rgba(99,102,241,0.25); padding:2px 8px; border-radius:10px;">${b.ano}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Publicado em: ${dataUpload}</div>
+            </div>
+            
+            <div style="display:flex; gap:8px; width: 100%;">
+              <button class="btn-edital" style="margin:0; flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; padding:10px;" onclick="visualizarBoletimPDF('${b.pdf_base64}', '${b.periodo}')">👁️ Visualizar</button>
+              <button class="btn-edital" style="margin:0; flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; padding:10px; background:rgba(255,255,255,0.03); border-color:var(--border-color);" onclick="baixarBoletimPDF('${b.pdf_base64}', 'Boletim_${b.periodo.replace(/ /g, '_')}_${b.ano}.pdf')">📥 Baixar</button>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        </div>
+        
+        <!-- Visualizador Integrado -->
+        <div id="boletim-preview-viewer" style="display:none; margin-top:25px; border-top: 1px dashed var(--border-color); padding-top:20px; animation: fadeIn 0.4s ease;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h4 id="boletim-preview-title" style="font-size:14px; font-weight:700; color:white; margin:0">👁️ Visualizando Notas</h4>
+            <button style="background:none; border:none; color:var(--text-muted); font-size:14px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:4px;" onclick="fecharVisualizadorBoletim()">✖ Fechar</button>
+          </div>
+          <div style="border-radius:12px; overflow:hidden; border:1px solid var(--border-color); background:white;">
+            <iframe id="boletim-preview-iframe" style="width:100%; height:600px; border:none; display:block;"></iframe>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+
+    } catch (e) {
+      console.error('[abrirBoletim] Exception:', e);
+      container.innerHTML = `
+        <div class="lista-vazia">
+          <span>⚠️</span>
+          <p>Erro ao buscar boletim. Tente novamente mais tarde.</p>
+        </div>
+      `;
+    }
+  }
+
+  function visualizarBoletimPDF(base64, titulo) {
+    const viewer = document.getElementById('boletim-preview-viewer');
+    const iframe = document.getElementById('boletim-preview-iframe');
+    const titleEl = document.getElementById('boletim-preview-title');
+    
+    titleEl.textContent = `👁️ Visualizando Notas — ${titulo}`;
+    iframe.src = `data:application/pdf;base64,${base64}`;
+    viewer.style.display = 'block';
+    viewer.scrollIntoView({ behavior: 'smooth' });
+    
+    // Suporte mobile total
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+      abrirEmNovaAbaPDF(base64);
+    }
+  }
+
+  function fecharVisualizadorBoletim() {
+    const viewer = document.getElementById('boletim-preview-viewer');
+    const iframe = document.getElementById('boletim-preview-iframe');
+    iframe.src = '';
+    viewer.style.display = 'none';
+  }
+
+  function abrirEmNovaAbaPDF(base64) {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], {type: 'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }
+
+  function baixarBoletimPDF(base64, filename) {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], {type: 'application/pdf'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 </script>
 </body>
