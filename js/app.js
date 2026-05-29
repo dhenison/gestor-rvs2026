@@ -1571,6 +1571,13 @@ async function salvarMudancaTurma(){
         turma_id: tObj.id
      }).eq('id', a.id);
      if(error) console.error("Erro mudando turma:", error);
+
+     // Migra os boletins individuais do aluno para a nova turma
+     const { error: boletinsError } = await supabaseClient
+        .from('boletins')
+        .update({ turma_id: tObj.id })
+        .eq('aluno_id', a.id);
+     if(boletinsError) console.error("Erro migrando boletins do aluno:", boletinsError);
   }
   
   closeModal('modal-mudar-turma');
