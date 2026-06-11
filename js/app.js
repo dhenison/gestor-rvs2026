@@ -8005,6 +8005,9 @@ function abrirModalNovoDocSecretaria() {
   const mot = document.getElementById('sec-doc-motivo'); if (mot) mot.value = '';
   const obs = document.getElementById('sec-doc-obs'); if (obs) obs.value = '';
   
+  const cidade = document.getElementById('sec-doc-cidade-nasc'); if (cidade) cidade.value = 'Santa Inês';
+  const uf = document.getElementById('sec-doc-uf-nasc'); if (uf) uf.value = 'MA';
+  
   mostrarCamposDinamicosSec();
   openModal('modal-novo-documento-secretaria');
 }
@@ -8013,16 +8016,21 @@ function mostrarCamposDinamicosSec() {
   const tipo = document.getElementById('sec-doc-tipo')?.value;
   const grupoFreq = document.getElementById('sec-grupo-frequencia');
   const grupoReq = document.getElementById('sec-grupo-requerimento');
+  const grupoNasc = document.getElementById('sec-grupo-nascimento');
   
   if (grupoFreq) grupoFreq.classList.add('hidden');
   if (grupoReq) grupoReq.classList.add('hidden');
+  if (grupoNasc) grupoNasc.classList.add('hidden');
+  
+  if (tipo && !tipo.startsWith('Requerimento')) {
+    if (grupoNasc) grupoNasc.classList.remove('hidden');
+  }
   
   if (tipo === 'Declaração de Frequência (Bolsa Família)') {
     if (grupoFreq) grupoFreq.classList.remove('hidden');
   } else if (tipo && tipo.startsWith('Requerimento')) {
     if (grupoReq) grupoReq.classList.remove('hidden');
   } else if (tipo === 'Declaração de Transferência') {
-    // Declaração de Transferência also has a solicitor/reason because it will auto-create a Requerimento
     if (grupoReq) grupoReq.classList.remove('hidden');
   }
 }
@@ -8068,6 +8076,8 @@ async function salvarDocumentoSecretaria() {
   const solicitante = document.getElementById('sec-doc-solicitante')?.value;
   const motivo = document.getElementById('sec-doc-motivo')?.value;
   const obs = document.getElementById('sec-doc-obs')?.value;
+  const cidadeNasc = document.getElementById('sec-doc-cidade-nasc')?.value || '';
+  const ufNasc = document.getElementById('sec-doc-uf-nasc')?.value || '';
   
   if (!alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
   if (!tipo) { showToast('Selecione o tipo de emissão.', 'alerta'); return; }
@@ -8083,6 +8093,9 @@ async function salvarDocumentoSecretaria() {
     const protocolo = await gerarProtocoloSec(tipo);
     
     let obsCompleta = obs || '';
+    if (tipo && !tipo.startsWith('Requerimento') && cidadeNasc) {
+      obsCompleta = `[NASC: ${cidadeNasc} - ${ufNasc}] ${obsCompleta}`.trim();
+    }
     if (tipo === 'Declaração de Frequência (Bolsa Família)') {
       obsCompleta = `Frequência de ${frequencia}%. ${obsCompleta}`.trim();
     }
@@ -8096,7 +8109,9 @@ async function salvarDocumentoSecretaria() {
       solicitante: solicitante || null,
       motivo: motivo || null,
       obs: obsCompleta || null,
-      responsavel
+      responsavel,
+      cidade_nascimento: tipo.startsWith('Requerimento') ? null : (cidadeNasc || null),
+      uf_nascimento: tipo.startsWith('Requerimento') ? null : (ufNasc || null)
     };
     
     const { data, error } = await supabaseClient
@@ -8195,9 +8210,8 @@ async function imprimirDocumentoSec(id) {
 async function imprimirDocumentoHtml(id) {
   showLoading('Formatando impressão...');
   try {
-    const doc = SEC_DOCUMENTOS.find(d => d.id === id);
+    let doc = SEC_DOCUMENTOS.find(d => d.id === id);
     if (!doc) {
-      // Tenta buscar do banco
       const { data, error } = await supabaseClient
         .from('documentos_secretaria')
         .select('*')
@@ -8213,6 +8227,22 @@ async function imprimirDocumentoHtml(id) {
     const dataPorExtenso = formatarDataPorExtenso(doc.data_emissao);
     const dataBr = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '';
     
+    // Obtenção da Cidade e UF de Nascimento de forma defensiva/segura
+    let cidadeNasc = doc.cidade_nascimento || '';
+    let ufNasc = doc.uf_nascimento || '';
+    if (!cidadeNasc && doc.obs && doc.obs.includes('[NASC:')) {
+      const match = doc.obs.match(/\[NASC:\s*([^-\]]+)\s*-\s*([^\]]+)\]/);
+      if (match) {
+        cidadeNasc = match[1].trim();
+        ufNasc = match[2].trim();
+      }
+    }
+    
+    let cidadeNascText = '';
+    if (cidadeNasc) {
+      cidadeNascText = `, natural de <b>${cidadeNasc} - ${ufNasc || 'MA'}</b>`;
+    }
+    
     let contentHtml = '';
     let titleHtml = doc.tipo;
     
@@ -8220,7 +8250,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, 
+          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, 
           está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, 
           cursando a turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
         </p>
@@ -8229,7 +8259,6 @@ async function imprimirDocumentoHtml(id) {
         </p>
       `;
     } else if (doc.tipo === 'Declaração de Frequência (Bolsa Família)') {
-      // Extrai frequência da observação ou usa padrão
       let freqValue = '100';
       if (doc.obs && doc.obs.includes('Frequência de')) {
         const match = doc.obs.match(/Frequência de (\d+)%/);
@@ -8239,7 +8268,7 @@ async function imprimirDocumentoHtml(id) {
         <p class="doc-text">
           Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, 
           que o(a) estudante <b>${aluno.nome}</b>, matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, 
-          nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, está regularmente matriculado(a) 
+          nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, está regularmente matriculado(a) 
           e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${aluno.turma || '—'}</b>, 
           no turno <b>${aluno.turno || '—'}</b>.
         </p>
@@ -8251,7 +8280,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins de direito, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, 
+          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, 
           frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${aluno.turma || '—'}</b> 
           sob regime letivo ordinário.
         </p>
@@ -8263,7 +8292,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <b>${aluno.nome}</b>, 
-          matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, 
+          matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, 
           que se encontrava devidamente matriculado(a) na turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
         </p>
         <p class="doc-text">
@@ -8273,7 +8302,6 @@ async function imprimirDocumentoHtml(id) {
         </p>
       `;
     } else if (doc.tipo.startsWith('Requerimento')) {
-      // Requerimento
       titleHtml = "Comprovante de Requerimento";
       contentHtml = `
         <p style="text-align:justify;margin-bottom:20px;font-size:12pt">
@@ -8330,7 +8358,6 @@ async function imprimirDocumentoHtml(id) {
       `;
     }
     
-    // Layout final em HTML com Cabeçalho, Marca d'água e Rodapé
     const htmlPrint = `
       <!DOCTYPE html>
       <html lang="pt-BR">
@@ -8507,7 +8534,7 @@ async function imprimirDocumentoHtml(id) {
           </div>
           
           <div class="footer">
-            RVS Escolar Gestão Inteligente — Unidade Escolar de Apoio Integrado<br>
+            RVS Escolar Gestão Inteligente — Responsável: <b>${doc.responsavel || 'Secretaria'}</b><br>
             Ficha gerada eletronicamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} | Protocolo: ${doc.protocolo}
           </div>
         </div>
@@ -8515,7 +8542,6 @@ async function imprimirDocumentoHtml(id) {
       </html>
     `;
     
-    // Cria iframe e dispara impressão
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
@@ -8546,7 +8572,6 @@ async function imprimirDocumentoHtml(id) {
 
 function formatarDataPorExtenso(dateVal) {
   if (!dateVal) return '';
-  // Garante tratamento correto de fuso horário local
   const date = new Date(dateVal + 'T00:00:00');
   if (isNaN(date.getTime())) return '';
   const dia = date.getDate();
