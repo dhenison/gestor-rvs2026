@@ -188,7 +188,8 @@ let PERMS = [
   {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
-  {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true}
+  {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'Documentos Secretaria',    id:'page-documentos-secretaria', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false}
 ];
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
@@ -331,7 +332,8 @@ async function carregarDados(){
           {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
           {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
-          {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false}
+          {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+          {func:'Documentos Secretaria',    id:'page-documentos-secretaria', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false}
         ];
         PERMS = defaultPerms.map(def => {
           const found = loaded.find(l => l.id === def.id);
@@ -347,11 +349,25 @@ async function carregarDados(){
           bPerm.editar_coord = true;
           bPerm.editar_sec = true;
           bPerm.editar_prof = true;
+        }
+
+        // Auto-correção/Self-healing para garantir que o módulo page-documentos-secretaria esteja no banco
+        const dPerm = PERMS.find(p => p.id === 'page-documentos-secretaria');
+        if (dPerm && (!dPerm.coord || !dPerm.sec)) {
+          dPerm.coord = true;
+          dPerm.sec = true;
+          dPerm.editar_coord = true;
+          dPerm.editar_sec = true;
+        }
+
+        const hasMissing = defaultPerms.some(def => !loaded.some(l => l.id === def.id));
+        const needsSync = hasMissing || (bPerm && (!bPerm.prof || !bPerm.editar_prof)) || (dPerm && (!dPerm.coord || !dPerm.sec));
+        if (needsSync) {
           supabaseClient
             .from('configuracoes')
             .upsert({ chave: 'permissoes', valor: PERMS }, { onConflict: 'chave' })
             .then(({ error }) => {
-              if (!error) console.log('[Permissões] Boletins sincronizado no banco de dados para todos os perfis');
+              if (!error) console.log('[Permissões] Banco de dados sincronizado com novas permissões');
             });
         }
       } else {
@@ -750,6 +766,7 @@ function showPage(p, el) {
   if(p==='perfil') renderPerfil();
   if(p==='whatsapp') initWhatsAppPage();
   if(p==='tratamento-ocorrencias') initTratamentoOcorrenciasPage();
+  if(p==='documentos-secretaria') carregarDocumentosSecretaria();
   if(p==='frequencia'){
     // Sempre mostra etapa1 se não houver chamada em andamento
     if(!turmaChamadaAtual){
@@ -7796,3 +7813,749 @@ function normalizarTexto(str) {
     .toLowerCase()
     .trim();
 }
+
+// ─── DOCUMENTOS SECRETARIA ───────────────────────────────────────────────────
+
+let SEC_DOCUMENTOS = [];
+
+function switchSecSubTab(tab, el) {
+  document.querySelectorAll('#page-documentos-secretaria .tabs .tab').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  
+  if (tab === 'historico') {
+    document.getElementById('sec-subtab-historico').classList.remove('hidden');
+    document.getElementById('sec-subtab-requerimentos').classList.add('hidden');
+  } else {
+    document.getElementById('sec-subtab-historico').classList.add('hidden');
+    document.getElementById('sec-subtab-requerimentos').classList.remove('hidden');
+  }
+}
+
+async function carregarDocumentosSecretaria() {
+  showLoading('Carregando documentos...');
+  try {
+    const { data, error } = await supabaseClient
+      .from('documentos_secretaria')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    SEC_DOCUMENTOS = data || [];
+    renderSecDocumentos();
+  } catch (err) {
+    console.error('[carregarDocumentosSecretaria] Erro:', err);
+    showToast('Erro ao carregar documentos da secretaria.', 'erro');
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderSecDocumentos() {
+  const user = getCurrentUser();
+  const rKey = user ? getRoleKey(user.perfil) : 'prof';
+  const canDelete = (rKey === 'admin' || rKey === 'coord' || rKey === 'sec');
+  
+  // 1. Filtragem & renderização do Histórico (Declarações)
+  const filtroAluno = normalizarTexto(document.getElementById('filtro-sec-aluno')?.value);
+  const filtroTipo = document.getElementById('filtro-sec-tipo')?.value;
+  const filtroDataIni = document.getElementById('filtro-sec-data-ini')?.value;
+  const filtroDataFim = document.getElementById('filtro-sec-data-fim')?.value;
+  
+  const declaracoes = SEC_DOCUMENTOS.filter(doc => !doc.tipo.startsWith('Requerimento'));
+  const declFiltradas = declaracoes.filter(doc => {
+    const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
+    const alunoNome = aluno ? normalizarTexto(aluno.nome) : '';
+    if (filtroAluno && !alunoNome.includes(filtroAluno)) return false;
+    if (filtroTipo && doc.tipo !== filtroTipo) return false;
+    if (filtroDataIni && doc.data_emissao < filtroDataIni) return false;
+    if (filtroDataFim && doc.data_emissao > filtroDataFim) return false;
+    return true;
+  });
+  
+  const tbodyHist = document.getElementById('sec-historico-tbody');
+  if (tbodyHist) {
+    if (declFiltradas.length === 0) {
+      tbodyHist.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray4)">Nenhum documento encontrado.</td></tr>';
+    } else {
+      tbodyHist.innerHTML = declFiltradas.map(doc => {
+        const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
+        const dataFormatada = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+        const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">🗑️</button>` : '';
+        return `
+          <tr>
+            <td><strong style="color:var(--primary);font-family:monospace">${doc.protocolo}</strong></td>
+            <td>${aluno ? aluno.nome : '<span style="color:var(--red)">Aluno não encontrado</span>'}</td>
+            <td>${aluno ? aluno.turma : '—'}</td>
+            <td><span class="badge" style="background:var(--gray2);color:var(--gray7);font-weight:600">${doc.tipo}</span></td>
+            <td>${dataFormatada}</td>
+            <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || '—'}</td>
+            <td style="text-align:right">
+              <button class="btn btn-xs btn-primary" onclick="imprimirDocumentoSec('${doc.id}')">🖨️ Imprimir</button>
+              ${deleteBtn}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+  
+  // 2. Filtragem & renderização dos Requerimentos
+  const filtroReqAluno = normalizarTexto(document.getElementById('filtro-sec-req-aluno')?.value);
+  const filtroReqTipo = document.getElementById('filtro-sec-req-tipo')?.value;
+  const filtroReqStatus = document.getElementById('filtro-sec-req-status')?.value;
+  
+  const requerimentos = SEC_DOCUMENTOS.filter(doc => doc.tipo.startsWith('Requerimento'));
+  const reqFiltrados = requerimentos.filter(doc => {
+    const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
+    const alunoNome = aluno ? normalizarTexto(aluno.nome) : '';
+    if (filtroReqAluno && !alunoNome.includes(filtroReqAluno)) return false;
+    if (filtroReqTipo && doc.tipo !== filtroReqTipo) return false;
+    if (filtroReqStatus && doc.status !== filtroReqStatus) return false;
+    return true;
+  });
+  
+  const tbodyReq = document.getElementById('sec-requerimentos-tbody');
+  if (tbodyReq) {
+    if (reqFiltrados.length === 0) {
+      tbodyReq.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray4)">Nenhum requerimento encontrado.</td></tr>';
+    } else {
+      tbodyReq.innerHTML = reqFiltrados.map(doc => {
+        const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
+        const dataFormatada = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+        
+        let badgeColor = 'var(--gray3)';
+        let badgeText = 'var(--gray7)';
+        if (doc.status === 'pendente') { badgeColor = '#fef3c7'; badgeText = '#d97706'; }
+        else if (doc.status === 'em_processamento') { badgeColor = '#dbeafe'; badgeText = '#2563eb'; }
+        else if (doc.status === 'pronto_para_entrega') { badgeColor = '#faf5ff'; badgeText = '#7c3aed'; }
+        else if (doc.status === 'entregue') { badgeColor = '#dcfce7'; badgeText = '#15803d'; }
+        else if (doc.status === 'cancelado') { badgeColor = '#fee2e2'; badgeText = '#b91c1c'; }
+        
+        const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">🗑️</button>` : '';
+        
+        // Editable status dropdown directly in the table
+        const selectStatus = `
+          <select class="form-input form-select" style="width:145px;display:inline-block;padding:2px 4px;font-size:11.5px;height:28px" onchange="alterarStatusRequerimento('${doc.id}', this.value)">
+            <option value="pendente" ${doc.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+            <option value="em_processamento" ${doc.status === 'em_processamento' ? 'selected' : ''}>Em Processamento</option>
+            <option value="pronto_para_entrega" ${doc.status === 'pronto_para_entrega' ? 'selected' : ''}>Pronto para Entrega</option>
+            <option value="entregue" ${doc.status === 'entregue' ? 'selected' : ''}>Entregue</option>
+            <option value="cancelado" ${doc.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+          </select>
+        `;
+
+        return `
+          <tr>
+            <td><strong style="color:var(--primary);font-family:monospace">${doc.protocolo}</strong></td>
+            <td>${aluno ? aluno.nome : '<span style="color:var(--red)">Aluno não encontrado</span>'}</td>
+            <td>${aluno ? aluno.turma : '—'}</td>
+            <td><span class="badge" style="background:var(--gray1);color:var(--gray6);font-weight:600">${doc.tipo}</span></td>
+            <td>${doc.solicitante || 'O próprio aluno'}</td>
+            <td>${dataFormatada}</td>
+            <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || '—'}</td>
+            <td>
+              <span class="badge" style="background:${badgeColor};color:${badgeText};font-weight:700">${doc.status.replace('_', ' ').toUpperCase()}</span>
+            </td>
+            <td style="text-align:right;white-space:nowrap">
+              ${selectStatus}
+              <button class="btn btn-xs btn-primary" onclick="imprimirDocumentoSec('${doc.id}')" title="Imprimir Comprovante">🖨️</button>
+              ${deleteBtn}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+}
+
+function filtrarSecDocumentos() {
+  renderSecDocumentos();
+}
+
+function filtrarSecRequerimentos() {
+  renderSecDocumentos();
+}
+
+function limparFiltrosSec(aba) {
+  if (aba === 'historico') {
+    const a = document.getElementById('filtro-sec-aluno'); if (a) a.value = '';
+    const b = document.getElementById('filtro-sec-tipo'); if (b) b.value = '';
+    const c = document.getElementById('filtro-sec-data-ini'); if (c) c.value = '';
+    const d = document.getElementById('filtro-sec-data-fim'); if (d) d.value = '';
+  } else {
+    const a = document.getElementById('filtro-sec-req-aluno'); if (a) a.value = '';
+    const b = document.getElementById('filtro-sec-req-tipo'); if (b) b.value = '';
+    const c = document.getElementById('filtro-sec-req-status'); if (c) c.value = '';
+  }
+  renderSecDocumentos();
+}
+
+function abrirModalNovoDocSecretaria() {
+  const select = document.getElementById('sec-doc-aluno-id');
+  if (select) {
+    const sorted = [...ALUNOS_DATA].sort((a, b) => a.nome.localeCompare(b.nome));
+    select.innerHTML = '<option value="">Selecione um aluno...</option>' + 
+      sorted.map(a => `<option value="${a.id}">${a.nome} (${a.turma || 'Sem turma'})</option>`).join('');
+  }
+  
+  const tipo = document.getElementById('sec-doc-tipo'); if (tipo) tipo.value = '';
+  const freq = document.getElementById('sec-doc-frequencia'); if (freq) freq.value = '';
+  const sol = document.getElementById('sec-doc-solicitante'); if (sol) sol.value = '';
+  const mot = document.getElementById('sec-doc-motivo'); if (mot) mot.value = '';
+  const obs = document.getElementById('sec-doc-obs'); if (obs) obs.value = '';
+  
+  mostrarCamposDinamicosSec();
+  openModal('modal-novo-documento-secretaria');
+}
+
+function mostrarCamposDinamicosSec() {
+  const tipo = document.getElementById('sec-doc-tipo')?.value;
+  const grupoFreq = document.getElementById('sec-grupo-frequencia');
+  const grupoReq = document.getElementById('sec-grupo-requerimento');
+  
+  if (grupoFreq) grupoFreq.classList.add('hidden');
+  if (grupoReq) grupoReq.classList.add('hidden');
+  
+  if (tipo === 'Declaração de Frequência (Bolsa Família)') {
+    if (grupoFreq) grupoFreq.classList.remove('hidden');
+  } else if (tipo && tipo.startsWith('Requerimento')) {
+    if (grupoReq) grupoReq.classList.remove('hidden');
+  } else if (tipo === 'Declaração de Transferência') {
+    // Declaração de Transferência also has a solicitor/reason because it will auto-create a Requerimento
+    if (grupoReq) grupoReq.classList.remove('hidden');
+  }
+}
+
+async function gerarProtocoloSec(tipoDoc) {
+  const prefix = tipoDoc.startsWith('Requerimento') ? 'REQ' : 'DEC';
+  const ano = new Date().getFullYear();
+  try {
+    const { data, error } = await supabaseClient
+      .from('documentos_secretaria')
+      .select('protocolo')
+      .like('protocolo', `SEC-${prefix}-${ano}-%`);
+      
+    if (error) throw error;
+    
+    // Extrai os números dos protocolos encontrados para evitar duplicatas ou buracos
+    let maxSeq = 0;
+    if (data && data.length > 0) {
+      data.forEach(d => {
+        const partes = d.protocolo.split('-');
+        const seqStr = partes[partes.length - 1];
+        const seqNum = parseInt(seqStr, 10);
+        if (!isNaN(seqNum) && seqNum > maxSeq) {
+          maxSeq = seqNum;
+        }
+      });
+    }
+    
+    const nextSeq = maxSeq + 1;
+    return `SEC-${prefix}-${ano}-${nextSeq.toString().padStart(4, '0')}`;
+  } catch (err) {
+    console.error('[gerarProtocoloSec] Erro:', err);
+    // Fallback randômico para não travar o processo
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    return `SEC-${prefix}-${ano}-${rand}`;
+  }
+}
+
+async function salvarDocumentoSecretaria() {
+  const alunoId = document.getElementById('sec-doc-aluno-id')?.value;
+  const tipo = document.getElementById('sec-doc-tipo')?.value;
+  const frequencia = document.getElementById('sec-doc-frequencia')?.value;
+  const solicitante = document.getElementById('sec-doc-solicitante')?.value;
+  const motivo = document.getElementById('sec-doc-motivo')?.value;
+  const obs = document.getElementById('sec-doc-obs')?.value;
+  
+  if (!alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
+  if (!tipo) { showToast('Selecione o tipo de emissão.', 'alerta'); return; }
+  
+  if (tipo === 'Declaração de Frequência (Bolsa Família)' && !frequencia) {
+    showToast('Informe a frequência do aluno.', 'alerta');
+    return;
+  }
+  
+  showLoading('Gerando documento...');
+  try {
+    const responsavel = getCurrentUser()?.nome || 'Secretaria';
+    const protocolo = await gerarProtocoloSec(tipo);
+    
+    let obsCompleta = obs || '';
+    if (tipo === 'Declaração de Frequência (Bolsa Família)') {
+      obsCompleta = `Frequência de ${frequencia}%. ${obsCompleta}`.trim();
+    }
+    
+    const payload = {
+      protocolo,
+      aluno_id: alunoId,
+      tipo,
+      data_emissao: new Date().toISOString().split('T')[0],
+      status: tipo.startsWith('Requerimento') ? 'pendente' : 'concluido',
+      solicitante: solicitante || null,
+      motivo: motivo || null,
+      obs: obsCompleta || null,
+      responsavel
+    };
+    
+    const { data, error } = await supabaseClient
+      .from('documentos_secretaria')
+      .insert(payload)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    // Se for declaração de transferência, gera automaticamente um requerimento de transferência pendente
+    if (tipo === 'Declaração de Transferência') {
+      const reqProtocolo = await gerarProtocoloSec('Requerimento de Transferência');
+      const reqPayload = {
+        protocolo: reqProtocolo,
+        aluno_id: alunoId,
+        tipo: 'Requerimento de Transferência',
+        data_emissao: new Date().toISOString().split('T')[0],
+        status: 'pendente',
+        solicitante: solicitante || 'Secretaria (Auto)',
+        motivo: motivo || 'Declaração de transferência emitida',
+        obs: 'Gerado automaticamente por emissão de declaração.',
+        responsavel
+      };
+      
+      const { error: reqError } = await supabaseClient
+        .from('documentos_secretaria')
+        .insert(reqPayload);
+        
+      if (reqError) {
+        console.error('[salvarDocumentoSecretaria] Erro ao criar requerimento automático:', reqError);
+      }
+    }
+    
+    showToast('Documento registrado com sucesso!', 'sucesso');
+    closeModal('modal-novo-documento-secretaria');
+    
+    // Atualiza a listagem local
+    await carregarDocumentosSecretaria();
+    
+    // Chama o disparador de impressão nativa
+    imprimirDocumentoHtml(data.id);
+    
+  } catch (err) {
+    console.error('[salvarDocumentoSecretaria] Erro:', err);
+    showToast('Erro ao registrar documento no banco de dados.', 'erro');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function alterarStatusRequerimento(id, novoStatus) {
+  showLoading('Atualizando status...');
+  try {
+    const { error } = await supabaseClient
+      .from('documentos_secretaria')
+      .update({ status: novoStatus })
+      .eq('id', id);
+      
+    if (error) throw error;
+    showToast('Status do requerimento atualizado!', 'sucesso');
+    await carregarDocumentosSecretaria();
+  } catch (err) {
+    console.error('[alterarStatusRequerimento] Erro:', err);
+    showToast('Erro ao atualizar status do requerimento.', 'erro');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function excluirDocumentoSec(id) {
+  if (!confirm('Deseja realmente excluir este registro? Esta ação é irreversível e excluirá o protocolo do histórico.')) return;
+  
+  showLoading('Excluindo...');
+  try {
+    const { error } = await supabaseClient
+      .from('documentos_secretaria')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    showToast('Registro excluído!', 'sucesso');
+    await carregarDocumentosSecretaria();
+  } catch (err) {
+    console.error('[excluirDocumentoSec] Erro:', err);
+    showToast('Erro ao excluir registro.', 'erro');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function imprimirDocumentoSec(id) {
+  imprimirDocumentoHtml(id);
+}
+
+async function imprimirDocumentoHtml(id) {
+  showLoading('Formatando impressão...');
+  try {
+    const doc = SEC_DOCUMENTOS.find(d => d.id === id);
+    if (!doc) {
+      // Tenta buscar do banco
+      const { data, error } = await supabaseClient
+        .from('documentos_secretaria')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error || !data) throw new Error('Documento não encontrado');
+      doc = data;
+    }
+    
+    const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
+    if (!aluno) throw new Error('Dados do aluno não encontrados.');
+    
+    const dataPorExtenso = formatarDataPorExtenso(doc.data_emissao);
+    const dataBr = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+    
+    let contentHtml = '';
+    let titleHtml = doc.tipo;
+    
+    if (doc.tipo === 'Declaração de Matrícula') {
+      contentHtml = `
+        <p class="doc-text">
+          Declaramos, para os devidos fins, que o(a) estudante <b>${aluno.nome}</b>, 
+          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, 
+          está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, 
+          cursando a turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
+        </p>
+        <p class="doc-text">
+          Referida informação é expressão da verdade.
+        </p>
+      `;
+    } else if (doc.tipo === 'Declaração de Frequência (Bolsa Família)') {
+      // Extrai frequência da observação ou usa padrão
+      let freqValue = '100';
+      if (doc.obs && doc.obs.includes('Frequência de')) {
+        const match = doc.obs.match(/Frequência de (\d+)%/);
+        if (match) freqValue = match[1];
+      }
+      contentHtml = `
+        <p class="doc-text">
+          Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, 
+          que o(a) estudante <b>${aluno.nome}</b>, matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, 
+          nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, está regularmente matriculado(a) 
+          e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${aluno.turma || '—'}</b>, 
+          no turno <b>${aluno.turno || '—'}</b>.
+        </p>
+        <p class="doc-text">
+          Apurou-se, para o período avaliativo correspondente, uma frequência escolar global e relativa de <b>${freqValue}%</b>.
+        </p>
+      `;
+    } else if (doc.tipo === 'Declaração de Escolaridade') {
+      contentHtml = `
+        <p class="doc-text">
+          Declaramos, para os devidos fins de direito, que o(a) estudante <b>${aluno.nome}</b>, 
+          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, 
+          frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${aluno.turma || '—'}</b> 
+          sob regime letivo ordinário.
+        </p>
+        <p class="doc-text">
+          O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.
+        </p>
+      `;
+    } else if (doc.tipo === 'Declaração de Transferência') {
+      contentHtml = `
+        <p class="doc-text">
+          Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <b>${aluno.nome}</b>, 
+          matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>, 
+          que se encontrava devidamente matriculado(a) na turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
+        </p>
+        <p class="doc-text">
+          Esta declaração atesta que a vaga de origem está liberada e o processo de transferência ativo. O presente documento 
+          tem validade improrrogável de <b>30 (trinta) dias</b> a partir de sua emissão, prazo este necessário para a confecção e 
+          entrega do Histórico Escolar definitivo.
+        </p>
+      `;
+    } else if (doc.tipo.startsWith('Requerimento')) {
+      // Requerimento
+      titleHtml = "Comprovante de Requerimento";
+      contentHtml = `
+        <p style="text-align:justify;margin-bottom:20px;font-size:12pt">
+          A secretaria escolar atesta e emite o presente comprovante de solicitação para fins de controle e protocolo do pedido. 
+          O documento requerido encontra-se em fase de processamento, devendo ser observados os prazos regimentais desta instituição.
+        </p>
+        
+        <div class="receipt-card">
+          <div style="font-size:12pt;font-weight:bold;text-align:center;margin-bottom:15px;border-bottom:1px solid #000;padding-bottom:5px">
+            DETALHES DO REQUERIMENTO
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Protocolo de Abertura:</span>
+            <span style="font-family:monospace;font-size:12pt;font-weight:bold;color:#1d4ed8">${doc.protocolo}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Estudante:</span>
+            <span>${aluno.nome}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Matrícula:</span>
+            <span>${aluno.cpf || '—'}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Turma / Turno:</span>
+            <span>${aluno.turma || '—'} (${aluno.turno || '—'})</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Serviço/Documento Solicitado:</span>
+            <span style="font-weight:bold">${doc.tipo}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Solicitante:</span>
+            <span>${doc.solicitante || 'O próprio aluno'}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Motivo do Pedido:</span>
+            <span>${doc.motivo || 'Sem justificativa informada'}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Data do Requerimento:</span>
+            <span>${dataBr}</span>
+          </div>
+          <div class="receipt-row" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px">
+            <span class="receipt-label">Responsável pelo Cadastro:</span>
+            <span>${doc.responsavel || 'Secretaria'}</span>
+          </div>
+        </div>
+        
+        <div style="margin-top:30px;font-size:10.5px;color:#555;text-align:justify;line-height:1.4">
+          * IMPORTANTE: O prazo médio de expedição para 2ª vias de diploma e histórico escolar é de até 5 (cinco) dias úteis. 
+          Para requerimentos de transferência, o prazo é de até 3 (três) dias úteis. Guarde este documento comprobatório.
+        </div>
+      `;
+    }
+    
+    // Layout final em HTML com Cabeçalho, Marca d'água e Rodapé
+    const htmlPrint = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <title>${titleHtml} - ${doc.protocolo}</title>
+        <style>
+          @media print {
+            body {
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            @page {
+              size: A4;
+              margin: 15mm 20mm 15mm 20mm;
+            }
+          }
+          body {
+            font-family: Arial, sans-serif;
+            color: #000;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #fff;
+          }
+          .container {
+            width: 100%;
+            box-sizing: border-box;
+            position: relative;
+            min-height: 260mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+          }
+          .header-logo {
+            width: 100%;
+            max-height: 90px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            display: block;
+          }
+          .watermark {
+            position: absolute;
+            top: 52%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 75%;
+            opacity: 0.08;
+            z-index: -1;
+            pointer-events: none;
+          }
+          .protocol-tag {
+            font-family: monospace;
+            font-size: 11px;
+            color: #333;
+            text-align: right;
+            margin-bottom: 10px;
+          }
+          .content-body {
+            flex: 1;
+            margin-top: 10px;
+          }
+          .doc-title {
+            font-size: 15pt;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+            margin-top: 15px;
+            margin-bottom: 35px;
+            letter-spacing: 0.5px;
+          }
+          .doc-text {
+            text-indent: 2.5cm;
+            margin-bottom: 25px;
+            font-size: 12pt;
+            text-align: justify;
+          }
+          .doc-date {
+            text-align: right;
+            margin-top: 40px;
+            margin-bottom: 40px;
+            font-size: 12pt;
+          }
+          .signature-area {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 50px;
+            margin-bottom: 30px;
+          }
+          .signature-box {
+            text-align: center;
+            width: 45%;
+          }
+          .signature-line {
+            border-top: 1px solid #000;
+            margin-bottom: 5px;
+          }
+          .signature-desc {
+            font-size: 10.5pt;
+            color: #333;
+          }
+          .receipt-card {
+            border: 1.5px solid #000;
+            padding: 20px;
+            margin-top: 25px;
+            background: #fafafa;
+            border-radius: 6px;
+          }
+          .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 11pt;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 4px;
+          }
+          .receipt-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+          }
+          .receipt-label {
+            font-weight: bold;
+            color: #111;
+          }
+          .footer {
+            text-align: center;
+            font-size: 8.5pt;
+            color: #444;
+            border-top: 1px solid #bbb;
+            padding-top: 8px;
+            line-height: 1.4;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <img class="watermark" src="assets/marca_dagua.png" alt="Marca d'água">
+          
+          <div class="content-header">
+            <img class="header-logo" src="assets/cabecalho_logo.png" alt="Cabeçalho Oficial">
+            <div class="protocol-tag">Protocolo: <b>${doc.protocolo}</b></div>
+          </div>
+          
+          <div class="content-body">
+            <div class="doc-title">${titleHtml}</div>
+            
+            ${contentHtml}
+            
+            ${!doc.tipo.startsWith('Requerimento') ? `
+              <div class="doc-date">
+                Santa Inês - MA, ${dataPorExtenso}.
+              </div>
+              
+              <div class="signature-area">
+                <div class="signature-box" style="width:50%">
+                  <div class="signature-line"></div>
+                  <span class="signature-desc"><b>Assinatura Autorizada</b><br>Secretaria / Direção Escolar</span>
+                </div>
+              </div>
+            ` : `
+              <div class="signature-area">
+                <div class="signature-box">
+                  <div class="signature-line"></div>
+                  <span class="signature-desc"><b>${doc.responsavel || 'Secretaria'}</b><br>Responsável pelo Cadastro</span>
+                </div>
+                <div class="signature-box">
+                  <div class="signature-line"></div>
+                  <span class="signature-desc"><b>${doc.solicitante || 'Assinatura do Solicitante'}</b><br>Assinatura do Solicitante</span>
+                </div>
+              </div>
+            `}
+          </div>
+          
+          <div class="footer">
+            RVS Escolar Gestão Inteligente — Unidade Escolar de Apoio Integrado<br>
+            Ficha gerada eletronicamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} | Protocolo: ${doc.protocolo}
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    // Cria iframe e dispara impressão
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    
+    const iframeDoc = iframe.contentWindow.document || iframe.contentDocument;
+    iframeDoc.open();
+    iframeDoc.write(htmlPrint);
+    iframeDoc.close();
+    
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      setTimeout(() => iframe.remove(), 2500);
+    }, 600);
+    
+  } catch (err) {
+    console.error('[imprimirDocumentoHtml] Erro:', err);
+    showToast('Erro ao inicializar impressão.', 'erro');
+  } finally {
+    hideLoading();
+  }
+}
+
+function formatarDataPorExtenso(dateVal) {
+  if (!dateVal) return '';
+  // Garante tratamento correto de fuso horário local
+  const date = new Date(dateVal + 'T00:00:00');
+  if (isNaN(date.getTime())) return '';
+  const dia = date.getDate();
+  const meses = [
+    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+  ];
+  const mes = meses[date.getMonth()];
+  const ano = date.getFullYear();
+  return `${dia} de ${mes} de ${ano}`;
+}
+
