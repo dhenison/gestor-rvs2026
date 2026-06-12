@@ -4422,13 +4422,33 @@ async function salvarOlimpiada(){
 
   const editId = document.getElementById('ol-edit-id')?.value||'';
   let error;
+  let olimpiadaId = editId;
+  
   if(editId){
     ({error} = await supabaseClient.from('olimpiadas').update(payload).eq('id', editId));
   } else {
-    ({error} = await supabaseClient.from('olimpiadas').insert(payload));
+    const { data: insData, error: insErr } = await supabaseClient.from('olimpiadas').insert(payload).select('id').single();
+    error = insErr;
+    if (insData) {
+      olimpiadaId = insData.id;
+    }
   }
 
   if(error){ showToast('Erro: '+error.message,'evasao'); return; }
+
+  if (olCartoesPdfBytesPendente && olimpiadaId) {
+    try {
+      await processarEUploadCartoesAcesso(olimpiadaId, olCartoesPdfBytesPendente);
+    } catch (err) {
+      console.error('Erro ao processar cartões de acesso:', err);
+      showToast('Olimpíada salva, mas houve erro ao processar os cartões de acesso.', 'alerta');
+    }
+    olCartoesPdfBytesPendente = null;
+    const cartoesInput = document.getElementById('ol-cartoes-file');
+    if (cartoesInput) cartoesInput.value = '';
+    const statusEl = document.getElementById('ol-cartoes-status');
+    if (statusEl) statusEl.innerHTML = 'Nenhum arquivo de cartões selecionado.';
+  }
 
   await carregarOlimpiadas();
   closeModal('modal-olimpiada');
@@ -4502,6 +4522,205 @@ function importarPlanilhaResultados(input) {
   reader.readAsArrayBuffer(file);
 }
 
+let olCartoesPdfBytesPendente = null;
+
+function handleCartoesFileSelected(input) {
+  const file = input.files[0];
+  const statusEl = document.getElementById('ol-cartoes-status');
+  if (!file) {
+    olCartoesPdfBytesPendente = null;
+    if (statusEl) statusEl.innerHTML = 'Nenhum arquivo de cartões selecionado.';
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    olCartoesPdfBytesPendente = e.target.result;
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:#16a34a">✅ PDF de Cartões Carregado: "${file.name}" (salve para processar e migrar para os portais).</span>`;
+    }
+    showToast('PDF de cartões carregado com sucesso!', 'sucesso');
+  };
+  reader.onerror = function() {
+    olCartoesPdfBytesPendente = null;
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">❌ Erro ao ler arquivo PDF.</span>';
+    showToast('Erro ao ler PDF de cartões.', 'erro');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
+  showLoading('Buscando alunos ativos e analisando PDF de cartões...');
+  
+  let alunos = [];
+  try {
+    const { data, error } = await supabaseClient
+      .from('alunos')
+      .select('id, nome, matricula')
+      .eq('status', 'ativo');
+      
+    if (error) throw error;
+    alunos = data || [];
+  } catch (err) {
+    hideLoading();
+    console.error('Erro ao carregar alunos para cartões:', err);
+    showToast('Erro ao buscar alunos para associar os cartões.', 'erro');
+    return;
+  }
+  
+  if (alunos.length === 0) {
+    hideLoading();
+    showToast('Nenhum aluno ativo encontrado no sistema.', 'alerta');
+    return;
+  }
+  
+  const lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
+  if (!lib) {
+    hideLoading();
+    showToast('Biblioteca PDF.js não carregada. Recarregue a página.', 'erro');
+    return;
+  }
+  
+  try {
+    if (window.location.protocol !== 'file:') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+    } else {
+      delete pdfjsLib.GlobalWorkerOptions.workerSrc;
+    }
+  } catch (e) {
+    console.warn("GlobalWorkerOptions workerSrc error:", e);
+  }
+  
+  let pdf;
+  try {
+    pdf = await pdfjsLib.getDocument({ data: new Uint8Array(fileBytes.slice(0)) }).promise;
+  } catch (err) {
+    hideLoading();
+    console.error('Erro ao ler PDF de cartões com PDF.js:', err);
+    showToast('Erro ao analisar a estrutura do arquivo PDF.', 'erro');
+    return;
+  }
+  
+  const numPages = pdf.numPages;
+  const matches = [];
+  
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    const normalizedPageText = normalizarTexto(pageText);
+    
+    let matchedAluno = null;
+    
+    // A) Busca por Matrícula
+    for (const al of alunos) {
+      if (al.matricula && normalizedPageText.includes(normalizarTexto(al.matricula))) {
+        matchedAluno = al;
+        break;
+      }
+    }
+    
+    // B) Busca por Nome Completo
+    if (!matchedAluno) {
+      for (const al of alunos) {
+        const nomeNorm = normalizarTexto(al.nome);
+        if (nomeNorm.length > 5 && normalizedPageText.includes(nomeNorm)) {
+          matchedAluno = al;
+          break;
+        }
+      }
+    }
+    
+    // C) Busca resiliente por palavras principais
+    if (!matchedAluno) {
+      for (const al of alunos) {
+        const nomeNorm = normalizarTexto(al.nome);
+        const palavras = nomeNorm.split(/\s+/).filter(p => {
+          return p.length > 2 && !['de', 'da', 'do', 'dos', 'das', 'com', 'para'].includes(p);
+        });
+        if (palavras.length > 0 && palavras.every(p => normalizedPageText.includes(p))) {
+          matchedAluno = al;
+          break;
+        }
+      }
+    }
+    
+    if (matchedAluno) {
+      matches.push({ pageNum: i, matchedAluno });
+    }
+  }
+  
+  hideLoading();
+  
+  if (matches.length === 0) {
+    showToast('Não foi possível associar nenhuma página aos alunos ativos.', 'alerta');
+    return;
+  }
+  
+  // Exibe barra de progresso
+  const progressModal = document.createElement('div');
+  progressModal.id = 'cartao-progress-modal';
+  progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
+  progressModal.innerHTML = `
+    <div style="background:white; border:1px solid var(--gray3); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">💾 Gravando Cartões de Acesso...</h4>
+      <p style="font-size:12.5px; color:#000000 !important; font-weight:700; margin-bottom:20px;" id="cartao-progress-text">Codificando páginas...</p>
+      
+      <div style="width:100%; height:8px; background:var(--gray); border-radius:4px; overflow:hidden; margin-bottom:10px;">
+        <div id="cartao-progress-bar" style="width:0%; height:100%; background:var(--blue); transition:width 0.1s ease;"></div>
+      </div>
+      <div style="font-size:11px; color:var(--gray5);" id="cartao-progress-counter">Preparando upload...</div>
+    </div>
+  `;
+  document.body.appendChild(progressModal);
+  
+  const { PDFDocument } = PDFLib;
+  const srcDoc = await PDFDocument.load(fileBytes);
+  
+  let sucessos = 0;
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const pageIndex = match.pageNum - 1;
+    
+    document.getElementById('cartao-progress-text').textContent = `Salvando: ${match.matchedAluno.nome}`;
+    const pct = Math.round((i / matches.length) * 100);
+    document.getElementById('cartao-progress-bar').style.width = `${pct}%`;
+    document.getElementById('cartao-progress-counter').textContent = `${i} de ${matches.length} cartões salvos`;
+    
+    try {
+      const newDoc = await PDFDocument.create();
+      const [copiedPage] = await newDoc.copyPages(srcDoc, [pageIndex]);
+      newDoc.addPage(copiedPage);
+      const pdfBytes = await newDoc.save();
+      
+      let binary = '';
+      const len = pdfBytes.byteLength;
+      for (let j = 0; j < len; j++) {
+        binary += String.fromCharCode(pdfBytes[j]);
+      }
+      const base64String = window.btoa(binary);
+      
+      const payload = {
+        aluno_id: match.matchedAluno.id,
+        olimpiada_id: olimpiadaId,
+        pdf_base64: base64String
+      };
+      
+      const { error: indErr } = await supabaseClient
+        .from('cartoes_acesso_olimpiadas')
+        .upsert(payload, { onConflict: 'aluno_id,olimpiada_id' });
+        
+      if (indErr) throw indErr;
+      sucessos++;
+    } catch (err) {
+      console.error(`Erro ao salvar cartão para ${match.matchedAluno.nome}:`, err);
+    }
+  }
+  
+  progressModal.remove();
+  showToast(`Sucesso! ${sucessos} cartões de acesso vinculados aos alunos.`, 'sucesso');
+}
+
 function handleFlyerUpload(input){
   const file = input.files[0]; if(!file) return;
   if(file.size > 2*1024*1024){ showToast('Imagem muito grande (máx 2MB)','alerta'); return; }
@@ -4549,6 +4768,10 @@ function abrirModalOlimpiada(id){
   
   olResultadosDadosPendente = [];
   document.getElementById('ol-resultados-status').innerHTML = '<span style="color:#6b7280">Nenhum resultado importado por planilha.</span>';
+  
+  olCartoesPdfBytesPendente = null;
+  const cartoesFile = document.getElementById('ol-cartoes-file'); if (cartoesFile) cartoesFile.value = '';
+  const cartoesStatus = document.getElementById('ol-cartoes-status'); if (cartoesStatus) cartoesStatus.innerHTML = '<span style="color:#6b7280">Nenhum arquivo de cartões selecionado.</span>';
   
   document.getElementById('modal-olimpiada-title').textContent = '+ Nova Olimpíada';
 

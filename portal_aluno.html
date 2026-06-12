@@ -1013,6 +1013,15 @@
         <a href="#" target="_blank" class="btn-edital" id="ov-link-edital" style="display:none;">
           🔗 Acessar Edital Oficial
         </a>
+
+        <!-- Seção do Cartão de Acesso -->
+        <div id="ov-cartao-container" style="display:none; margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-color)">
+          <div class="info-label" style="color:var(--accent); margin-bottom:8px;">🎫 Cartão de Acesso Disponível!</div>
+          <div style="display:flex; gap:10px; width: 100%;">
+            <button class="btn-edital" id="ov-cartao-view-btn" style="margin:0; flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; padding:10px;">👁️ Visualizar Cartão</button>
+            <button class="btn-edital" id="ov-cartao-download-btn" style="margin:0; flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; padding:10px; background:rgba(255,255,255,0.03); border-color:var(--border-color);">📥 Baixar Cartão</button>
+          </div>
+        </div>
       </div>
       
       <!-- Tab: Resultados -->
@@ -1123,10 +1132,30 @@
       // Exibe conteúdo
       document.getElementById('tela-loading').style.display = 'none';
       document.getElementById('conteudo').style.display = 'flex';
+      
+      carregarIdAlunoSessao();
 
     } catch (e) {
       sessionStorage.removeItem('portal_aluno');
       window.location.href = 'aluno.html';
+    }
+  }
+
+  async function carregarIdAlunoSessao() {
+    if (studentProfile && studentProfile.cpf && !studentProfile.id) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('alunos')
+          .select('id')
+          .eq('matricula', studentProfile.cpf)
+          .maybeSingle();
+        if (!error && data) {
+          studentProfile.id = data.id;
+          sessionStorage.setItem('portal_aluno', JSON.stringify(studentProfile));
+        }
+      } catch (err) {
+        console.warn('Erro ao carregar ID do aluno:', err);
+      }
     }
   }
 
@@ -1484,6 +1513,47 @@
       } else {
         resDesc.innerHTML = `As inscrições estão ativas. A prova será realizada em <strong>${fmtDt}</strong>.<br><br>
           Os resultados de medalhas e classificação escolar estarão disponíveis nesta aba logo após a publicação dos dados oficiais pelos organizadores da olimpíada.`;
+      }
+    }
+
+    // Cartão de Acesso logic
+    const cardContainer = document.getElementById('ov-cartao-container');
+    if (cardContainer) cardContainer.style.display = 'none';
+
+    if (studentProfile && studentProfile.cpf) {
+      if (!studentProfile.id) {
+        const { data: alData } = await supabaseClient
+          .from('alunos')
+          .select('id')
+          .eq('matricula', studentProfile.cpf)
+          .maybeSingle();
+        if (alData) {
+          studentProfile.id = alData.id;
+          sessionStorage.setItem('portal_aluno', JSON.stringify(studentProfile));
+        }
+      }
+      
+      if (studentProfile.id) {
+        const { data: cardData } = await supabaseClient
+          .from('cartoes_acesso_olimpiadas')
+          .select('pdf_base64')
+          .eq('olimpiada_id', ol.id)
+          .eq('aluno_id', studentProfile.id)
+          .maybeSingle();
+          
+        if (cardData && cardData.pdf_base64) {
+          if (cardContainer) {
+            cardContainer.style.display = 'block';
+            const viewBtn = document.getElementById('ov-cartao-view-btn');
+            const downloadBtn = document.getElementById('ov-cartao-download-btn');
+            if (viewBtn) {
+              viewBtn.onclick = () => visualizarBoletimPDF(cardData.pdf_base64, `Cartão de Acesso - ${ol.nome}`);
+            }
+            if (downloadBtn) {
+              downloadBtn.onclick = () => baixarBoletimPDF(cardData.pdf_base64, `Cartao_Acesso_${ol.nome.replace(/ /g, '_')}.pdf`);
+            }
+          }
+        }
       }
     }
 
