@@ -14,6 +14,9 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="js/pdf.min.js"></script>
   <script src="js/pdf-lib.min.js"></script>
+  
+  <!-- JSZip for memory-safe zipping of files -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <style>
     /* ── Reset & Variables ── */
@@ -298,19 +301,19 @@
     <img src="assets/topo_saber_logo.jpg" class="logo" alt="Logo Topo do Saber" onerror="this.style.display='none'">
     <div class="header-info">
       <h1>Compilador Offline de Cartões de Olimpíadas</h1>
-      <p>Gere o arquivo "cartoes_data.json" localmente no seu computador sem depender do banco do Supabase.</p>
+      <p>Gere os arquivos individuais dos alunos localmente no seu computador em um pacote ZIP, livre de erros de limite de memória.</p>
     </div>
   </div>
 
   <!-- INSTRUCTIONS -->
   <div class="card">
     <h3>📖 Como funciona?</h3>
-    <p>Este utilitário permite que você cruze a planilha de alunos cadastrados com os arquivos PDFs das olimpíadas para gerar o banco de dados estático criptografado em base64 localmente.</p>
+    <p>Este utilitário cruza a planilha Excel de alunos com os arquivos PDFs das olimpíadas para gerar arquivos JSON individuais rápidos de ler.</p>
     <ul>
       <li>1. Selecione a planilha Excel dos Alunos contendo as colunas: <b>Nome</b>, <b>CPF</b> e <b>Data Nascimento</b>.</li>
-      <li>2. Faça o upload dos PDFs das provas correspondentes (o PDF completo que você recebeu, contendo a página de cada aluno).</li>
-      <li>3. O compilador lê as páginas, localiza qual aluno pertence àquela folha por cruzamento de Nome/CPF e gera um único arquivo compactado.</li>
-      <li>4. Salve o arquivo gerado como <b>cartoes_data.json</b> diretamente na pasta raiz do seu projeto e suba para o GitHub.</li>
+      <li>2. Selecione os PDFs das olimpíadas correspondentes (o PDF completo que você recebeu, contendo a página de cada aluno).</li>
+      <li>3. O compilador lê as páginas, localiza qual aluno pertence àquela folha por cruzamento de Nome/CPF.</li>
+      <li>4. Ao final, ele baixa um arquivo ZIP chamado <b>`cartoes.zip`</b> contendo os arquivos individuais. Extraia-o como uma pasta chamada <b>`cartoes`</b> na raiz do seu site.</li>
     </ul>
   </div>
 
@@ -343,8 +346,8 @@
     <button class="btn-compile" id="btn-compile" onclick="iniciarCompilacao()">
       ⚙️ Iniciar Compilação de Cartões
     </button>
-    <button class="btn-download" id="btn-download" onclick="baixarJSON()">
-      📥 Baixar cartoes_data.json
+    <button class="btn-download" id="btn-download" onclick="baixarZIP()">
+      📥 Baixar cartoes.zip
     </button>
   </div>
 
@@ -371,7 +374,7 @@
 
   let alunosCarregados = [];
   let cartoesCompilados = {}; // cpf -> { nome, data_nascimento, cartoes: [] }
-  let jsonStringFinal = '';
+  let zipBlob = null;
 
   function log(msg, tipo = '') {
     const box = document.getElementById('log-box');
@@ -382,6 +385,20 @@
     entry.textContent = `[${time}] ${msg}`;
     box.appendChild(entry);
     box.scrollTop = box.scrollHeight;
+  }
+
+  // Conversão de Uint8Array para Base64 usando a API FileReader do navegador (nativa, rápida e sem limites de string)
+  function uint8ArrayToBase64(uint8Array) {
+    return new Promise((resolve) => {
+      const blob = new Blob([uint8Array], { type: 'application/pdf' });
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        const base64 = dataUrl.split(',')[1];
+        resolve(base64);
+      };
+      reader.readAsDataURL(blob);
+    });
   }
 
   // ── Formatações e Normalizações ──
@@ -444,7 +461,6 @@
             throw new Error('A planilha está vazia.');
           }
 
-          // Encontra colunas
           const headers = Object.keys(rows[0]);
           const findCol = (...aliases) => {
             for (const a of aliases) {
@@ -459,7 +475,7 @@
           const colDN = findCol('data nascimento', 'nascimento', 'data_nascimento', 'dt nascimento', 'data de nascimento', 'birth');
 
           if (!colNome || !colCPF || !colDN) {
-            throw new Error(`Colunas obrigatórias não identificadas. Certifique-se de que a planilha possui colunas com os nomes "Nome", "CPF" e "Data Nascimento". Colunas lidas: ${headers.join(', ')}`);
+            throw new Error(`Colunas obrigatórias não identificadas. Verifique se a planilha possui colunas com os nomes "Nome", "CPF" e "Data Nascimento". Colunas lidas: ${headers.join(', ')}`);
           }
 
           const parsedList = [];
@@ -497,7 +513,7 @@
     const pdfjsDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const totalPages = pdfjsDoc.numPages;
     
-    log(`PDF carregado com sucesso. Total de páginas a analisar: ${totalPages}`, 'info');
+    log(`PDF carregado. Total de páginas: ${totalPages}`, 'info');
 
     let vinculados = 0;
 
@@ -545,19 +561,14 @@
       }
 
       if (matchedAluno) {
-        // Extrai a página individual como PDF independente usando PDF-Lib
+        // Extrai a página individual como PDF
         const newDoc = await PDFLib.PDFDocument.create();
         const [copiedPage] = await newDoc.copyPages(pdfDocLib, [i - 1]);
         newDoc.addPage(copiedPage);
         const pdfBytes = await newDoc.save();
 
-        // Converte bytes para Base64 no navegador
-        let binary = '';
-        const len = pdfBytes.byteLength;
-        for (let j = 0; j < len; j++) {
-          binary += String.fromCharCode(pdfBytes[j]);
-        }
-        const base64String = window.btoa(binary);
+        // Converte bytes para Base64 usando a API FileReader nativa
+        const base64String = await uint8ArrayToBase64(pdfBytes);
 
         // Salva na lista
         const cpfKey = matchedAluno.cpfLimpo;
@@ -582,7 +593,7 @@
       }
     }
 
-    log(`✓ ${olimpiadaNome} concluído. ${vinculados} de ${totalPages} páginas vinculadas com sucesso.`, 'success');
+    log(`✓ ${olimpiadaNome} concluído. ${vinculados} de ${totalPages} páginas vinculadas.`, 'success');
   }
 
   // ── Main Entry Point ──
@@ -607,13 +618,13 @@
     btnCompile.disabled = true;
     btnCompile.textContent = '⏳ Compilando... Veja o log abaixo';
     cartoesCompilados = {};
-    jsonStringFinal = '';
+    zipBlob = null;
 
     try {
       // 1. Carrega planilha
       log('Lendo a planilha de alunos...', 'info');
       alunosCarregados = await parseExcel(fileXlsx);
-      log(`Planilha carregada. ${alunosCarregados.length} alunos válidos prontos para cruzamento.`, 'success');
+      log(`Planilha carregada. ${alunosCarregados.length} alunos prontos para cruzamento.`, 'success');
 
       // 2. Processa ONANO
       if (fileOnano) {
@@ -625,18 +636,28 @@
         await processarPDF(fileObq, 'Olimpíada Brasileira de Química (OBQ)', '2026-06-25');
       }
 
-      // 4. Finalização
+      // 4. Cria o pacote ZIP usando JSZip de forma segura em memória
       const totalAlunosComCartao = Object.keys(cartoesCompilados).length;
       if (totalAlunosComCartao === 0) {
-        throw new Error('Nenhuma página de PDF pôde ser vinculada aos CPFs dos alunos da planilha. Verifique a planilha ou arquivos de entrada.');
+        throw new Error('Nenhuma página de PDF pôde ser vinculada aos alunos da planilha.');
       }
 
-      jsonStringFinal = JSON.stringify(cartoesCompilados, null, 2);
+      log(`Criando o arquivo ZIP contendo ${totalAlunosComCartao} arquivos individuais...`, 'info');
+      const zip = new JSZip();
       
+      // Cria arquivos individuais para cada aluno no ZIP (ex: "cartoes/12345678901.json")
+      // Isso consome muito pouca memória pois não aloca uma única string gigante no V8
+      for (const cpf in cartoesCompilados) {
+        const studentData = cartoesCompilados[cpf];
+        zip.file(`${cpf}.json`, JSON.stringify(studentData));
+      }
+
+      zipBlob = await zip.generateAsync({ type: 'blob' });
+
       log('==================================================', 'success');
       log(`🏆 COMPILAÇÃO CONCLUÍDA COM SUCESSO!`, 'success');
       log(`Alunos com cartões gerados: ${totalAlunosComCartao}`, 'success');
-      log('Clique no botão verde acima para baixar o arquivo "cartoes_data.json"!', 'success');
+      log('Clique no botão verde acima para baixar o arquivo "cartoes.zip"!', 'success');
       log('==================================================', 'success');
 
       btnDownload.style.display = 'inline-flex';
@@ -651,22 +672,21 @@
     }
   }
 
-  // ── Download File ──
-  function baixarJSON() {
-    if (!jsonStringFinal) {
-      alert('Nenhum dado compilado encontrado.');
+  // ── Download ZIP File ──
+  function baixarZIP() {
+    if (!zipBlob) {
+      alert('Nenhum pacote ZIP compilado.');
       return;
     }
-    const blob = new Blob([jsonStringFinal], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'cartoes_data.json';
+    a.download = 'cartoes.zip';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    log('✓ Arquivo "cartoes_data.json" baixado para o seu computador.', 'success');
+    log('✓ Pacote "cartoes.zip" baixado para o seu computador. Descompacte-o como uma pasta chamada "cartoes" na raiz do seu site.', 'success');
   }
 </script>
 

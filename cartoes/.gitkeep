@@ -1,0 +1,3 @@
+# Pasta para armazenamento dos arquivos JSON individuais de cartões dos alunos.
+# Descompacte o arquivo "cartoes.zip" gerado pelo compilador nesta pasta de forma que
+# existam arquivos como: cartoes/04465481209.json

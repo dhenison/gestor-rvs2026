@@ -23,8 +23,7 @@ const STATIC_ASSETS = [
   '/assets/icon-192.png',
   '/assets/icon-512.png',
   '/offline.html',
-  '/topodosaber.html',
-  '/cartoes_data.json'
+  '/topodosaber.html'
 ];
 
 // ── URLs que NUNCA devem ser interceptadas (vão sempre para a rede) ──
