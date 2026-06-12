@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compilador Local de Cartões (Offline)</title>
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  
+  <!-- Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- External Parsers -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/pdf.min.js"></script>
+  <script src="js/pdf-lib.min.js"></script>
+
+  <style>
+    /* ── Reset & Variables ── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary:      #6366f1; /* Indigo */
+      --primary-glow: rgba(99, 102, 241, 0.2);
+      --accent:       #06b6d4; /* Turquoise */
+      --accent-glow:  rgba(6, 182, 212, 0.2);
+      --success:      #10b981; /* Emerald */
+      --danger:       #f43f5e; /* Rose */
+      --warning:      #f59e0b; /* Amber */
+      --dark-bg:      #0b0f19; /* Cyberpunk space */
+      --card-bg:      rgba(17, 24, 39, 0.6);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-muted:   #9ca3af;
+    }
+
+    html, body {
+      min-height: 100vh;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--dark-bg);
+      color: #f3f4f6;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Ambient Background Glows ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle 800px at 10% -10%, rgba(99, 102, 241, 0.2) 0%, transparent 60%),
+        radial-gradient(circle 600px at 90% 110%, rgba(6, 182, 212, 0.15) 0%, transparent 60%),
+        linear-gradient(180deg, #0b0f19 0%, #030712 100%);
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+
+    .header-info h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      color: white;
+    }
+
+    .header-info p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Instructions Card ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #93c5fd;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .card ul {
+      margin-left: 20px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* ── Form Inputs Grid ── */
+    .inputs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .input-box {
+      background: rgba(17, 24, 39, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+    .input-box:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
+    }
+
+    .input-box label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: white;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .input-box input[type="file"] {
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .input-box .info-subtext {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* ── Action Section ── */
+    .action-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .btn-compile {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 14px 40px;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.25);
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-compile:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4);
+    }
+    .btn-compile:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-download {
+      background: var(--success);
+      border: none;
+      border-radius: 12px;
+      padding: 14px 40px;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.25);
+      transition: all 0.25s ease;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(16, 185, 129, 0.45);
+    }
+
+    /* ── Progress Indicators ── */
+    .progress-container {
+      width: 100%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      color: white;
+    }
+
+    .progress-bar-wrapper {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 0.15s ease;
+    }
+
+    /* ── Log Box ── */
+    .log-container {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      height: 250px;
+      overflow-y: auto;
+      color: #34d399;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-entry.error { color: var(--danger); }
+    .log-entry.warn { color: var(--warning); }
+    .log-entry.info { color: #93c5fd; }
+    .log-entry.success { color: var(--success); font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <!-- HEADER -->
+  <div class="header">
+    <img src="assets/topo_saber_logo.jpg" class="logo" alt="Logo Topo do Saber" onerror="this.style.display='none'">
+    <div class="header-info">
+      <h1>Compilador Offline de Cartões de Olimpíadas</h1>
+      <p>Gere o arquivo "cartoes_data.json" localmente no seu computador sem depender do banco do Supabase.</p>
+    </div>
+  </div>
+
+  <!-- INSTRUCTIONS -->
+  <div class="card">
+    <h3>📖 Como funciona?</h3>
+    <p>Este utilitário permite que você cruze a planilha de alunos cadastrados com os arquivos PDFs das olimpíadas para gerar o banco de dados estático criptografado em base64 localmente.</p>
+    <ul>
+      <li>1. Selecione a planilha Excel dos Alunos contendo as colunas: <b>Nome</b>, <b>CPF</b> e <b>Data Nascimento</b>.</li>
+      <li>2. Faça o upload dos PDFs das provas correspondentes (o PDF completo que você recebeu, contendo a página de cada aluno).</li>
+      <li>3. O compilador lê as páginas, localiza qual aluno pertence àquela folha por cruzamento de Nome/CPF e gera um único arquivo compactado.</li>
+      <li>4. Salve o arquivo gerado como <b>cartoes_data.json</b> diretamente na pasta raiz do seu projeto e suba para o GitHub.</li>
+    </ul>
+  </div>
+
+  <!-- UPLOADS GRID -->
+  <div class="inputs-grid">
+    <!-- Excel Alunos -->
+    <div class="input-box">
+      <label>📊 Planilha de Alunos (.xlsx) *</label>
+      <input type="file" id="input-xlsx" accept=".xlsx">
+      <span class="info-subtext">Planilha com o cadastro geral de alunos (deve conter Nome, CPF e Data de Nascimento).</span>
+    </div>
+
+    <!-- ONANO Cards PDF -->
+    <div class="input-box">
+      <label>🔬 Cartões da ONANO (PDF)</label>
+      <input type="file" id="input-onano" accept=".pdf">
+      <span class="info-subtext">PDF completo das inscrições/cartões de acesso da Olimpíada de Nanotecnologia (ONANO).</span>
+    </div>
+
+    <!-- OBQ Cards PDF -->
+    <div class="input-box">
+      <label>📐 Cartões da OBQ (PDF)</label>
+      <input type="file" id="input-obq" accept=".pdf">
+      <span class="info-subtext">PDF completo das inscrições/cartões de acesso da Olimpíada de Química (OBQ).</span>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="action-panel">
+    <button class="btn-compile" id="btn-compile" onclick="iniciarCompilacao()">
+      ⚙️ Iniciar Compilação de Cartões
+    </button>
+    <button class="btn-download" id="btn-download" onclick="baixarJSON()">
+      📥 Baixar cartoes_data.json
+    </button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-container" id="progress-container">
+    <div class="progress-header">
+      <span id="progress-label">Lendo arquivos...</span>
+      <span id="progress-percentage">0%</span>
+    </div>
+    <div class="progress-bar-wrapper">
+      <div class="progress-bar-fill" id="progress-bar-fill"></div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div class="log-container" id="log-box">
+    <div class="log-entry info"> [Sistema] Aguardando upload dos arquivos para iniciar o processamento local...</div>
+  </div>
+</div>
+
+<script>
+  // Configuração padrão do PDF.js
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/pdf.worker.min.js';
+
+  let alunosCarregados = [];
+  let cartoesCompilados = {}; // cpf -> { nome, data_nascimento, cartoes: [] }
+  let jsonStringFinal = '';
+
+  function log(msg, tipo = '') {
+    const box = document.getElementById('log-box');
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${tipo}`;
+    
+    const time = new Date().toLocaleTimeString('pt-BR');
+    entry.textContent = `[${time}] ${msg}`;
+    box.appendChild(entry);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ── Formatações e Normalizações ──
+  function normalizarTexto(str) {
+    if (!str) return '';
+    return str.toString()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function formatarCPF(raw) {
+    const digits = String(raw || '').replace(/\D/g, '');
+    if (digits.length !== 11) return String(raw || '').trim();
+    return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+  }
+
+  function formatarData(raw) {
+    if (!raw && raw !== 0) return '';
+    if (typeof raw === 'number') {
+      const date = XLSX.SSF.parse_date_code(raw);
+      if (date) {
+        const dd = String(date.d).padStart(2, '0');
+        const mm = String(date.m).padStart(2, '0');
+        const aaaa = String(date.y);
+        return `${dd}/${mm}/${aaaa}`;
+      }
+    }
+    const s = String(raw).trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s.replace(/-/g, '/');
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      const [aaaa, mm, dd] = s.split('-');
+      return `${dd}/${mm}/${aaaa}`;
+    }
+    return s;
+  }
+
+  function updateProgress(percentage, text) {
+    document.getElementById('progress-container').style.display = 'flex';
+    document.getElementById('progress-bar-fill').style.width = `${percentage}%`;
+    document.getElementById('progress-percentage').textContent = `${Math.round(percentage)}%`;
+    document.getElementById('progress-label').textContent = text;
+  }
+
+  // ── Logic: Excel Parser ──
+  function parseExcel(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+          if (rows.length === 0) {
+            throw new Error('A planilha está vazia.');
+          }
+
+          // Encontra colunas
+          const headers = Object.keys(rows[0]);
+          const findCol = (...aliases) => {
+            for (const a of aliases) {
+              const f = headers.find(h => normalizarTexto(h) === normalizarTexto(a) || normalizarTexto(h).includes(normalizarTexto(a)));
+              if (f) return f;
+            }
+            return null;
+          };
+
+          const colNome = findCol('nome', 'aluno', 'name');
+          const colCPF = findCol('cpf', 'matricula');
+          const colDN = findCol('data nascimento', 'nascimento', 'data_nascimento', 'dt nascimento', 'data de nascimento', 'birth');
+
+          if (!colNome || !colCPF || !colDN) {
+            throw new Error(`Colunas obrigatórias não identificadas. Certifique-se de que a planilha possui colunas com os nomes "Nome", "CPF" e "Data Nascimento". Colunas lidas: ${headers.join(', ')}`);
+          }
+
+          const parsedList = [];
+          rows.forEach(r => {
+            const nome = String(r[colNome] || '').trim();
+            const rawCpf = String(r[colCPF] || '').trim();
+            const rawDn = r[colDN];
+
+            if (nome && rawCpf) {
+              parsedList.push({
+                nome: nome,
+                cpf: formatarCPF(rawCpf),
+                cpfLimpo: rawCpf.replace(/\D/g, ''),
+                data_nascimento: formatarData(rawDn)
+              });
+            }
+          });
+
+          resolve(parsedList);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // ── Logic: PDF Split and Matcher ──
+  async function processarPDF(file, olimpiadaNome, olimpiadaDia) {
+    log(`Iniciando processamento do PDF: ${file.name} (${olimpiadaNome})...`, 'info');
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfDocLib = await PDFLib.PDFDocument.load(arrayBuffer);
+    
+    const pdfjsDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const totalPages = pdfjsDoc.numPages;
+    
+    log(`PDF carregado com sucesso. Total de páginas a analisar: ${totalPages}`, 'info');
+
+    let vinculados = 0;
+
+    for (let i = 1; i <= totalPages; i++) {
+      const pct = (i / totalPages) * 100;
+      updateProgress(pct, `Processando ${olimpiadaNome}: pág ${i} de ${totalPages}...`);
+      
+      const page = await pdfjsDoc.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      const normText = normalizarTexto(pageText);
+
+      // Busca aluno correspondente
+      let matchedAluno = null;
+
+      // 1. Busca por CPF
+      for (const al of alunosCarregados) {
+        if (al.cpfLimpo && normText.includes(al.cpfLimpo)) {
+          matchedAluno = al;
+          break;
+        }
+      }
+
+      // 2. Busca por Nome Completo
+      if (!matchedAluno) {
+        for (const al of alunosCarregados) {
+          const nNorm = normalizarTexto(al.nome);
+          if (nNorm.length > 5 && normText.includes(nNorm)) {
+            matchedAluno = al;
+            break;
+          }
+        }
+      }
+
+      // 3. Busca por Palavras do Nome
+      if (!matchedAluno) {
+        for (const al of alunosCarregados) {
+          const nNorm = normalizarTexto(al.nome);
+          const palavras = nNorm.split(/\s+/).filter(p => p.length > 2 && !['de', 'da', 'do', 'dos', 'das'].includes(p));
+          if (palavras.length > 0 && palavras.every(p => normText.includes(p))) {
+            matchedAluno = al;
+            break;
+          }
+        }
+      }
+
+      if (matchedAluno) {
+        // Extrai a página individual como PDF independente usando PDF-Lib
+        const newDoc = await PDFLib.PDFDocument.create();
+        const [copiedPage] = await newDoc.copyPages(pdfDocLib, [i - 1]);
+        newDoc.addPage(copiedPage);
+        const pdfBytes = await newDoc.save();
+
+        // Converte bytes para Base64 no navegador
+        let binary = '';
+        const len = pdfBytes.byteLength;
+        for (let j = 0; j < len; j++) {
+          binary += String.fromCharCode(pdfBytes[j]);
+        }
+        const base64String = window.btoa(binary);
+
+        // Salva na lista
+        const cpfKey = matchedAluno.cpfLimpo;
+        if (!cartoesCompilados[cpfKey]) {
+          cartoesCompilados[cpfKey] = {
+            nome: matchedAluno.nome,
+            data_nascimento: matchedAluno.data_nascimento,
+            cartoes: []
+          };
+        }
+
+        cartoesCompilados[cpfKey].cartoes.push({
+          olimpiada_nome: olimpiadaNome,
+          olimpiada_dia: olimpiadaDia,
+          pdf_base64: base64String
+        });
+
+        vinculados++;
+        log(`Página ${i}: Vinculada a ${matchedAluno.nome} (${matchedAluno.cpf})`, 'info');
+      } else {
+        log(`Página ${i}: Não foi possível associar a nenhum aluno da planilha.`, 'warn');
+      }
+    }
+
+    log(`✓ ${olimpiadaNome} concluído. ${vinculados} de ${totalPages} páginas vinculadas com sucesso.`, 'success');
+  }
+
+  // ── Main Entry Point ──
+  async function iniciarCompilacao() {
+    const fileXlsx = document.getElementById('input-xlsx').files[0];
+    const fileOnano = document.getElementById('input-onano').files[0];
+    const fileObq = document.getElementById('input-obq').files[0];
+
+    const btnCompile = document.getElementById('btn-compile');
+    const btnDownload = document.getElementById('btn-download');
+
+    if (!fileXlsx) {
+      alert('Por favor, selecione a planilha de alunos (.xlsx) obrigatória.');
+      return;
+    }
+
+    if (!fileOnano && !fileObq) {
+      alert('Por favor, faça o upload de pelo menos um PDF de olimpíada (ONANO ou OBQ) para processar.');
+      return;
+    }
+
+    btnCompile.disabled = true;
+    btnCompile.textContent = '⏳ Compilando... Veja o log abaixo';
+    cartoesCompilados = {};
+    jsonStringFinal = '';
+
+    try {
+      // 1. Carrega planilha
+      log('Lendo a planilha de alunos...', 'info');
+      alunosCarregados = await parseExcel(fileXlsx);
+      log(`Planilha carregada. ${alunosCarregados.length} alunos válidos prontos para cruzamento.`, 'success');
+
+      // 2. Processa ONANO
+      if (fileOnano) {
+        await processarPDF(fileOnano, 'Olimpíada Nacional de Nanotecnologia (ONANO)', '2026-06-18');
+      }
+
+      // 3. Processa OBQ
+      if (fileObq) {
+        await processarPDF(fileObq, 'Olimpíada Brasileira de Química (OBQ)', '2026-06-25');
+      }
+
+      // 4. Finalização
+      const totalAlunosComCartao = Object.keys(cartoesCompilados).length;
+      if (totalAlunosComCartao === 0) {
+        throw new Error('Nenhuma página de PDF pôde ser vinculada aos CPFs dos alunos da planilha. Verifique a planilha ou arquivos de entrada.');
+      }
+
+      jsonStringFinal = JSON.stringify(cartoesCompilados, null, 2);
+      
+      log('==================================================', 'success');
+      log(`🏆 COMPILAÇÃO CONCLUÍDA COM SUCESSO!`, 'success');
+      log(`Alunos com cartões gerados: ${totalAlunosComCartao}`, 'success');
+      log('Clique no botão verde acima para baixar o arquivo "cartoes_data.json"!', 'success');
+      log('==================================================', 'success');
+
+      btnDownload.style.display = 'inline-flex';
+      updateProgress(100, 'Compilação concluída!');
+
+    } catch (err) {
+      log(`Erro de processamento: ${err.message}`, 'error');
+      alert(`Ocorreu um erro: ${err.message}`);
+    } finally {
+      btnCompile.disabled = false;
+      btnCompile.textContent = '⚙️ Re-iniciar Compilação de Cartões';
+    }
+  }
+
+  // ── Download File ──
+  function baixarJSON() {
+    if (!jsonStringFinal) {
+      alert('Nenhum dado compilado encontrado.');
+      return;
+    }
+    const blob = new Blob([jsonStringFinal], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cartoes_data.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    log('✓ Arquivo "cartoes_data.json" baixado para o seu computador.', 'success');
+  }
+</script>
+
+</body>
+</html>
