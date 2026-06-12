@@ -740,7 +740,7 @@ function showPage(p, el) {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', boletins: 'Boletins Escolares',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    whatsapp: 'Comunicação Automática', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
+    'tratamento-ocorrencias': 'Tratamento de Ocorrências'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
@@ -764,7 +764,6 @@ function showPage(p, el) {
   if(p==='obafog') renderObafog();
   if(p==='permissoes') renderPermissoes();
   if(p==='perfil') renderPerfil();
-  if(p==='whatsapp') initWhatsAppPage();
   if(p==='tratamento-ocorrencias') initTratamentoOcorrenciasPage();
   if(p==='documentos-secretaria') carregarDocumentosSecretaria();
   if(p==='frequencia'){
@@ -2480,30 +2479,7 @@ async function consolidar(tipo){
   renderTurmasTable();
   renderMetricasDash();
 
-  // Aciona disparos automáticos de frequência via WhatsApp
-  payload.forEach(item => {
-    let itemStatus = item.status;
-    if (tipo === 'saida') {
-      const studentIndex = alunos.findIndex(a => a.id === item.aluno_id);
-      if (studentIndex !== -1 && freq.entrada[studentIndex] === 'P' && freq.saida[studentIndex] === 'F') {
-        itemStatus = 'EVASAO';
-      }
-    }
-    if (itemStatus === 'F' || itemStatus === 'EVASAO') {
-      fetch('http://localhost:3001/api/frequencia/notificar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          alunoId: item.aluno_id,
-          tipo: item.tipo,
-          status: itemStatus,
-          horario: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-        })
-      }).then(r => r.json())
-        .then(data => console.log('[Consolidar Freq WhatsApp Trigger] Success:', data))
-        .catch(err => console.error('[Consolidar Freq WhatsApp Trigger] Error:', err));
-    }
-  });
+
 }
 
 function desbloquearFrequencia(tipo){
@@ -2633,31 +2609,7 @@ async function saveOcorrencia(){
     
     if (error) throw error;
 
-    // Se comunicarPais for verdadeiro, dispara o alerta via WhatsApp
-    if (comunicarPais && alunoObj) {
-      const envolvidosPayload = [
-        { alunoId: alunoObj.id, papel: 'AGRESSOR' } // Papel padrão
-      ];
-      if (typeof envolvidos !== 'undefined' && envolvidos.length > 0) {
-        envolvidos.forEach(env => {
-          const envAluno = ALUNOS_DATA.find(a => a.nome === env.nome);
-          if (envAluno) envolvidosPayload.push({ alunoId: envAluno.id, papel: env.papel || 'NEUTRO' });
-        });
-      }
 
-      fetch('http://localhost:3001/api/ocorrencias/registrar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ocorrenciaId: insertedOcorr.id,
-          tipo: tipo,
-          parecer: desc, // passa o parecer limpo
-          envolvidos: envolvidosPayload
-        })
-      }).then(r => r.json())
-        .then(data => console.log('[Save Ocorrencia WhatsApp Trigger] Success:', data))
-        .catch(err => console.error('[Save Ocorrencia WhatsApp Trigger] Error:', err));
-    }
     
     // Atualiza cache local com os dados reais do banco
     const oData = new Date().toLocaleDateString('pt-BR');
@@ -6577,9 +6529,6 @@ function renderTratamentoOcorrencias() {
 
           <div style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:200px">
             <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--gray4); text-align:center">Ações Recomendadas</div>
-            <button class="btn btn-primary btn-sm" onclick="abrirGerarComunicadoOcorr('${a.id}')" style="width:100%; justify-content:center">
-              ✉️ Enviar Comunicado
-            </button>
             <button class="btn btn-red btn-sm" onclick="abrirSuspensaoOcorr('${a.id}')" style="width:100%; justify-content:center; background:var(--red)">
               🚫 Aplicar Suspensão
             </button>
@@ -6768,24 +6717,7 @@ async function salvarSuspensaoOcorr() {
       tratada: false, aguardandoPais: true, origem: 'manual'
     });
 
-    const resps = WA_RESPONSAIVEIS.filter(r => r.aluno_id === a.id && r.notificacoes_ativas);
-    if (resps.length > 0) {
-      const envolvidosPayload = [
-        { alunoId: a.id, papel: 'AGRESSOR' }
-      ];
-      fetch('http://localhost:3001/api/ocorrencias/registrar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ocorrenciaId: insertedOcorr.id,
-          tipo: 'Suspensão Disciplinar',
-          parecer: `Prezado responsável, comunicamos a aplicação da suspensão disciplinar ao aluno ${a.nome} de ${dataInicioBr} a ${dataFimBr} por motivo de: ${motivo}.`,
-          envolvidos: envolvidosPayload
-        })
-      }).then(r => r.json())
-        .then(resData => console.log('[Suspensao Auto-Notif WhatsApp] Success:', resData))
-        .catch(err => console.error('[Suspensao Auto-Notif WhatsApp] Error:', err));
-    }
+
 
     if (insertedOcorr && insertedOcorr.id) {
       setTimeout(() => {
