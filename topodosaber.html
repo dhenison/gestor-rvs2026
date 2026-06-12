@@ -893,6 +893,46 @@
     return s;
   }
 
+  function compareDates(dnInput, dnDatabase) {
+    if (!dnInput || !dnDatabase) return false;
+    
+    // Normaliza separadores e remove hifens
+    const cleanInput = dnInput.trim().replace(/-/g, '/');
+    const cleanDb = dnDatabase.trim().replace(/-/g, '/');
+    
+    // Divide as partes do input (que deve ser DD/MM/AAAA)
+    const inputParts = cleanInput.split('/');
+    if (inputParts.length !== 3) return false;
+    const inputDay = parseInt(inputParts[0], 10);
+    const inputMonth = parseInt(inputParts[1], 10);
+    const inputYear = parseInt(inputParts[2], 10);
+    
+    // Divide as partes do banco
+    const dbParts = cleanDb.split('/');
+    if (dbParts.length !== 3) return false;
+    
+    // Se for formato ISO YYYY/MM/DD
+    if (dbParts[0].length === 4) {
+      const dbYear = parseInt(dbParts[0], 10);
+      const dbMonth = parseInt(dbParts[1], 10);
+      const dbDay = parseInt(dbParts[2], 10);
+      return inputDay === dbDay && inputMonth === dbMonth && inputYear === dbYear;
+    }
+    
+    // Se for formato DD/MM/YYYY ou MM/DD/YYYY (comum em arquivos do Excel)
+    const dbVal1 = parseInt(dbParts[0], 10);
+    const dbVal2 = parseInt(dbParts[1], 10);
+    const dbYear = parseInt(dbParts[2], 10);
+    
+    if (inputYear !== dbYear) return false;
+    
+    // Verifica se bate em qualquer um dos dois arranjos de dia/mês
+    const matchDDMM = (inputDay === dbVal1 && inputMonth === dbVal2);
+    const matchMMDD = (inputDay === dbVal2 && inputMonth === dbVal1);
+    
+    return matchDDMM || matchMMDD;
+  }
+
   // ── Logic: Fetch and Display Access Cards from Local JSON File ──
   async function buscarCartoes() {
     const cpfInput = document.getElementById('cpf-input');
@@ -939,10 +979,7 @@
       const registro = await resp.json();
       
       if (registro) {
-        const dnInserida = normalizeDate(dn);
-        const dnCadastrada = normalizeDate(registro.data_nascimento);
-
-        if (dnInserida === dnCadastrada) {
+        if (compareDates(dn, registro.data_nascimento)) {
           exibirResultados(registro.nome, registro.cartoes || []);
           showToast('Cartões de acesso localizados!');
         } else {
