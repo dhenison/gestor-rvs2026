@@ -1979,7 +1979,7 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Aluno</label>
-        <select class="form-input form-select" id="sec-doc-aluno-id">
+        <select class="form-input form-select" id="sec-doc-aluno-id" onchange="atualizarDataNascAoSelecionarAluno()">
           <!-- JS popula -->
         </select>
       </div>
@@ -2015,7 +2015,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Cidade de Nascimento</label>
-            <input type="text" class="form-input" id="sec-doc-cidade-nasc" placeholder="Ex: Santa Inês">
+            <input type="text" class="form-input" id="sec-doc-cidade-nasc" placeholder="Ex: Ourilândia do Norte">
           </div>
           <div class="form-group">
             <label class="form-label">Estado de Nascimento (UF)</label>
@@ -2030,11 +2030,11 @@
               <option value="DF">DF - Distrito Federal</option>
               <option value="ES">ES - Espírito Santo</option>
               <option value="GO">GO - Goiás</option>
-              <option value="MA" selected>MA - Maranhão</option>
+              <option value="MA">MA - Maranhão</option>
               <option value="MT">MT - Mato Grosso</option>
               <option value="MS">MS - Mato Grosso do Sul</option>
               <option value="MG">MG - Minas Gerais</option>
-              <option value="PA">PA - Pará</option>
+              <option value="PA" selected>PA - Pará</option>
               <option value="PB">PB - Paraíba</option>
               <option value="PR">PR - Paraná</option>
               <option value="PE">PE - Pernambuco</option>
@@ -2049,6 +2049,10 @@
               <option value="SE">SE - Sergipe</option>
               <option value="TO">TO - Tocantins</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Data de Nascimento</label>
+            <input type="date" class="form-input" id="sec-doc-data-nasc">
           </div>
         </div>
       </div>

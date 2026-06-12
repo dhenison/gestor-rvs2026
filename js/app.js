@@ -8005,11 +8005,30 @@ function abrirModalNovoDocSecretaria() {
   const mot = document.getElementById('sec-doc-motivo'); if (mot) mot.value = '';
   const obs = document.getElementById('sec-doc-obs'); if (obs) obs.value = '';
   
-  const cidade = document.getElementById('sec-doc-cidade-nasc'); if (cidade) cidade.value = 'Santa Inês';
-  const uf = document.getElementById('sec-doc-uf-nasc'); if (uf) uf.value = 'MA';
+  const cidade = document.getElementById('sec-doc-cidade-nasc'); if (cidade) cidade.value = 'Ourilândia do Norte';
+  const uf = document.getElementById('sec-doc-uf-nasc'); if (uf) uf.value = 'PA';
+  const dtNasc = document.getElementById('sec-doc-data-nasc'); if (dtNasc) dtNasc.value = '';
   
   mostrarCamposDinamicosSec();
   openModal('modal-novo-documento-secretaria');
+}
+
+function atualizarDataNascAoSelecionarAluno() {
+  const alunoId = document.getElementById('sec-doc-aluno-id')?.value;
+  const dataNascField = document.getElementById('sec-doc-data-nasc');
+  if (!dataNascField) return;
+  
+  if (!alunoId) {
+    dataNascField.value = '';
+    return;
+  }
+  
+  const aluno = ALUNOS_DATA.find(a => a.id === alunoId);
+  if (aluno && aluno.nasc) {
+    dataNascField.value = aluno.nasc;
+  } else {
+    dataNascField.value = '';
+  }
 }
 
 function mostrarCamposDinamicosSec() {
@@ -8078,6 +8097,7 @@ async function salvarDocumentoSecretaria() {
   const obs = document.getElementById('sec-doc-obs')?.value;
   const cidadeNasc = document.getElementById('sec-doc-cidade-nasc')?.value || '';
   const ufNasc = document.getElementById('sec-doc-uf-nasc')?.value || '';
+  const dataNascInput = document.getElementById('sec-doc-data-nasc')?.value || '';
   
   if (!alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
   if (!tipo) { showToast('Selecione o tipo de emissão.', 'alerta'); return; }
@@ -8093,8 +8113,13 @@ async function salvarDocumentoSecretaria() {
     const protocolo = await gerarProtocoloSec(tipo);
     
     let obsCompleta = obs || '';
-    if (tipo && !tipo.startsWith('Requerimento') && cidadeNasc) {
-      obsCompleta = `[NASC: ${cidadeNasc} - ${ufNasc}] ${obsCompleta}`.trim();
+    if (tipo && !tipo.startsWith('Requerimento')) {
+      if (cidadeNasc) {
+        obsCompleta = `[NASC: ${cidadeNasc} - ${ufNasc}] ${obsCompleta}`.trim();
+      }
+      if (dataNascInput) {
+        obsCompleta = `[DT_NASC: ${dataNascInput}] ${obsCompleta}`.trim();
+      }
     }
     if (tipo === 'Declaração de Frequência (Bolsa Família)') {
       obsCompleta = `Frequência de ${frequencia}%. ${obsCompleta}`.trim();
@@ -8238,9 +8263,31 @@ async function imprimirDocumentoHtml(id) {
       }
     }
     
+    let dataNasc = '';
+    if (doc.obs && doc.obs.includes('[DT_NASC:')) {
+      const matchDt = doc.obs.match(/\[DT_NASC:\s*([^\]]+)\]/);
+      if (matchDt) {
+        dataNasc = matchDt[1].trim();
+      }
+    }
+    if (!dataNasc) {
+      dataNasc = aluno.nasc || '';
+    }
+
+    const formatarDataNasc = (dt) => {
+      if (!dt) return '—';
+      if (dt.includes('/')) return dt;
+      const parts = dt.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      const parsedDate = new Date(dt + 'T00:00:00');
+      return isNaN(parsedDate.getTime()) ? '—' : parsedDate.toLocaleDateString('pt-BR');
+    };
+    
     let cidadeNascText = '';
     if (cidadeNasc) {
-      cidadeNascText = `, natural de <b>${cidadeNasc} - ${ufNasc || 'MA'}</b>`;
+      cidadeNascText = `, natural de <b>${cidadeNasc} - ${ufNasc || 'PA'}</b>`;
     }
     
     let contentHtml = '';
@@ -8250,7 +8297,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, 
+          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, 
           cursando a turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
         </p>
@@ -8268,7 +8315,7 @@ async function imprimirDocumentoHtml(id) {
         <p class="doc-text">
           Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, 
           que o(a) estudante <b>${aluno.nome}</b>, matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, 
-          nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, está regularmente matriculado(a) 
+          nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, está regularmente matriculado(a) 
           e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${aluno.turma || '—'}</b>, 
           no turno <b>${aluno.turno || '—'}</b>.
         </p>
@@ -8280,7 +8327,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins de direito, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, 
+          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${aluno.turma || '—'}</b> 
           sob regime letivo ordinário.
         </p>
@@ -8292,7 +8339,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <b>${aluno.nome}</b>, 
-          matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${aluno.nasc ? new Date(aluno.nasc + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</b>${cidadeNascText}, 
+          matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           que se encontrava devidamente matriculado(a) na turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
         </p>
         <p class="doc-text">
@@ -8510,7 +8557,7 @@ async function imprimirDocumentoHtml(id) {
             
             ${!doc.tipo.startsWith('Requerimento') ? `
               <div class="doc-date">
-                Santa Inês - MA, ${dataPorExtenso}.
+                Ourilândia do Norte - PA, ${dataPorExtenso}.
               </div>
               
               <div class="signature-area">
