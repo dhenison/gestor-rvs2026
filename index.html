@@ -17,22 +17,30 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=1.1">
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="login-screen">
-  <div class="login-card">
+  <div class="login-card login-card-access">
     <div class="login-logo">
       <img src="assets/logo.png" alt="RVS Logo" class="login-logo-icon">
       <h1>Gestor RVS</h1>
       <p>Sistema de Gestão Escolar</p>
     </div>
+    <div class="login-intro">
+      <span class="login-badge">Acesso unificado</span>
+      <p>Servidores e alunos entram por aqui. O sistema encaminha automaticamente para o portal correto.</p>
+    </div>
     <div class="login-error" id="login-error">E-mail ou senha incorretos.</div>
     <div class="login-field"><label>E-mail institucional</label><input type="email" id="email-input" placeholder="nome@escola.seduc.pa.gov.br"></div>
     <div class="login-field"><label>Senha</label><input type="password" id="pass-input" placeholder="••••••"></div>
-    <button class="login-btn" onclick="doLogin()">Entrar no Sistema</button>
+    <button class="login-btn" id="login-submit-btn" onclick="doLogin()">Entrar no Sistema</button>
+    <div class="login-actions">
+      <button type="button" class="login-link-btn" onclick="abrirRecuperacaoAcesso()">Esqueci minha senha</button>
+      <span class="login-domain-hint">VocÃª pode informar sÃ³ o prefixo do e-mail. O domÃ­nio institucional serÃ¡ completado automaticamente.</span>
+    </div>
     <p class="login-hint">Desenvolvido por Dhenison Carlos</p><p class="login-hint" style="margin-top:2px">2026</p>
   </div>
 
@@ -41,6 +49,55 @@
     <span class="aluno-acesso-icon">🎓</span>
     <span class="aluno-acesso-label">Verificar E-mail Institucional</span>
   </a>
+</div>
+
+<div class="modal-overlay" id="modal-recuperacao-acesso" onclick="fecharRecuperacaoAcesso(event)">
+  <div class="modal login-recovery-modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Recuperar Acesso</div>
+        <p class="login-recovery-subtitle">Localize o e-mail institucional e a senha do seu perfil.</p>
+      </div>
+      <button class="modal-close" type="button" onclick="fecharRecuperacaoAcesso()">✕</button>
+    </div>
+    <div class="recovery-type-switch" role="tablist" aria-label="Tipo de acesso">
+      <button type="button" id="recovery-tab-servidor" class="recovery-type-btn active" onclick="setRecoveryType('servidor')">Servidor</button>
+      <button type="button" id="recovery-tab-aluno" class="recovery-type-btn" onclick="setRecoveryType('aluno')">Aluno</button>
+    </div>
+    <p class="recovery-type-description" id="recovery-type-description">
+      Informe MatrÃ­cula sem VÃ­nculo, CPF e Data de Nascimento para localizar o acesso do servidor.
+    </p>
+    <div class="login-error recovery-error" id="recovery-error">NÃ£o foi possÃ­vel localizar o acesso.</div>
+    <div class="recovery-form">
+      <div class="login-field" id="recovery-field-matricula">
+        <label for="recovery-matricula-input">MatrÃ­cula sem VÃ­nculo</label>
+        <input type="text" id="recovery-matricula-input" placeholder="Digite a matrÃ­cula sem vÃ­nculo" autocomplete="off">
+      </div>
+      <div class="login-field">
+        <label for="recovery-cpf-input">CPF</label>
+        <input type="text" id="recovery-cpf-input" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)" autocomplete="off" inputmode="numeric">
+      </div>
+      <div class="login-field">
+        <label for="recovery-dn-input">Data de Nascimento</label>
+        <input type="text" id="recovery-dn-input" placeholder="DD/MM/AAAA" maxlength="10" oninput="mascaraData(this)" autocomplete="off" inputmode="numeric">
+      </div>
+    </div>
+    <button class="login-btn recovery-submit-btn" id="recovery-submit-btn" type="button" onclick="consultarRecuperacaoAcesso()">Localizar Acesso</button>
+    <div class="recovery-result" id="recovery-result">
+      <div class="recovery-result-header">
+        <div class="recovery-result-badge" id="recovery-result-badge">Servidor</div>
+        <div>
+          <h3>Acesso localizado</h3>
+          <p>Use os dados abaixo para entrar no sistema.</p>
+        </div>
+      </div>
+      <div class="recovery-result-row"><span>Nome</span><strong id="recovery-result-nome">â€”</strong></div>
+      <div class="recovery-result-row"><span>E-mail institucional</span><strong id="recovery-result-email">â€”</strong></div>
+      <div class="recovery-result-row"><span>Senha</span><strong id="recovery-result-senha">â€”</strong></div>
+      <div class="recovery-result-row"><span>Destino</span><strong id="recovery-result-portal">â€”</strong></div>
+      <button class="btn btn-primary recovery-use-btn" type="button" onclick="usarAcessoRecuperado()">Usar estes dados para entrar</button>
+    </div>
+  </div>
 </div>
 
 <!-- Consulta do aluno movida para aluno.html -->
@@ -2300,7 +2357,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/pdf.min.js"></script>
 <script src="js/pdf-lib.min.js"></script>
-<script src="js/app.js?v=1.4"></script>
+<script src="js/app.js?v=1.5"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->
 <script>

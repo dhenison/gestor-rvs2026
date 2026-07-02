@@ -8786,3 +8786,659 @@ function formatarDataPorExtenso(dateVal) {
   return `${dia} de ${mes} de ${ano}`;
 }
 
+// SIGAEDU VISUAL REFRESH - acesso unificado servidor/aluno
+const LOGIN_DOMAIN = '@escola.seduc.pa.gov.br';
+const LEGACY_STUDENT_DOMAIN = '@aluno.seduc.pa.gov.br';
+let RECOVERY_TYPE = 'servidor';
+let RECOVERY_ACCESS_DATA = null;
+
+function getOnlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function normalizeInstitutionalEmail(email) {
+  const raw = String(email || '').trim().toLowerCase();
+  if (!raw) return '';
+  const localPart = raw.includes('@') ? raw.split('@')[0] : raw;
+  return `${localPart}${LOGIN_DOMAIN}`;
+}
+
+function buildLoginEmailCandidates(email) {
+  const raw = String(email || '').trim().toLowerCase();
+  if (!raw) return [];
+  const localPart = raw.includes('@') ? raw.split('@')[0] : raw;
+  return [...new Set([
+    raw.includes('@') ? raw : `${localPart}${LOGIN_DOMAIN}`,
+    `${localPart}${LOGIN_DOMAIN}`,
+    `${localPart}${LEGACY_STUDENT_DOMAIN}`
+  ].filter(Boolean))];
+}
+
+function normalizeDateForLookup(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) return raw;
+
+  const digits = getOnlyDigits(raw);
+  if (digits.length === 8) {
+    if (raw.includes('-') && raw.indexOf('-') === 4) {
+      return `${digits.slice(6, 8)}/${digits.slice(4, 6)}/${digits.slice(0, 4)}`;
+    }
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    const day = String(parsed.getDate()).padStart(2, '0');
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const year = parsed.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  return raw;
+}
+
+function readFirstAvailable(source, keys) {
+  if (!source) return '';
+  for (const key of keys) {
+    if (source[key] !== undefined && source[key] !== null && String(source[key]).trim() !== '') {
+      return source[key];
+    }
+  }
+  return '';
+}
+
+function setLoginError(message) {
+  const errEl = document.getElementById('login-error');
+  if (!errEl) return;
+  errEl.textContent = message;
+  errEl.style.display = 'block';
+}
+
+function clearLoginError() {
+  const errEl = document.getElementById('login-error');
+  if (!errEl) return;
+  errEl.style.display = 'none';
+}
+
+function setLoginButtonState(loading) {
+  const btn = document.getElementById('login-submit-btn');
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Verificando...' : 'Entrar no Sistema';
+}
+
+function setRecoveryError(message) {
+  const errEl = document.getElementById('recovery-error');
+  if (!errEl) return;
+  errEl.textContent = message;
+  errEl.style.display = 'block';
+}
+
+function clearRecoveryFeedback() {
+  const errEl = document.getElementById('recovery-error');
+  const resultBox = document.getElementById('recovery-result');
+  if (errEl) errEl.style.display = 'none';
+  if (resultBox) resultBox.style.display = 'none';
+  RECOVERY_ACCESS_DATA = null;
+}
+
+function setRecoveryButtonState(loading) {
+  const btn = document.getElementById('recovery-submit-btn');
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Buscando...' : 'Localizar Acesso';
+}
+
+function openRecoveryResult(result) {
+  RECOVERY_ACCESS_DATA = result;
+  const resultBox = document.getElementById('recovery-result');
+  if (!resultBox) return;
+  document.getElementById('recovery-result-badge').textContent = result.tipo === 'aluno' ? 'Aluno' : 'Servidor';
+  document.getElementById('recovery-result-nome').textContent = result.nome || '—';
+  document.getElementById('recovery-result-email').textContent = result.email || '—';
+  document.getElementById('recovery-result-senha').textContent = result.senha || '—';
+  document.getElementById('recovery-result-portal').textContent = result.portal || '—';
+  resultBox.style.display = 'block';
+}
+
+function setRecoveryType(type) {
+  RECOVERY_TYPE = type === 'aluno' ? 'aluno' : 'servidor';
+  const servidorTab = document.getElementById('recovery-tab-servidor');
+  const alunoTab = document.getElementById('recovery-tab-aluno');
+  const descricao = document.getElementById('recovery-type-description');
+  const matriculaField = document.getElementById('recovery-field-matricula');
+
+  if (servidorTab) servidorTab.classList.toggle('active', RECOVERY_TYPE === 'servidor');
+  if (alunoTab) alunoTab.classList.toggle('active', RECOVERY_TYPE === 'aluno');
+  if (matriculaField) matriculaField.style.display = RECOVERY_TYPE === 'servidor' ? 'block' : 'none';
+  if (descricao) {
+    descricao.textContent = RECOVERY_TYPE === 'servidor'
+      ? 'Informe Matrícula sem Vínculo, CPF e Data de Nascimento para localizar o acesso do servidor.'
+      : 'Informe CPF e Data de Nascimento para localizar o acesso do aluno.';
+  }
+
+  clearRecoveryFeedback();
+}
+
+function abrirRecuperacaoAcesso() {
+  const modal = document.getElementById('modal-recuperacao-acesso');
+  if (!modal) return;
+  setRecoveryType(RECOVERY_TYPE);
+  modal.classList.add('open');
+  const firstFieldId = RECOVERY_TYPE === 'servidor' ? 'recovery-matricula-input' : 'recovery-cpf-input';
+  setTimeout(() => document.getElementById(firstFieldId)?.focus(), 120);
+}
+
+function fecharRecuperacaoAcesso(event) {
+  if (event && event.target !== document.getElementById('modal-recuperacao-acesso')) return;
+  document.getElementById('modal-recuperacao-acesso')?.classList.remove('open');
+}
+
+async function tryServidorLogin(email, pass) {
+  const { data: authData, error: authErr } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password: pass
+  });
+
+  if (authErr) return { ok: false, error: authErr };
+
+  const { data: userData, error: userErr } = await supabaseClient
+    .from('usuarios')
+    .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo')
+    .eq('id', authData.user.id)
+    .maybeSingle();
+
+  if (userErr) {
+    await supabaseClient.auth.signOut();
+    throw userErr;
+  }
+
+  if (userData && userData.ativo === false) {
+    await supabaseClient.auth.signOut();
+    return { ok: false, inactive: true };
+  }
+
+  return {
+    ok: true,
+    user: userData || {
+      id: authData.user.id,
+      nome: authData.user.user_metadata?.nome || 'Usuário',
+      perfil: authData.user.user_metadata?.perfil || 'professor',
+      email: authData.user.email
+    }
+  };
+}
+
+async function tryAlunoLogin(emailCandidates, pass) {
+  let lastError = null;
+
+  for (const candidate of emailCandidates) {
+    const { data, error } = await supabaseClient.rpc('login_portal_aluno', {
+      p_email: candidate,
+      p_senha: pass
+    });
+
+    if (error) {
+      lastError = error;
+      continue;
+    }
+
+    if (data && data.status !== 'error') {
+      return {
+        ok: true,
+        data: {
+          ...data,
+          email: normalizeInstitutionalEmail(data.email || candidate)
+        }
+      };
+    }
+  }
+
+  return { ok: false, error: lastError };
+}
+
+async function consultarRecuperacaoServidor() {
+  const matricula = String(document.getElementById('recovery-matricula-input')?.value || '').trim().toLowerCase();
+  const cpf = String(document.getElementById('recovery-cpf-input')?.value || '').trim();
+  const dataNascimento = String(document.getElementById('recovery-dn-input')?.value || '').trim();
+
+  if (!matricula) {
+    setRecoveryError('Informe a Matrícula sem Vínculo do servidor.');
+    document.getElementById('recovery-matricula-input')?.focus();
+    return;
+  }
+  if (getOnlyDigits(cpf).length !== 11) {
+    setRecoveryError('Informe o CPF completo do servidor.');
+    document.getElementById('recovery-cpf-input')?.focus();
+    return;
+  }
+  if (normalizeDateForLookup(dataNascimento).length !== 10) {
+    setRecoveryError('Informe a Data de Nascimento completa do servidor.');
+    document.getElementById('recovery-dn-input')?.focus();
+    return;
+  }
+
+  const { data, error } = await supabaseClient.from('usuarios').select('*').order('nome');
+  if (error) throw error;
+
+  const hasLookupFields = (data || []).some((item) =>
+    readFirstAvailable(item, ['matricula_sem_vinculo', 'matriculaSemVinculo', 'matricula', 'registro_funcional', 'registro']) ||
+    readFirstAvailable(item, ['cpf', 'cpf_servidor']) ||
+    readFirstAvailable(item, ['data_nascimento', 'dataNascimento', 'data_nasc', 'nascimento'])
+  );
+
+  if (!hasLookupFields) {
+    setRecoveryError('O cadastro de servidores ainda não possui Matrícula sem Vínculo, CPF e Data de Nascimento disponíveis para recuperação automática.');
+    return;
+  }
+
+  const cpfDigits = getOnlyDigits(cpf);
+  const birthToken = normalizeDateForLookup(dataNascimento);
+  const found = (data || []).find((item) => {
+    const matriculaValue = String(readFirstAvailable(item, ['matricula_sem_vinculo', 'matriculaSemVinculo', 'matricula', 'registro_funcional', 'registro']) || '').trim().toLowerCase();
+    const cpfValue = getOnlyDigits(readFirstAvailable(item, ['cpf', 'cpf_servidor']));
+    const birthValue = normalizeDateForLookup(readFirstAvailable(item, ['data_nascimento', 'dataNascimento', 'data_nasc', 'nascimento']));
+    return matriculaValue === matricula && cpfValue === cpfDigits && birthValue === birthToken;
+  });
+
+  if (!found) {
+    setRecoveryError('Não localizamos um servidor com os dados informados.');
+    return;
+  }
+
+  const email = normalizeInstitutionalEmail(readFirstAvailable(found, ['email']));
+  const senha = readFirstAvailable(found, ['senha']);
+  if (!email || !senha) {
+    setRecoveryError('O servidor foi localizado, mas o cadastro de acesso ainda está incompleto.');
+    return;
+  }
+
+  openRecoveryResult({
+    tipo: 'servidor',
+    nome: readFirstAvailable(found, ['nome']) || 'Servidor',
+    email,
+    senha,
+    portal: 'Portal do Servidor'
+  });
+}
+
+async function consultarRecuperacaoAluno() {
+  const cpf = String(document.getElementById('recovery-cpf-input')?.value || '').trim();
+  const dataNascimento = String(document.getElementById('recovery-dn-input')?.value || '').trim();
+
+  if (getOnlyDigits(cpf).length !== 11) {
+    setRecoveryError('Informe o CPF completo do aluno.');
+    document.getElementById('recovery-cpf-input')?.focus();
+    return;
+  }
+  if (normalizeDateForLookup(dataNascimento).length !== 10) {
+    setRecoveryError('Informe a Data de Nascimento completa do aluno.');
+    document.getElementById('recovery-dn-input')?.focus();
+    return;
+  }
+
+  const { data, error } = await supabaseClient.rpc('consultar_acesso_aluno', {
+    p_cpf: cpf,
+    p_data_nascimento: dataNascimento
+  });
+
+  if (error) throw error;
+
+  if (!data || data.status === 'error') {
+    setRecoveryError('Não localizamos um aluno com os dados informados.');
+    return;
+  }
+
+  openRecoveryResult({
+    tipo: 'aluno',
+    nome: data.nome || 'Aluno',
+    email: normalizeInstitutionalEmail(data.email || ''),
+    senha: data.senha || '',
+    portal: 'Portal do Aluno'
+  });
+}
+
+async function consultarRecuperacaoAcesso() {
+  clearRecoveryFeedback();
+  setRecoveryButtonState(true);
+  try {
+    if (RECOVERY_TYPE === 'aluno') await consultarRecuperacaoAluno();
+    else await consultarRecuperacaoServidor();
+  } catch (err) {
+    console.error('[consultarRecuperacaoAcesso]', err);
+    setRecoveryError('Não foi possível concluir a busca agora. Tente novamente.');
+  } finally {
+    setRecoveryButtonState(false);
+  }
+}
+
+function usarAcessoRecuperado() {
+  if (!RECOVERY_ACCESS_DATA) return;
+  const emailInput = document.getElementById('email-input');
+  const passInput = document.getElementById('pass-input');
+  if (emailInput) emailInput.value = RECOVERY_ACCESS_DATA.email || '';
+  if (passInput) passInput.value = RECOVERY_ACCESS_DATA.senha || '';
+  emailInput?.classList.add('highlight-glow');
+  passInput?.classList.add('highlight-glow');
+  setTimeout(() => {
+    emailInput?.classList.remove('highlight-glow');
+    passInput?.classList.remove('highlight-glow');
+  }, 2200);
+  fecharRecuperacaoAcesso();
+}
+
+async function doLogin() {
+  const emailInput = document.getElementById('email-input');
+  const passInput = document.getElementById('pass-input');
+  const rawEmail = String(emailInput?.value || '').trim();
+  const pass = String(passInput?.value || '');
+
+  if (!rawEmail || !pass) {
+    setLoginError('Informe seu e-mail institucional e sua senha.');
+    return;
+  }
+
+  clearLoginError();
+  setLoginButtonState(true);
+
+  const preferredEmail = normalizeInstitutionalEmail(rawEmail);
+  const emailCandidates = buildLoginEmailCandidates(rawEmail);
+  if (emailInput) emailInput.value = preferredEmail;
+
+  try {
+    const servidorResult = await tryServidorLogin(preferredEmail, pass);
+    if (servidorResult.ok) {
+      await _entrarNoSistema(servidorResult.user);
+      return;
+    }
+
+    if (servidorResult.inactive) {
+      setLoginError('Acesso negado: usuário inativo.');
+      return;
+    }
+
+    const alunoResult = await tryAlunoLogin(emailCandidates, pass);
+    if (alunoResult.ok) {
+      try { sessionStorage.setItem('portal_aluno', JSON.stringify(alunoResult.data)); } catch(_) {}
+      window.location.href = 'portal_aluno.html';
+      return;
+    }
+
+    const authErr = servidorResult.error;
+    if (authErr?.message && authErr.message.toLowerCase().includes('email not confirmed')) {
+      setLoginError('E-mail não confirmado. Contate o administrador do sistema.');
+    } else if (authErr?.status === 500 || (authErr?.message && authErr.message.toLowerCase().includes('database'))) {
+      setLoginError('Erro interno no servidor. Contate o administrador.');
+    } else {
+      setLoginError('E-mail ou senha incorretos. Verifique e tente novamente.');
+    }
+  } catch (err) {
+    console.error('[login exception]', err);
+    setLoginError('Erro de conexão. Tente novamente.');
+  } finally {
+    setLoginButtonState(false);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('portal_aluno')) {
+    window.location.href = 'portal_aluno.html';
+    return;
+  }
+
+  document.getElementById('recovery-matricula-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('recovery-cpf-input')?.focus();
+  });
+  document.getElementById('recovery-cpf-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('recovery-dn-input')?.focus();
+  });
+  document.getElementById('recovery-dn-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') consultarRecuperacaoAcesso();
+  });
+});
+
+// Camada final: corrige textos com encoding antigo e consolida o login unificado.
+function normalizeLoginInterface() {
+  const logoSubtitle = document.querySelector('.login-logo p');
+  if (logoSubtitle) logoSubtitle.innerHTML = 'Sistema de Gest&atilde;o Escolar';
+
+  const passwordInput = document.getElementById('pass-input');
+  if (passwordInput) passwordInput.placeholder = '******';
+
+  const domainHint = document.querySelector('.login-domain-hint');
+  if (domainHint) {
+    domainHint.innerHTML = 'Voc&ecirc; pode informar s&oacute; o prefixo do e-mail. O dom&iacute;nio institucional ser&aacute; completado automaticamente.';
+  }
+
+  const oldStudentButton = document.querySelector('.aluno-acesso-btn');
+  if (oldStudentButton) oldStudentButton.remove();
+
+  const recoveryDescription = document.getElementById('recovery-type-description');
+  if (recoveryDescription) {
+    recoveryDescription.innerHTML = 'Informe Matr&iacute;cula sem V&iacute;nculo, CPF e Data de Nascimento para localizar o acesso do servidor.';
+  }
+
+  const recoveryError = document.getElementById('recovery-error');
+  if (recoveryError) recoveryError.innerHTML = 'N&atilde;o foi poss&iacute;vel localizar o acesso.';
+
+  const matriculaLabel = document.querySelector('label[for="recovery-matricula-input"]');
+  if (matriculaLabel) matriculaLabel.innerHTML = 'Matr&iacute;cula sem V&iacute;nculo';
+
+  const matriculaInput = document.getElementById('recovery-matricula-input');
+  if (matriculaInput) matriculaInput.placeholder = 'Digite a matr&iacute;cula sem v&iacute;nculo';
+
+  ['recovery-result-nome', 'recovery-result-email', 'recovery-result-senha', 'recovery-result-portal'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el && (!el.textContent.trim() || el.textContent.includes('â'))) el.textContent = '--';
+  });
+
+  const modalClose = document.querySelector('#modal-recuperacao-acesso .modal-close');
+  if (modalClose) modalClose.innerHTML = '&times;';
+}
+
+function openRecoveryResult(result) {
+  RECOVERY_ACCESS_DATA = result;
+  const resultBox = document.getElementById('recovery-result');
+  if (!resultBox) return;
+  document.getElementById('recovery-result-badge').textContent = result.tipo === 'aluno' ? 'Aluno' : 'Servidor';
+  document.getElementById('recovery-result-nome').textContent = result.nome || '--';
+  document.getElementById('recovery-result-email').textContent = result.email || '--';
+  document.getElementById('recovery-result-senha').textContent = result.senha || '--';
+  document.getElementById('recovery-result-portal').textContent = result.portal || '--';
+  resultBox.style.display = 'block';
+}
+
+function setRecoveryType(type) {
+  RECOVERY_TYPE = type === 'aluno' ? 'aluno' : 'servidor';
+  const servidorTab = document.getElementById('recovery-tab-servidor');
+  const alunoTab = document.getElementById('recovery-tab-aluno');
+  const descricao = document.getElementById('recovery-type-description');
+  const matriculaField = document.getElementById('recovery-field-matricula');
+
+  if (servidorTab) servidorTab.classList.toggle('active', RECOVERY_TYPE === 'servidor');
+  if (alunoTab) alunoTab.classList.toggle('active', RECOVERY_TYPE === 'aluno');
+  if (matriculaField) matriculaField.style.display = RECOVERY_TYPE === 'servidor' ? 'block' : 'none';
+  if (descricao) {
+    descricao.textContent = RECOVERY_TYPE === 'servidor'
+      ? 'Informe Matr\u00edcula sem V\u00ednculo, CPF e Data de Nascimento para localizar o acesso do servidor.'
+      : 'Informe CPF e Data de Nascimento para localizar o acesso do aluno.';
+  }
+
+  clearRecoveryFeedback();
+}
+
+async function consultarRecuperacaoServidor() {
+  const matricula = String(document.getElementById('recovery-matricula-input')?.value || '').trim().toLowerCase();
+  const cpf = String(document.getElementById('recovery-cpf-input')?.value || '').trim();
+  const dataNascimento = String(document.getElementById('recovery-dn-input')?.value || '').trim();
+
+  if (!matricula) {
+    setRecoveryError('Informe a Matr\u00edcula sem V\u00ednculo do servidor.');
+    document.getElementById('recovery-matricula-input')?.focus();
+    return;
+  }
+  if (getOnlyDigits(cpf).length !== 11) {
+    setRecoveryError('Informe o CPF completo do servidor.');
+    document.getElementById('recovery-cpf-input')?.focus();
+    return;
+  }
+  if (normalizeDateForLookup(dataNascimento).length !== 10) {
+    setRecoveryError('Informe a Data de Nascimento completa do servidor.');
+    document.getElementById('recovery-dn-input')?.focus();
+    return;
+  }
+
+  const { data, error } = await supabaseClient.from('usuarios').select('*').order('nome');
+  if (error) throw error;
+
+  const hasLookupFields = (data || []).some((item) =>
+    readFirstAvailable(item, ['matricula_sem_vinculo', 'matriculaSemVinculo', 'matricula', 'registro_funcional', 'registro']) ||
+    readFirstAvailable(item, ['cpf', 'cpf_servidor']) ||
+    readFirstAvailable(item, ['data_nascimento', 'dataNascimento', 'data_nasc', 'nascimento'])
+  );
+
+  if (!hasLookupFields) {
+    setRecoveryError('O cadastro de servidores ainda n\u00e3o possui Matr\u00edcula sem V\u00ednculo, CPF e Data de Nascimento dispon\u00edveis para recupera\u00e7\u00e3o autom\u00e1tica.');
+    return;
+  }
+
+  const cpfDigits = getOnlyDigits(cpf);
+  const birthToken = normalizeDateForLookup(dataNascimento);
+  const found = (data || []).find((item) => {
+    const matriculaValue = String(readFirstAvailable(item, ['matricula_sem_vinculo', 'matriculaSemVinculo', 'matricula', 'registro_funcional', 'registro']) || '').trim().toLowerCase();
+    const cpfValue = getOnlyDigits(readFirstAvailable(item, ['cpf', 'cpf_servidor']));
+    const birthValue = normalizeDateForLookup(readFirstAvailable(item, ['data_nascimento', 'dataNascimento', 'data_nasc', 'nascimento']));
+    return matriculaValue === matricula && cpfValue === cpfDigits && birthValue === birthToken;
+  });
+
+  if (!found) {
+    setRecoveryError('N\u00e3o localizamos um servidor com os dados informados.');
+    return;
+  }
+
+  const email = normalizeInstitutionalEmail(readFirstAvailable(found, ['email']));
+  const senha = readFirstAvailable(found, ['senha']);
+  if (!email || !senha) {
+    setRecoveryError('O servidor foi localizado, mas o cadastro de acesso ainda est\u00e1 incompleto.');
+    return;
+  }
+
+  openRecoveryResult({
+    tipo: 'servidor',
+    nome: readFirstAvailable(found, ['nome']) || 'Servidor',
+    email,
+    senha,
+    portal: 'Portal do Servidor'
+  });
+}
+
+async function consultarRecuperacaoAluno() {
+  const cpf = String(document.getElementById('recovery-cpf-input')?.value || '').trim();
+  const dataNascimento = String(document.getElementById('recovery-dn-input')?.value || '').trim();
+
+  if (getOnlyDigits(cpf).length !== 11) {
+    setRecoveryError('Informe o CPF completo do aluno.');
+    document.getElementById('recovery-cpf-input')?.focus();
+    return;
+  }
+  if (normalizeDateForLookup(dataNascimento).length !== 10) {
+    setRecoveryError('Informe a Data de Nascimento completa do aluno.');
+    document.getElementById('recovery-dn-input')?.focus();
+    return;
+  }
+
+  const { data, error } = await supabaseClient.rpc('consultar_acesso_aluno', {
+    p_cpf: cpf,
+    p_data_nascimento: dataNascimento
+  });
+
+  if (error) throw error;
+
+  if (!data || data.status === 'error') {
+    setRecoveryError('N\u00e3o localizamos um aluno com os dados informados.');
+    return;
+  }
+
+  openRecoveryResult({
+    tipo: 'aluno',
+    nome: data.nome || 'Aluno',
+    email: normalizeInstitutionalEmail(data.email || ''),
+    senha: data.senha || '',
+    portal: 'Portal do Aluno'
+  });
+}
+
+async function consultarRecuperacaoAcesso() {
+  clearRecoveryFeedback();
+  setRecoveryButtonState(true);
+  try {
+    if (RECOVERY_TYPE === 'aluno') await consultarRecuperacaoAluno();
+    else await consultarRecuperacaoServidor();
+  } catch (err) {
+    console.error('[consultarRecuperacaoAcesso]', err);
+    setRecoveryError('N\u00e3o foi poss\u00edvel concluir a busca agora. Tente novamente.');
+  } finally {
+    setRecoveryButtonState(false);
+  }
+}
+
+async function doLogin() {
+  const emailInput = document.getElementById('email-input');
+  const passInput = document.getElementById('pass-input');
+  const rawEmail = String(emailInput?.value || '').trim();
+  const pass = String(passInput?.value || '');
+
+  if (!rawEmail || !pass) {
+    setLoginError('Informe seu e-mail institucional e sua senha.');
+    return;
+  }
+
+  clearLoginError();
+  setLoginButtonState(true);
+
+  const preferredEmail = normalizeInstitutionalEmail(rawEmail);
+  const emailCandidates = buildLoginEmailCandidates(rawEmail);
+  if (emailInput) emailInput.value = preferredEmail;
+
+  try {
+    const servidorResult = await tryServidorLogin(preferredEmail, pass);
+    if (servidorResult.ok) {
+      await _entrarNoSistema(servidorResult.user);
+      return;
+    }
+
+    if (servidorResult.inactive) {
+      setLoginError('Acesso negado: usu\u00e1rio inativo.');
+      return;
+    }
+
+    const alunoResult = await tryAlunoLogin(emailCandidates, pass);
+    if (alunoResult.ok) {
+      try { sessionStorage.setItem('portal_aluno', JSON.stringify(alunoResult.data)); } catch (_) {}
+      window.location.href = 'portal_aluno.html';
+      return;
+    }
+
+    const authErr = servidorResult.error;
+    if (authErr?.message && authErr.message.toLowerCase().includes('email not confirmed')) {
+      setLoginError('E-mail n\u00e3o confirmado. Contate o administrador do sistema.');
+    } else if (authErr?.status === 500 || (authErr?.message && authErr.message.toLowerCase().includes('database'))) {
+      setLoginError('Erro interno no servidor. Contate o administrador.');
+    } else {
+      setLoginError('E-mail ou senha incorretos. Verifique e tente novamente.');
+    }
+  } catch (err) {
+    console.error('[login exception]', err);
+    setLoginError('Erro de conex\u00e3o. Tente novamente.');
+  } finally {
+    setLoginButtonState(false);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!sessionStorage.getItem('portal_aluno')) {
+    normalizeLoginInterface();
+  }
+});
+

@@ -35,6 +35,37 @@ h1, h2, h3, h4, h5, h6, .metric-value, .btn { font-family: 'Outfit', sans-serif;
 .login-btn:hover{transform:translateY(-2px);box-shadow:0 15px 25px -5px rgba(79,70,229,.4)}
 .login-error{background:var(--red-light);color:var(--red-dark);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;display:none}
 .login-hint{margin-top:16px;text-align:center;font-size:11.5px;color:var(--gray4)}
+.login-card-access{max-width:480px}
+.login-intro{margin:-8px 0 18px;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.72);border:1px solid rgba(255,255,255,.55)}
+.login-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(79,70,229,.12);color:var(--blue-dark);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.login-intro p{margin-top:8px;font-size:12.5px;line-height:1.55;color:var(--gray5)}
+.login-actions{display:flex;flex-direction:column;gap:8px;align-items:flex-start;margin-top:14px}
+.login-link-btn{background:none;border:none;padding:0;color:var(--blue);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.login-link-btn:hover{text-decoration:underline}
+.login-domain-hint{font-size:11.5px;line-height:1.45;color:var(--gray4)}
+.login-recovery-modal{max-width:640px}
+.login-recovery-subtitle{margin-top:4px;font-size:12px;line-height:1.5;color:var(--gray5)}
+.recovery-type-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.recovery-type-btn{padding:12px 14px;border:1.5px solid var(--gray3);border-radius:14px;background:white;color:var(--gray6);font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s ease}
+.recovery-type-btn:hover{border-color:var(--blue);color:var(--blue)}
+.recovery-type-btn.active{background:var(--blue-light);border-color:var(--blue);color:var(--blue-dark);box-shadow:0 0 0 3px rgba(79,70,229,.08)}
+.recovery-type-description{font-size:12px;line-height:1.55;color:var(--gray5);margin-bottom:16px}
+.recovery-error{margin-bottom:16px}
+.recovery-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#recovery-field-matricula{grid-column:1 / -1}
+.recovery-submit-btn{margin-top:18px}
+.recovery-result{display:none;margin-top:18px;padding:18px;border-radius:20px;background:rgba(255,255,255,.92);border:1px solid rgba(203,213,225,.8)}
+.recovery-result-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+.recovery-result-header h3{font-size:17px;color:var(--gray7)}
+.recovery-result-header p{margin-top:3px;font-size:12px;color:var(--gray5)}
+.recovery-result-badge{display:inline-flex;align-items:center;justify-content:center;min-width:92px;padding:8px 12px;border-radius:999px;background:var(--blue-light);color:var(--blue-dark);font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.recovery-result-row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--gray2);font-size:13px}
+.recovery-result-row span{color:var(--gray5)}
+.recovery-result-row strong{color:var(--gray7);text-align:right;word-break:break-word}
+.recovery-result-row:last-of-type{border-bottom:none}
+.recovery-use-btn{margin-top:16px;width:100%;justify-content:center}
+.highlight-glow{box-shadow:0 0 0 4px rgba(79,70,229,.16);border-color:var(--blue)!important}
+.aluno-acesso-btn{display:none!important}
 #app{display:flex;min-height:100vh;opacity:0;transition:opacity .5s}
 #app.visible{opacity:1}
 .sidebar{width:var(--sidebar);background:linear-gradient(180deg,#0f172a 0%,#1e293b 100%);color:white;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto;border-right:1px solid rgba(255,255,255,0.05)}
@@ -296,6 +327,24 @@ textarea.form-input{resize:vertical;min-height:70px}
   }
 }
 @media (max-width: 768px) {
+  .login-card-access{
+    max-width:calc(100vw - 28px);
+    padding:32px 22px;
+  }
+  .login-actions{
+    align-items:stretch;
+  }
+  .recovery-form{
+    grid-template-columns:1fr;
+  }
+  #recovery-field-matricula{
+    grid-column:auto;
+  }
+  .recovery-result-row{
+    flex-direction:column;
+    gap:6px;
+  }
+
   /* Sidebar */
   .sidebar {
     display:none;
@@ -828,6 +877,35 @@ body::after{
 }
 .login-logo h1{color:var(--primary)}
 .login-logo p{color:var(--gray5)}
+.login-intro{
+  background:linear-gradient(180deg,rgba(255,252,246,.96),rgba(249,240,227,.92));
+  border-color:rgba(226,205,169,.72);
+}
+.login-badge{
+  background:rgba(244,207,77,.18);
+  color:#7a5710;
+}
+.login-link-btn{
+  color:var(--primary);
+}
+.login-domain-hint,
+.login-recovery-subtitle,
+.recovery-type-description{
+  color:var(--gray5);
+}
+.recovery-type-btn.active{
+  background:rgba(244,207,77,.22);
+  border-color:rgba(221,178,45,.52);
+  color:var(--primary);
+}
+.recovery-result{
+  background:linear-gradient(180deg,rgba(255,253,248,.96),rgba(249,242,234,.94));
+  border-color:rgba(228,215,202,.94);
+}
+.recovery-result-badge{
+  background:rgba(244,207,77,.2);
+  color:var(--primary);
+}
 .login-field input,
 .table-filters input,.table-filters select,
 .form-input,
