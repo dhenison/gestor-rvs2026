@@ -1438,6 +1438,64 @@
   </div>
 </div>
 
+<!-- Modal: Acoes da Turma -->
+<div class="modal-overlay" id="modal-acoes-turma" onclick="if(event.target===this)closeModal('modal-acoes-turma')">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <span class="modal-title">Turma - Opcoes</span>
+      <button class="modal-close" onclick="closeModal('modal-acoes-turma')">✕</button>
+    </div>
+    <div class="turma-action-meta">
+      <div class="turma-action-box">
+        <span>Turma</span>
+        <strong id="acao-turma-code">-</strong>
+      </div>
+      <div class="turma-action-box">
+        <span>Turno</span>
+        <strong id="acao-turma-turno">-</strong>
+      </div>
+      <div class="turma-action-box">
+        <span>Alunos</span>
+        <strong id="acao-turma-total">0</strong>
+      </div>
+    </div>
+    <div class="turma-acoes-grid">
+      <button class="turma-acao-btn" type="button" onclick="abrirListaAlunosTurma()">
+        <strong>Lista de Alunos</strong>
+        <span>Visualize os nomes da turma e gere o PDF com cabecalho da escola e campo de assinatura.</span>
+      </button>
+      <button class="turma-acao-btn" type="button" onclick="solicitarEdicaoTurma()">
+        <strong>Editar Turma</strong>
+        <span>Somente com a senha do administrador o formulario de edicao sera liberado.</span>
+      </button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-acoes-turma')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Lista de Alunos da Turma -->
+<div class="modal-overlay" id="modal-lista-alunos-turma" onclick="if(event.target===this)closeModal('modal-lista-alunos-turma')">
+  <div class="modal" style="max-width:820px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">Lista de Alunos</div>
+        <div class="turma-lista-meta" id="lista-turma-subtitulo">Turma</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-lista-alunos-turma')">✕</button>
+    </div>
+    <div class="turma-lista-toolbar">
+      <div class="turma-lista-meta" id="lista-turma-resumo">Nenhum aluno carregado.</div>
+      <button class="btn btn-primary" type="button" onclick="baixarListaAlunosTurmaPDF()">Baixar PDF</button>
+    </div>
+    <div class="turma-alunos-list" id="lista-alunos-turma-container"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-lista-alunos-turma')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 
 <div class="modal-overlay" id="modal-excluir-turma" onclick="if(event.target===this)closeModal('modal-excluir-turma')">
   <div class="modal">

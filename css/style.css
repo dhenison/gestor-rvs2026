@@ -201,6 +201,23 @@ textarea.form-input{resize:vertical;min-height:70px}
 .turma-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .turma-card{background:white;border-radius:var(--radius2);box-shadow:var(--shadow);border:1px solid var(--gray3);padding:18px;cursor:pointer;transition:all .2s}
 .turma-card:hover{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.turma-action-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0 18px}
+.turma-action-box{padding:12px;border-radius:12px;background:var(--gray);border:1px solid var(--gray2)}
+.turma-action-box span{display:block;font-size:11px;font-weight:700;color:var(--gray5);text-transform:uppercase;letter-spacing:.05em}
+.turma-action-box strong{display:block;margin-top:6px;font-size:14px;color:var(--gray7)}
+.turma-acoes-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.turma-acao-btn{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;padding:16px;border-radius:16px;border:1px solid var(--gray3);background:white;cursor:pointer;transition:all .2s ease;text-align:left}
+.turma-acao-btn:hover{border-color:var(--blue);box-shadow:0 0 0 3px rgba(79,70,229,.08);transform:translateY(-1px)}
+.turma-acao-btn strong{font-size:15px;color:var(--gray7)}
+.turma-acao-btn span{font-size:12px;line-height:1.45;color:var(--gray5)}
+.turma-lista-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:12px 0 16px}
+.turma-lista-meta{font-size:12.5px;color:var(--gray5)}
+.turma-alunos-list{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow:auto;padding-right:4px}
+.turma-aluno-item{display:grid;grid-template-columns:56px minmax(0,1fr) 180px;align-items:center;gap:14px;padding:12px 14px;border-radius:14px;background:rgba(248,250,252,.92);border:1px solid var(--gray2)}
+.turma-aluno-indice{font-size:11px;font-weight:800;color:var(--gray5);text-transform:uppercase;letter-spacing:.04em}
+.turma-aluno-nome{font-size:13.5px;font-weight:700;color:var(--gray7)}
+.turma-aluno-assinatura{height:20px;border-bottom:1.5px solid var(--gray4)}
+.turma-lista-vazia{padding:22px;border-radius:16px;background:var(--gray);color:var(--gray5);font-size:13px;text-align:center}
 .turma-code{font-size:20px;font-weight:700;color:var(--gray7);margin-bottom:4px}
 .turma-info{font-size:12px;color:var(--gray5);margin-bottom:12px}
 .turma-progress{height:6px;background:var(--gray3);border-radius:10px;overflow:hidden;margin-bottom:7px}
@@ -343,6 +360,14 @@ textarea.form-input{resize:vertical;min-height:70px}
   .recovery-result-row{
     flex-direction:column;
     gap:6px;
+  }
+  .turma-action-meta,
+  .turma-acoes-grid{
+    grid-template-columns:1fr;
+  }
+  .turma-aluno-item{
+    grid-template-columns:1fr;
+    gap:8px;
   }
 
   /* Sidebar */

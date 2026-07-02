@@ -1232,6 +1232,200 @@ function renderDashOcorr(){
 }
 
 // ─── TURMAS ───────────────────────────────────────────────────────────────────
+let TURMA_ACAO_ATUAL_ID = null;
+const ESCOLA_NOME_TURMAS = 'Escola Dr. Romildo Veloso e Silva';
+
+function getTurmaById(id){
+  return TURMAS_DATA.find(t => String(t.id) === String(id)) || null;
+}
+
+function getAlunosDaTurmaPorCodigo(turmaCode){
+  return ALUNOS_DATA
+    .filter(a => a.turma === turmaCode)
+    .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', { sensitivity: 'base' }));
+}
+
+function abrirAcoesTurma(id){
+  const turma = getTurmaById(id);
+  if(!turma) return;
+  TURMA_ACAO_ATUAL_ID = turma.id;
+  const alunos = getAlunosDaTurmaPorCodigo(turma.code);
+  const setText = (elId, value) => {
+    const elRef = document.getElementById(elId);
+    if(elRef) elRef.textContent = value;
+  };
+  setText('acao-turma-code', turma.code || '-');
+  setText('acao-turma-turno', turma.turno || '-');
+  setText('acao-turma-total', String(alunos.length));
+  openModal('modal-acoes-turma');
+}
+
+function abrirListaAlunosTurma(id = TURMA_ACAO_ATUAL_ID){
+  const turma = getTurmaById(id);
+  if(!turma){
+    showToast('Turma nao encontrada.', 'alerta');
+    return;
+  }
+  TURMA_ACAO_ATUAL_ID = turma.id;
+  const alunos = getAlunosDaTurmaPorCodigo(turma.code);
+  const subtitulo = document.getElementById('lista-turma-subtitulo');
+  const resumo = document.getElementById('lista-turma-resumo');
+  const container = document.getElementById('lista-alunos-turma-container');
+  if(subtitulo) subtitulo.textContent = `${ESCOLA_NOME_TURMAS} - ${turma.turno || '-'} - Turma ${turma.code}`;
+  if(resumo) resumo.textContent = `${alunos.length} aluno(s) listado(s) para assinatura.`;
+  if(container){
+    container.innerHTML = alunos.length
+      ? alunos.map((aluno, idx) => `
+          <div class="turma-aluno-item">
+            <div class="turma-aluno-indice">Nº ${String(idx + 1).padStart(2, '0')}</div>
+            <div class="turma-aluno-nome">${aluno.nome || '-'}</div>
+            <div class="turma-aluno-assinatura" title="Assinatura do aluno"></div>
+          </div>
+        `).join('')
+      : `<div class="turma-lista-vazia">Nenhum aluno encontrado nesta turma.</div>`;
+  }
+  closeModal('modal-acoes-turma');
+  openModal('modal-lista-alunos-turma');
+}
+
+function solicitarEdicaoTurma(id = TURMA_ACAO_ATUAL_ID){
+  const turma = getTurmaById(id);
+  if(!turma){
+    showToast('Turma nao encontrada.', 'alerta');
+    return;
+  }
+  confirmarSenhaAdmin(() => {
+    closeModal('modal-acoes-turma');
+    abrirEditarTurma(turma.id);
+  });
+}
+
+async function baixarListaAlunosTurmaPDF(id = TURMA_ACAO_ATUAL_ID){
+  const turma = getTurmaById(id);
+  if(!turma){
+    showToast('Turma nao encontrada.', 'alerta');
+    return;
+  }
+
+  const alunos = getAlunosDaTurmaPorCodigo(turma.code);
+  if(!alunos.length){
+    showToast('Nao ha alunos cadastrados nesta turma para gerar o PDF.', 'alerta');
+    return;
+  }
+
+  try{
+    const { PDFDocument, StandardFonts, rgb } = PDFLib;
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const margin = 40;
+    const signatureStartX = 380;
+    const signatureEndX = pageWidth - margin;
+    const rowHeight = 24;
+    let page;
+    let y;
+
+    const drawHeader = () => {
+      page.drawText(ESCOLA_NOME_TURMAS, {
+        x: margin,
+        y,
+        size: 16,
+        font: fontBold,
+        color: rgb(0.06, 0.09, 0.16)
+      });
+      y -= 24;
+      page.drawText(`Turno: ${turma.turno || '-'}`, {
+        x: margin,
+        y,
+        size: 11,
+        font,
+        color: rgb(0.35, 0.4, 0.48)
+      });
+      page.drawText(`Turma: ${turma.code || '-'}`, {
+        x: 250,
+        y,
+        size: 11,
+        font,
+        color: rgb(0.35, 0.4, 0.48)
+      });
+      y -= 18;
+      page.drawText(`Total de alunos: ${alunos.length}`, {
+        x: margin,
+        y,
+        size: 11,
+        font,
+        color: rgb(0.35, 0.4, 0.48)
+      });
+      y -= 24;
+      page.drawText('Nº', { x: margin, y, size: 11, font: fontBold, color: rgb(0.06, 0.09, 0.16) });
+      page.drawText('Nome do Aluno', { x: margin + 36, y, size: 11, font: fontBold, color: rgb(0.06, 0.09, 0.16) });
+      page.drawText('Assinatura', { x: signatureStartX, y, size: 11, font: fontBold, color: rgb(0.06, 0.09, 0.16) });
+      y -= 8;
+      page.drawLine({
+        start: { x: margin, y },
+        end: { x: pageWidth - margin, y },
+        thickness: 1,
+        color: rgb(0.8, 0.84, 0.9)
+      });
+      y -= 18;
+    };
+
+    const addPage = () => {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      y = pageHeight - margin;
+      drawHeader();
+    };
+
+    addPage();
+
+    alunos.forEach((aluno, idx) => {
+      if(y < 70) addPage();
+
+      page.drawText(String(idx + 1).padStart(2, '0'), {
+        x: margin,
+        y,
+        size: 10.5,
+        font,
+        color: rgb(0.25, 0.29, 0.35)
+      });
+
+      page.drawText(String(aluno.nome || '-').slice(0, 55), {
+        x: margin + 36,
+        y,
+        size: 10.5,
+        font,
+        color: rgb(0.06, 0.09, 0.16)
+      });
+
+      page.drawLine({
+        start: { x: signatureStartX, y: y + 2 },
+        end: { x: signatureEndX, y: y + 2 },
+        thickness: 0.8,
+        color: rgb(0.55, 0.6, 0.68)
+      });
+
+      y -= rowHeight;
+    });
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lista_alunos_${String(turma.code || 'turma').replace(/\s+/g, '_')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`PDF da turma ${turma.code} gerado com sucesso.`, 'sucesso');
+  }catch(err){
+    console.error('[baixarListaAlunosTurmaPDF]', err);
+    showToast('Nao foi possivel gerar o PDF da lista da turma.', 'erro');
+  }
+}
+
 function renderTurmaGrid(){
   const g=document.getElementById('turma-grid'); if(!g)return;
   if(!TURMAS_DATA.length){g.innerHTML=emptyState('🏷️','Nenhuma turma cadastrada','Clique em "+ Nova Turma"');return;}
@@ -9441,4 +9635,98 @@ document.addEventListener('DOMContentLoaded', () => {
     normalizeLoginInterface();
   }
 });
+
+// Camada final: clique da turma abre acoes, lista alunos e PDF com assinatura.
+async function renderTurmasTable(){
+  const b = document.getElementById('turmas-table-body'); if(!b) return;
+  const { turno } = getDashFiltros();
+  let turmas = turno ? TURMAS_DATA.filter(t => t.turno === turno) : TURMAS_DATA;
+  if(!turmas.length){
+    b.innerHTML = emptyTr('🏷️', 'Nenhuma turma encontrada', 'Cadastre turmas ou altere o filtro', 8);
+    return;
+  }
+
+  const { dia } = getDashFiltros();
+  const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+  const hoje = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+  const targetDate = dia || hoje;
+
+  let freqData = {};
+  try{
+    const { data:fq } = await fetchAllRows('frequencia', 'aluno_id,tipo,status', q => q.eq('data', targetDate));
+    if(fq) fq.forEach(f => {
+      if(!freqData[f.aluno_id]) freqData[f.aluno_id] = {};
+      freqData[f.aluno_id][f.tipo] = f.status;
+    });
+  }catch(e){
+    console.warn('freq fetch:', e);
+  }
+
+  b.innerHTML = turmas.map(t => {
+    const alunosTurma = ALUNOS_DATA.filter(a => a.turma === t.code);
+    const total = alunosTurma.length;
+    let entP = 0, saiP = 0, evasoes = 0;
+    let entTotal = 0, saiTotal = 0;
+
+    alunosTurma.forEach(a => {
+      const fq = freqData[a.id] || {};
+      if(fq.entrada) entTotal++;
+      if(fq.saida) saiTotal++;
+      if(fq.entrada === 'P') entP++;
+      if(fq.saida === 'P') saiP++;
+      if(fq.entrada === 'P' && fq.saida === 'F') evasoes++;
+    });
+
+    if(total > 0 && entTotal === 0 && saiTotal === 0 && targetDate === hoje){
+      entP = t.entradaQtd || 0;
+      saiP = t.saidaQtd || 0;
+      entTotal = t.entradaConsolidada ? total : 0;
+      saiTotal = t.saidaConsolidada ? total : 0;
+    }
+
+    const faltas = total - entP;
+    const entPct = total > 0 ? Math.round(entP / total * 100) : 0;
+    const saiPct = total > 0 ? Math.round(saiP / total * 100) : 0;
+    const stEnt = entTotal > 0 ? `<span class="metric-badge badge-green">${entPct}% pres.</span>` : `<span class="metric-badge badge-yellow">Pendente</span>`;
+    const stSai = saiTotal > 0 ? `<span class="metric-badge badge-green">${saiPct}% pres.</span>` : `<span class="metric-badge badge-yellow">Pendente</span>`;
+    const evasBadge = evasoes > 0 ? `<span class="metric-badge badge-red">⚠ ${evasoes}</span>` : '';
+
+    return `<tr>
+      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirAcoesTurma('${t.id}')" title="Clique para ver as opcoes">${t.code} ✏️</strong></td>
+      <td>${t.turno}</td>
+      <td>${total}</td>
+      <td><span class="metric-badge badge-blue">${entPct}%</span></td>
+      <td>${stEnt}</td>
+      <td><span class="metric-badge badge-blue">${saiPct}%</span></td>
+      <td>${stSai}</td>
+      <td><span class="metric-badge ${faltas > 4 ? 'badge-red' : 'badge-green'}">${faltas}</span> ${evasBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTurmaGrid(){
+  const g = document.getElementById('turma-grid'); if(!g) return;
+  if(!TURMAS_DATA.length){
+    g.innerHTML = emptyState('🏷️', 'Nenhuma turma cadastrada', 'Clique em "+ Nova Turma"');
+    return;
+  }
+
+  g.innerHTML = TURMAS_DATA.map(t => {
+    const total = ALUNOS_DATA.filter(a => a.turma === t.code).length;
+    const pres = t.presentes || 0;
+    const pct = total > 0 ? Math.round(pres / total * 100) : 0;
+    const color = pct >= 90 ? 'var(--green)' : pct >= 75 ? 'var(--yellow)' : 'var(--red)';
+    return `<div class="turma-card" onclick="abrirAcoesTurma('${t.id}')" title="Clique para ver as opcoes da turma" style="cursor:pointer;transition:box-shadow 0.2s" onmouseenter="this.style.boxShadow='0 4px 18px rgba(0,0,0,0.13)'" onmouseleave="this.style.boxShadow=''">
+      <div class="turma-code">${t.code}</div>
+      <div class="turma-info">${t.serie} — ${t.turno}</div>
+      <div class="turma-progress"><div class="turma-progress-bar" style="width:${pct}%;background:${color}"></div></div>
+      <div class="turma-stats">
+        <span style="color:var(--gray5)">👥 ${total}</span>
+        <span style="color:var(--green-dark)">✓ ${pres}</span>
+        <span style="color:var(--red)">✕ ${total-pres}</span>
+      </div>
+      <div style="font-size:10px;color:var(--gray4);text-align:center;margin-top:4px">clique para ver as opcoes da turma</div>
+    </div>`;
+  }).join('');
+}
 
