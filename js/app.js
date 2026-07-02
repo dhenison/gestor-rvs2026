@@ -181,7 +181,6 @@ let PERMS = [
   {func:'Horário de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Topo do Saber',            id:'page-topo-saber',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'Transporte',               id:'page-transporte',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-  {func:'OBAFOG RVS',               id:'page-obafog',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
   {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
@@ -326,7 +325,6 @@ async function carregarDados(){
           {func:'Horário de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
           {func:'Topo do Saber',            id:'page-topo-saber',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'Transporte',               id:'page-transporte',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-          {func:'OBAFOG RVS',               id:'page-obafog',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
           {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
           {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
@@ -719,6 +717,10 @@ async function initApp(){
 
 // ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
 function showPage(p, el) {
+  if (p === 'obafog') {
+    showPage('dashboard');
+    return;
+  }
   const user = getCurrentUser();
   const rKey = user ? getRoleKey(user.perfil) : 'prof';
 
@@ -740,7 +742,7 @@ function showPage(p, el) {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', boletins: 'Boletins Escolares',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    horarios: 'Horário de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
+    horarios: 'Horário de Aula', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
@@ -761,7 +763,6 @@ function showPage(p, el) {
   if(p==='usuarios'){ carregarUsuarios(); }
   if(p==='rvs-agenda'){ popularDatasAtividade(); popularTurmasAtividade(); renderAgendaMural(); }
   if(p==='horarios') carregarLinksHorario();
-  if(p==='obafog') renderObafog();
   if(p==='permissoes') renderPermissoes();
   if(p==='perfil') renderPerfil();
   if(p==='tratamento-ocorrencias') initTratamentoOcorrenciasPage();
@@ -9876,4 +9877,3 @@ function renderTurmaGrid(){
     </div>`;
   }).join('');
 }
-
