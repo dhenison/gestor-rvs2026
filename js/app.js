@@ -1697,7 +1697,7 @@ async function saveAluno(){
   renderAlunos(); renderMetricasDash(); renderTurmasTable(); renderTurmaGrid();
 }
 
-function verFicha(cpf){
+function verFichaLegacy(cpf){
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   document.getElementById('ficha-nome').textContent=a.nome;
   document.getElementById('ficha-cpf').textContent=a.cpf;
@@ -1760,6 +1760,157 @@ function renderTimeline(a){
       <div class="tl-line">
         <div class="tl-dot" style="background:${cores[h.tipo]||'var(--gray4)'}"></div>
         ${i<a.historico.length-1?'<div class="tl-connector"></div>':''}
+      </div>
+      <div class="tl-content"><h4>${h.titulo}</h4><p>${h.desc}</p><div class="tl-date">${h.data}</div></div>
+    </div>`).join('');
+}
+
+function setFichaText(id, value){
+  const el = document.getElementById(id);
+  if (el) el.textContent = value || '—';
+}
+
+function setFichaBadge(id, value, badgeClass){
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value || '—';
+  el.className = `metric-badge ${badgeClass}`;
+}
+
+function setFichaCounter(id, count, singular, plural){
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (typeof count === 'string') {
+    el.textContent = count;
+    return;
+  }
+  const total = Number(count);
+  if (!Number.isFinite(total)) {
+    el.textContent = '—';
+    return;
+  }
+  el.textContent = `${total} ${total === 1 ? singular : plural}`;
+}
+
+function getOcorrenciasAluno(aluno){
+  const nome = String(aluno?.nome || '');
+  const cpf = String(aluno?.cpf || '');
+  return OCORR_DATA.filter(o => {
+    const alvo = String(o?.aluno || '');
+    return alvo === nome || alvo === cpf || (nome && alvo.includes(nome)) || (cpf && o?.cpf === cpf);
+  });
+}
+
+function formatarStatusFicha(status){
+  const chave = String(status || 'ativo').trim().toLowerCase();
+  const mapa = {
+    ativo: { label: 'Ativo', badge: 'badge-green' },
+    inativo: { label: 'Inativo', badge: 'badge-red' },
+    pendente: { label: 'Pendente', badge: 'badge-yellow' },
+    transferido: { label: 'Transferido', badge: 'badge-blue' }
+  };
+  if (mapa[chave]) return mapa[chave];
+  const label = chave ? chave.charAt(0).toUpperCase() + chave.slice(1) : 'Ativo';
+  return { label, badge: 'badge-blue' };
+}
+
+function verFicha(cpf){
+  const a = ALUNOS_DATA.find(x => x.cpf === cpf); if(!a) return;
+  const faltas = (a.historico || []).filter(h => h.tipo === 'falta').length;
+  const ocorrs = getOcorrenciasAluno(a);
+  const statusInfo = formatarStatusFicha(a.status);
+  const turmaText = [a.turma, a.turno].filter(Boolean).join(' — ') || '—';
+  const transporteText = a.rota || 'Sem transporte';
+  const transporteBadge = transporteText === 'Sem transporte' ? 'badge-yellow' : 'badge-blue';
+
+  setFichaText('ficha-nome', a.nome);
+  setFichaText('ficha-subtitulo', `${turmaText} • ${a.resp || 'Responsável não informado'}`);
+  setFichaText('ficha-cpf', a.cpf || '—');
+  setFichaText('ficha-matricula', a.matricula || a.cpf || '—');
+  setFichaText('ficha-turma', turmaText);
+  setFichaText('ficha-resp', a.resp || '—');
+  setFichaText('ficha-contato', a.contato || '—');
+  setFichaText('ficha-email', a.email || '—');
+  setFichaText('ficha-rota', transporteText);
+  setFichaText('ficha-nasc', a.nasc ? new Date(a.nasc).toLocaleDateString('pt-BR') : '—');
+  setFichaText('ficha-idade', a.idade || '—');
+  setFichaText('ficha-faltas', String(faltas));
+  setFichaText('ficha-total-ocorrencias', String(ocorrs.length));
+  setFichaText('ficha-total-responsaveis', '...');
+  setFichaText('ficha-total-boletins', '...');
+  setFichaBadge('ficha-status', statusInfo.label, statusInfo.badge);
+  setFichaBadge('ficha-turno', a.turno || 'Turno não informado', 'badge-blue');
+  setFichaBadge('ficha-rota-badge', transporteText === 'Sem transporte' ? 'Sem transporte' : 'Transporte ativo', transporteBadge);
+  setFichaCounter('ficha-ocorrencias-count', ocorrs.length, 'registro', 'registros');
+  setFichaCounter('ficha-timeline-count', (a.historico || []).length, 'item', 'itens');
+  setFichaCounter('ficha-responsaveis-count', 'Carregando...');
+  setFichaCounter('ficha-boletins-count', 'Carregando...');
+
+  const imgEl = document.getElementById('ficha-avatar');
+  const fallbackEl = document.getElementById('ficha-avatar-fallback');
+  if (a.foto_url) {
+    if (imgEl) {
+      imgEl.src = a.foto_url;
+      imgEl.style.display = 'block';
+    }
+    if (fallbackEl) fallbackEl.style.display = 'none';
+  } else {
+    if (imgEl) imgEl.style.display = 'none';
+    if (fallbackEl) {
+      fallbackEl.textContent = a.nome.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase();
+      fallbackEl.style.display = 'flex';
+    }
+  }
+
+  renderTimeline(a);
+  renderFichaOcorrencias(a);
+  renderResponsaveisFicha(a.id);
+  renderFichaBoletins(a);
+  document.getElementById('modal-ficha').dataset.cpf = cpf;
+  openModal('modal-ficha');
+}
+
+function renderFichaOcorrencias(a){
+  const el = document.getElementById('ficha-ocorrencias'); if(!el) return;
+  const ocorrs = getOcorrenciasAluno(a);
+  setFichaText('ficha-total-ocorrencias', String(ocorrs.length));
+  setFichaCounter('ficha-ocorrencias-count', ocorrs.length, 'registro', 'registros');
+  if(!ocorrs.length){
+    el.innerHTML = '<div class="ficha-empty-inline">Nenhuma ocorrência registrada para este aluno até o momento.</div>';
+    return;
+  }
+  el.innerHTML = ocorrs.map(o => {
+    const label = {evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coordenação',suspensao_celular:'Suspensão de Celular'}[o.tipo] || o.tipo;
+    const tratada = !!o.tratada;
+    return `
+      <div class="ficha-occ-card ${tratada ? 'resolved' : 'pending'}">
+        <div class="ficha-occ-copy">
+          <div class="ficha-occ-meta">
+            <span class="metric-badge ${tratada ? 'badge-green' : 'badge-red'}">${tratada ? 'Tratada' : 'Pendente'}</span>
+            <span class="metric-badge badge-gray">${label}</span>
+          </div>
+          <strong>${o.data || 'Data não informada'}${o.hora ? ' • ' + o.hora : ''}</strong>
+          <span>${o.desc || 'Sem descrição informada.'}</span>
+          ${o.justificativa ? `<span>Tratativa: ${o.justificativa}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderTimeline(a){
+  const tl = document.getElementById('ficha-timeline'); if(!tl) return;
+  const historico = a.historico || [];
+  setFichaCounter('ficha-timeline-count', historico.length, 'item', 'itens');
+  if(!historico.length){
+    tl.innerHTML = '<div class="ficha-empty-inline">Sem movimentações registradas para compor a timeline do aluno.</div>';
+    return;
+  }
+  const cores = {presenca:'var(--green)',falta:'var(--red)',ocorrencia:'var(--yellow)',mudanca:'var(--blue)'};
+  tl.innerHTML = historico.map((h, i) => `
+    <div class="tl-item">
+      <div class="tl-line">
+        <div class="tl-dot" style="background:${cores[h.tipo] || 'var(--gray4)'}"></div>
+        ${i < historico.length - 1 ? '<div class="tl-connector"></div>' : ''}
       </div>
       <div class="tl-content"><h4>${h.titulo}</h4><p>${h.desc}</p><div class="tl-date">${h.data}</div></div>
     </div>`).join('');
@@ -6348,6 +6499,66 @@ async function renderResponsaveisFicha(alunoId) {
   if (window.lucide) window.lucide.createIcons();
 }
 
+async function renderResponsaveisFicha(alunoId) {
+  const container = document.getElementById('ficha-responsaveis-lista');
+  if (!container) return;
+
+  setFichaCounter('ficha-responsaveis-count', 'Carregando...');
+  setFichaText('ficha-total-responsaveis', '...');
+  container.innerHTML = '<div class="ficha-empty-inline">Carregando responsáveis vinculados...</div>';
+
+  const { data, error } = await supabaseClient.from('responsaveis').select('*').eq('aluno_id', alunoId);
+
+  if (error) {
+    console.error('[renderResponsaveisFicha] Error:', error);
+    setFichaCounter('ficha-responsaveis-count', 'Erro');
+    setFichaText('ficha-total-responsaveis', '—');
+    container.innerHTML = '<div class="ficha-empty-inline" style="color:var(--red-dark)">Não foi possível carregar os responsáveis deste aluno.</div>';
+    return;
+  }
+
+  const lista = data || [];
+  setFichaText('ficha-total-responsaveis', String(lista.length));
+  setFichaCounter('ficha-responsaveis-count', lista.length, 'contato', 'contatos');
+
+  if (!lista.length) {
+    container.innerHTML = `
+      <div class="ficha-empty-inline">Nenhum responsável cadastrado para este aluno.</div>
+      <div class="ficha-section-cta">
+        <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Vincular Responsável</button>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = lista.map(r => {
+    const telefone = String(r.whatsapp || '').trim();
+    const telefoneLink = telefone ? telefone.replace(/\D/g, '') : '';
+    const contatoHtml = telefoneLink
+      ? `<a class="ficha-contact-link" href="https://wa.me/${telefoneLink}" target="_blank" rel="noopener noreferrer"><i data-lucide="phone" style="width:12px;height:12px"></i>${telefone}</a>`
+      : `<span style="margin-top:8px;display:block">Telefone não informado.</span>`;
+
+    return `
+      <div class="ficha-contact-card">
+        <div class="ficha-contact-copy">
+          <strong>${r.nome}</strong>
+          <span>${r.parentesco || 'Responsável'} • ${r.notificacoes_ativas ? 'Recebe notificações' : 'Notificações desativadas'}</span>
+          ${contatoHtml}
+        </div>
+        <div class="ficha-contact-actions">
+          <button class="btn btn-outline btn-xs" onclick="editarWaResponsavel('${r.id}')">Editar</button>
+          <button class="btn btn-red btn-xs" onclick="excluirWaResponsavel('${r.id}')">Excluir</button>
+        </div>
+      </div>`;
+  }).join('') + `
+    <div class="ficha-section-cta">
+      <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Novo Responsável</button>
+    </div>
+  `;
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
 function abrirAddResponsavelFicha(alunoId) {
   openWaNovoResponsavelModal();
   document.getElementById('wa-resp-aluno-id').value = alunoId;
@@ -8057,6 +8268,53 @@ async function renderFichaBoletins(aluno) {
 }
 
 // Ações para os Boletins na Ficha do Aluno
+async function renderFichaBoletins(aluno) {
+  const el = document.getElementById('ficha-boletins-lista'); if (!el) return;
+  setFichaCounter('ficha-boletins-count', 'Carregando...');
+  setFichaText('ficha-total-boletins', '...');
+  el.innerHTML = '<div class="ficha-empty-inline">Buscando boletins publicados no sistema...</div>';
+  
+  try {
+    const { data, error } = await supabaseClient
+      .from('boletins')
+      .select('id, ano, periodo, pdf_base64')
+      .eq('aluno_id', aluno.id)
+      .order('ano', { ascending: false })
+      .order('periodo', { ascending: true });
+
+    if (error) throw error;
+
+    const lista = data || [];
+    setFichaText('ficha-total-boletins', String(lista.length));
+    setFichaCounter('ficha-boletins-count', lista.length, 'boletim', 'boletins');
+
+    if (!lista.length) {
+      el.innerHTML = '<div class="ficha-empty-inline">Nenhum boletim publicado para este aluno até o momento.</div>';
+      return;
+    }
+
+    el.innerHTML = lista.map(b => `
+      <div class="ficha-doc-card">
+        <div class="ficha-doc-copy">
+          <strong>${b.periodo} (${b.ano})</strong>
+          <span>Boletim pronto para consulta, download e impressão.</span>
+        </div>
+        <div class="ficha-doc-actions">
+          <button class="btn btn-outline btn-xs" onclick="visualizarBoletimFicha('${b.id}')">Ver</button>
+          <button class="btn btn-outline btn-xs" onclick="baixarBoletimFicha('${b.id}', 'Boletim_${aluno.nome.replace(/ /g, '_')}_${b.periodo.replace(/ /g, '_')}.pdf')">Baixar</button>
+          <button class="btn btn-outline btn-xs" onclick="imprimirBoletimFicha('${b.id}')">Imprimir</button>
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    console.error('[renderFichaBoletins] Erro:', err);
+    setFichaCounter('ficha-boletins-count', 'Erro');
+    setFichaText('ficha-total-boletins', '—');
+    el.innerHTML = '<div class="ficha-empty-inline" style="color:var(--red-dark)">Erro ao buscar os boletins deste aluno.</div>';
+  }
+}
+
 async function visualizarBoletimFicha(boletimId) {
   showLoading('Carregando boletim...');
   try {

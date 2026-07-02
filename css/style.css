@@ -278,6 +278,61 @@ textarea.form-input{resize:vertical;min-height:70px}
 .tl-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:4px}
 .tl-connector{width:1.5px;flex:1;background:var(--gray3);margin-top:4px}
 .tl-content h4{font-size:13px;font-weight:600;color:var(--gray7)}.tl-content p{font-size:12px;color:var(--gray5);margin-top:3px}.tl-date{font-size:11px;color:var(--gray4);margin-top:2px}
+.modal-ficha-shell{max-width:1120px;padding:0;overflow:hidden}
+.ficha-modal-header{padding:24px 28px 0;margin-bottom:0}
+.ficha-modal-body{padding:22px 28px 28px}
+.ficha-hero{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(240px,.75fr);gap:18px;padding:24px;border-radius:24px;background:linear-gradient(135deg,#0f172a 0%,#1e293b 58%,#312e81 100%);color:white;box-shadow:0 24px 50px rgba(15,23,42,.28)}
+.ficha-hero-main{display:flex;align-items:flex-start;gap:16px;min-width:0}
+.ficha-avatar-shell{width:88px;height:88px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);flex-shrink:0;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.ficha-avatar-shell img{width:100%;height:100%;object-fit:cover}
+.ficha-avatar-shell div{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:white;background:linear-gradient(135deg,rgba(99,102,241,.92),rgba(59,130,246,.92))}
+.ficha-kicker{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.12);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.ficha-hero-copy{min-width:0}
+.ficha-hero-copy h2{font-size:30px;line-height:1.05;font-weight:800;letter-spacing:-.04em;margin-top:12px;word-break:break-word}
+.ficha-hero-copy p{margin-top:10px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.76)}
+.ficha-hero-badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.ficha-hero-badges .metric-badge{margin-top:0;font-size:11px;padding:6px 10px;background:rgba(255,255,255,.12);color:white;border:1px solid rgba(255,255,255,.12)}
+.ficha-hero-badges .metric-badge.badge-green{background:rgba(16,185,129,.18);color:#d1fae5;border-color:rgba(16,185,129,.3)}
+.ficha-hero-badges .metric-badge.badge-yellow{background:rgba(245,158,11,.18);color:#fef3c7;border-color:rgba(245,158,11,.3)}
+.ficha-hero-badges .metric-badge.badge-blue{background:rgba(96,165,250,.16);color:#dbeafe;border-color:rgba(96,165,250,.25)}
+.ficha-hero-side{display:grid;gap:12px}
+.ficha-hero-card{padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}
+.ficha-hero-card span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.ficha-hero-card strong{display:block;margin-top:7px;font-size:15px;font-weight:700;color:white;word-break:break-word}
+.ficha-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:18px}
+.ficha-stat-card{padding:18px;border-radius:20px;background:rgba(255,255,255,.94);border:1px solid rgba(203,213,225,.88);box-shadow:0 10px 26px rgba(15,23,42,.06)}
+.ficha-stat-card span{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gray5)}
+.ficha-stat-card strong{display:block;margin:10px 0 4px;font-size:28px;line-height:1;font-weight:800;color:var(--gray7)}
+.ficha-stat-card small{display:block;font-size:12px;line-height:1.5;color:var(--gray5)}
+.ficha-stat-card.is-alert strong{color:var(--red-dark)}
+.ficha-layout{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(300px,.82fr);gap:16px;margin-top:18px;align-items:start}
+.ficha-column{display:grid;gap:16px}
+.ficha-section{background:rgba(255,255,255,.96);border:1px solid rgba(203,213,225,.86);border-radius:22px;box-shadow:0 10px 24px rgba(15,23,42,.06);padding:18px}
+.ficha-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.ficha-section-head h3{font-size:16px;font-weight:800;color:var(--gray7);letter-spacing:-.02em}
+.ficha-section-head p{margin-top:4px;font-size:12px;line-height:1.55;color:var(--gray5)}
+.ficha-section-badge{display:inline-flex;align-items:center;justify-content:center;min-width:74px;padding:7px 10px;border-radius:999px;background:var(--gray);border:1px solid var(--gray2);font-size:11px;font-weight:800;color:var(--gray6);white-space:nowrap}
+.ficha-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ficha-detail-item{padding:14px 15px;border-radius:16px;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);border:1px solid var(--gray2);min-width:0}
+.ficha-detail-item span{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gray5)}
+.ficha-detail-item strong{display:block;margin-top:7px;font-size:14px;font-weight:700;color:var(--gray7);line-height:1.45;word-break:break-word}
+.ficha-scroll{max-height:360px;overflow:auto;padding-right:4px}
+.ficha-scroll::-webkit-scrollbar{width:6px}
+.ficha-scroll::-webkit-scrollbar-thumb{background:var(--gray3);border-radius:10px}
+.ficha-contact-card,.ficha-doc-card,.ficha-occ-card{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:14px;border-radius:16px;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);border:1px solid var(--gray2)}
+.ficha-contact-card + .ficha-contact-card,.ficha-doc-card + .ficha-doc-card,.ficha-occ-card + .ficha-occ-card{margin-top:10px}
+.ficha-contact-copy strong,.ficha-doc-copy strong,.ficha-occ-copy strong{display:block;font-size:13px;font-weight:800;color:var(--gray7)}
+.ficha-contact-copy span,.ficha-doc-copy span,.ficha-occ-copy span{display:block;font-size:12px;line-height:1.55;color:var(--gray5);margin-top:4px}
+.ficha-contact-link{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:700;color:var(--green-dark);text-decoration:none}
+.ficha-contact-actions,.ficha-doc-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.ficha-section-cta{margin-top:12px;text-align:right}
+.ficha-occ-card.pending{border-color:#fecaca;background:linear-gradient(180deg,#fff7f7 0%,#fff1f2 100%)}
+.ficha-occ-card.resolved{border-color:#bbf7d0;background:linear-gradient(180deg,#f7fff9 0%,#f0fdf4 100%)}
+.ficha-occ-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.ficha-occ-meta .metric-badge{margin-top:0}
+.ficha-empty-inline{padding:14px;border-radius:16px;background:var(--gray);color:var(--gray5);font-size:12.5px;line-height:1.6;border:1px dashed var(--gray3)}
+.ficha-modal-footer{padding:0 28px 24px;border-top:none;margin-top:18px}
+.ficha-modal-footer .btn{min-height:38px}
 .tabs{display:flex;gap:2px;background:var(--gray2);border-radius:10px;padding:3px;margin-bottom:18px;width:fit-content}
 .tab{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray5);transition:all .15s}
 .tab.active{background:white;color:var(--gray7);box-shadow:var(--shadow)}
@@ -368,6 +423,55 @@ textarea.form-input{resize:vertical;min-height:70px}
   .turma-aluno-item{
     grid-template-columns:1fr;
     gap:8px;
+  }
+  .modal-ficha-shell{
+    max-width:calc(100vw - 18px);
+  }
+  .ficha-modal-header,
+  .ficha-modal-body,
+  .ficha-modal-footer{
+    padding-left:18px;
+    padding-right:18px;
+  }
+  .ficha-hero{
+    grid-template-columns:1fr;
+    padding:18px;
+    border-radius:22px;
+  }
+  .ficha-hero-main{
+    flex-direction:column;
+  }
+  .ficha-avatar-shell{
+    width:76px;
+    height:76px;
+    border-radius:20px;
+  }
+  .ficha-hero-copy h2{
+    font-size:24px;
+  }
+  .ficha-summary-grid,
+  .ficha-layout,
+  .ficha-detail-grid{
+    grid-template-columns:1fr;
+  }
+  .ficha-section{
+    padding:16px;
+    border-radius:20px;
+  }
+  .ficha-contact-card,
+  .ficha-doc-card,
+  .ficha-occ-card{
+    flex-direction:column;
+  }
+  .ficha-contact-actions,
+  .ficha-doc-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .ficha-scroll{
+    max-height:none;
+    overflow:visible;
+    padding-right:0;
   }
 
   /* Sidebar */
