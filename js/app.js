@@ -8166,6 +8166,76 @@ function normalizarTexto(str) {
 // ─── DOCUMENTOS SECRETARIA ───────────────────────────────────────────────────
 
 let SEC_DOCUMENTOS = [];
+const DOCUMENTO_SECRETARIA_VALIDADE_DIAS = 30;
+
+function getDocumentoSecretariaValidationUrl(protocolo) {
+  const protocoloLimpo = String(protocolo || '').trim();
+  if (!protocoloLimpo) return '';
+  const url = new URL('validar-documento.html', window.location.href);
+  url.searchParams.set('protocolo', protocoloLimpo);
+  return url.toString();
+}
+
+function getDocumentoSecretariaQrUrl(protocolo, size = 160) {
+  const urlValidacao = getDocumentoSecretariaValidationUrl(protocolo);
+  if (!urlValidacao) return '';
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=0&data=${encodeURIComponent(urlValidacao)}`;
+}
+
+function getDocumentoSecretariaDataValidade(doc) {
+  if (!doc?.data_emissao || doc?.tipo?.startsWith('Requerimento')) return null;
+  const emissao = new Date(`${doc.data_emissao}T00:00:00`);
+  if (Number.isNaN(emissao.getTime())) return null;
+  emissao.setDate(emissao.getDate() + DOCUMENTO_SECRETARIA_VALIDADE_DIAS);
+  return emissao;
+}
+
+function isDocumentoSecretariaValido(doc) {
+  const validade = getDocumentoSecretariaDataValidade(doc);
+  if (!validade) return true;
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  return hoje.getTime() <= validade.getTime();
+}
+
+function formatarDataDocumentoBr(value) {
+  if (!value) return '—';
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '—' : value.toLocaleDateString('pt-BR');
+  }
+  if (typeof value === 'string' && value.includes('/')) return value;
+  const isoBase = typeof value === 'string' && value.length <= 10 ? `${value}T00:00:00` : value;
+  const date = new Date(isoBase);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pt-BR');
+}
+
+function abrirValidacaoDocumentoSec(protocolo) {
+  const url = getDocumentoSecretariaValidationUrl(protocolo);
+  if (!url) {
+    showToast('Protocolo inválido para consulta.', 'alerta');
+    return;
+  }
+  const popup = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    showToast('Permita pop-ups para abrir a conferência do documento.', 'alerta');
+  }
+}
+
+function aguardarImagensDocumentoIframe(iframeDoc, timeoutMs = 3000) {
+  const imagens = Array.from(iframeDoc?.images || []);
+  if (!imagens.length) return Promise.resolve();
+  return Promise.race([
+    Promise.all(imagens.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(resolve => {
+        const finalizar = () => resolve();
+        img.addEventListener('load', finalizar, { once: true });
+        img.addEventListener('error', finalizar, { once: true });
+      });
+    })),
+    new Promise(resolve => setTimeout(resolve, timeoutMs))
+  ]);
+}
 
 function switchSecSubTab(tab, el) {
   document.querySelectorAll('#page-documentos-secretaria .tabs .tab').forEach(x => x.classList.remove('active'));
@@ -8229,8 +8299,9 @@ function renderSecDocumentos() {
     } else {
       tbodyHist.innerHTML = declFiltradas.map(doc => {
         const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
-        const dataFormatada = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+        const dataFormatada = doc.data_emissao ? new Date(`${doc.data_emissao}T00:00:00`).toLocaleDateString('pt-BR') : '—';
         const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">🗑️</button>` : '';
+        const validarBtn = `<button class="btn btn-xs btn-outline" style="margin-left:5px" onclick="abrirValidacaoDocumentoSec('${doc.protocolo}')" title="Conferir autenticidade">Conferir</button>`;
         return `
           <tr>
             <td><strong style="color:var(--primary);font-family:monospace">${doc.protocolo}</strong></td>
@@ -8241,6 +8312,7 @@ function renderSecDocumentos() {
             <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || '—'}</td>
             <td style="text-align:right">
               <button class="btn btn-xs btn-primary" onclick="imprimirDocumentoSec('${doc.id}')">🖨️ Imprimir</button>
+              ${validarBtn}
               ${deleteBtn}
             </td>
           </tr>
@@ -8283,7 +8355,6 @@ function renderSecDocumentos() {
         
         const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">🗑️</button>` : '';
         
-        // Editable status dropdown directly in the table
         const selectStatus = `
           <select class="form-input form-select" style="width:145px;display:inline-block;padding:2px 4px;font-size:11.5px;height:28px" onchange="alterarStatusRequerimento('${doc.id}', this.value)">
             <option value="pendente" ${doc.status === 'pendente' ? 'selected' : ''}>Pendente</option>
@@ -8600,12 +8671,17 @@ async function imprimirDocumentoHtml(id) {
     
     const dataPorExtenso = formatarDataPorExtenso(doc.data_emissao);
     const dataBr = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+    const dataValidade = getDocumentoSecretariaDataValidade(doc);
+    const dataValidadeBr = dataValidade ? formatarDataDocumentoBr(dataValidade) : '—';
+    const documentoValido = isDocumentoSecretariaValido(doc);
+    const urlValidacao = getDocumentoSecretariaValidationUrl(doc.protocolo);
+    const qrCodeUrl = getDocumentoSecretariaQrUrl(doc.protocolo, 180);
     
     // Obtenção da Cidade e UF de Nascimento de forma defensiva/segura
     let cidadeNasc = doc.cidade_nascimento || '';
     let ufNasc = doc.uf_nascimento || '';
     if (!cidadeNasc && doc.obs && doc.obs.includes('[NASC:')) {
-      const match = doc.obs.match(/\[NASC:\s*([^-\]]+)\s*-\s*([^\]]+)\]/);
+      const match = doc.obs.match(/\[NASC:\s*([^\-\]]+)\s*\-\s*([^\]]+)\]/);
       if (match) {
         cidadeNasc = match[1].trim();
         ufNasc = match[2].trim();
@@ -8631,7 +8707,7 @@ async function imprimirDocumentoHtml(id) {
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
       }
       const parsedDate = new Date(dt + 'T00:00:00');
-      return isNaN(parsedDate.getTime()) ? '—' : parsedDate.toLocaleDateString('pt-BR');
+      return Number.isNaN(parsedDate.getTime()) ? '—' : parsedDate.toLocaleDateString('pt-BR');
     };
     
     let cidadeNascText = '';
@@ -8698,7 +8774,7 @@ async function imprimirDocumentoHtml(id) {
         </p>
       `;
     } else if (doc.tipo.startsWith('Requerimento')) {
-      titleHtml = "Comprovante de Requerimento";
+      titleHtml = 'Comprovante de Requerimento';
       contentHtml = `
         <p style="text-align:justify;margin-bottom:20px;font-size:12pt">
           A secretaria escolar atesta e emite o presente comprovante de solicitação para fins de controle e protocolo do pedido. 
@@ -8880,13 +8956,62 @@ async function imprimirDocumentoHtml(id) {
             font-weight: bold;
             color: #111;
           }
+          .verification-strip {
+            margin-top: 20px;
+            padding: 10px 12px;
+            border: 1px dashed #94a3b8;
+            background: #f8fafc;
+            border-radius: 10px;
+            color: #334155;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            font-size: 9.2pt;
+          }
+          .verification-strip strong {
+            color: #0f172a;
+          }
+          .verification-link {
+            max-width: 230px;
+            font-family: monospace;
+            font-size: 7.8pt;
+            word-break: break-all;
+          }
           .footer {
-            text-align: center;
             font-size: 8.5pt;
             color: #444;
             border-top: 1px solid #bbb;
-            padding-top: 8px;
+            padding-top: 10px;
             line-height: 1.4;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 16px;
+          }
+          .footer-main {
+            flex: 1;
+          }
+          .footer-qr {
+            width: 96px;
+            flex-shrink: 0;
+            text-align: center;
+          }
+          .footer-qr img {
+            width: 86px;
+            height: 86px;
+            display: block;
+            margin: 0 auto 6px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 4px;
+            background: #fff;
+          }
+          .footer-qr span {
+            display: block;
+            font-size: 7.2pt;
+            line-height: 1.25;
+            color: #555;
           }
         </style>
       </head>
@@ -8929,9 +9054,30 @@ async function imprimirDocumentoHtml(id) {
             `}
           </div>
           
+          ${!doc.tipo.startsWith('Requerimento') ? `
+            <div class="verification-strip">
+              <div>
+                <strong>Autenticidade digital:</strong> utilize o QR Code ou informe o protocolo <b>${doc.protocolo}</b> no portal de conferência.<br>
+                Documento eletrônico com validade de <b>${DOCUMENTO_SECRETARIA_VALIDADE_DIAS} dias</b> a partir da emissão.
+                Situação atual: <b>${documentoValido ? 'dentro do prazo' : 'fora do prazo'}</b>.
+                ${dataValidade ? `Válido até <b>${dataValidadeBr}</b>.` : ''}
+              </div>
+              <div class="verification-link">${urlValidacao}</div>
+            </div>
+          ` : ''}
+
           <div class="footer">
-            RVS Escolar Gestão Inteligente — Responsável: <b>${doc.responsavel || 'Secretaria'}</b><br>
-            Ficha gerada eletronicamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} | Protocolo: ${doc.protocolo}
+            <div class="footer-main">
+              RVS Escolar Gestão Inteligente — Responsável: <b>${doc.responsavel || 'Secretaria'}</b><br>
+              Ficha gerada eletronicamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} | Protocolo: ${doc.protocolo}<br>
+              ${dataValidade ? `Validade eletrônica: ${dataValidadeBr} | Status da consulta: ${documentoValido ? 'válido' : 'expirado'}` : 'Consulta eletrônica disponível por protocolo.'}
+            </div>
+            ${!doc.tipo.startsWith('Requerimento') ? `
+              <div class="footer-qr">
+                <img src="${qrCodeUrl}" alt="QR Code de autenticação do documento">
+                <span>Escaneie para validar<br>somente em visualização</span>
+              </div>
+            ` : ''}
           </div>
         </div>
       </body>
@@ -8952,11 +9098,12 @@ async function imprimirDocumentoHtml(id) {
     iframeDoc.write(htmlPrint);
     iframeDoc.close();
     
+    await aguardarImagensDocumentoIframe(iframeDoc);
     iframe.contentWindow.focus();
     setTimeout(() => {
       iframe.contentWindow.print();
       setTimeout(() => iframe.remove(), 2500);
-    }, 600);
+    }, 180);
     
   } catch (err) {
     console.error('[imprimirDocumentoHtml] Erro:', err);

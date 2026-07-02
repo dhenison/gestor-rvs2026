@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autenticidade de Documento | RVS Escolar</title>
+  <meta name="description" content="Validação pública de documentos emitidos pela secretaria escolar.">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f4f8ff;
+      --bg-accent: #e7f0ff;
+      --panel: rgba(255, 255, 255, 0.92);
+      --panel-strong: #ffffff;
+      --line: rgba(15, 23, 42, 0.08);
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #0f766e;
+      --primary-soft: rgba(15, 118, 110, 0.1);
+      --danger: #b91c1c;
+      --danger-soft: rgba(185, 28, 28, 0.1);
+      --warn: #b45309;
+      --warn-soft: rgba(180, 83, 9, 0.1);
+      --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+      --radius: 24px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.12), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 88%);
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+      padding: 14px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(16px);
+      border-radius: 18px;
+      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      object-fit: contain;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 6px;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.09);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    .card {
+      border-radius: var(--radius);
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .hero-main {
+      padding: 28px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 255, 0.92)),
+        var(--panel);
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hero h2 {
+      margin: 16px 0 10px;
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.03;
+      letter-spacing: -0.04em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: #334155;
+      font-size: 15px;
+      line-height: 1.7;
+      max-width: 62ch;
+    }
+
+    .summary {
+      padding: 24px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .summary-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .protocol-code {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(22px, 4vw, 28px);
+      letter-spacing: 0.03em;
+      word-break: break-word;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-weight: 800;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .status-loading {
+      color: #1d4ed8;
+      background: rgba(29, 78, 216, 0.1);
+    }
+
+    .status-valid {
+      color: #166534;
+      background: rgba(22, 101, 52, 0.12);
+    }
+
+    .status-expired {
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .status-error {
+      color: var(--warn);
+      background: var(--warn-soft);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .meta-item {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .meta-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .meta-item strong {
+      display: block;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .detail-card,
+    .document-card {
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      margin: 0 0 16px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      letter-spacing: -0.03em;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .detail-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(248, 250, 252, 0.95);
+      border: 1px solid var(--line);
+    }
+
+    .detail-box span {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .detail-box strong,
+    .detail-box p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .notice {
+      margin-bottom: 20px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .notice strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 15px;
+    }
+
+    .notice-valid {
+      color: #14532d;
+      background: rgba(187, 247, 208, 0.32);
+      border-color: rgba(22, 163, 74, 0.18);
+    }
+
+    .notice-expired {
+      color: #7f1d1d;
+      background: rgba(254, 226, 226, 0.7);
+      border-color: rgba(220, 38, 38, 0.16);
+    }
+
+    .notice-error {
+      color: #92400e;
+      background: rgba(254, 243, 199, 0.8);
+      border-color: rgba(217, 119, 6, 0.2);
+    }
+
+    .doc-shell {
+      border-radius: 22px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .doc-head {
+      padding: 22px 24px 0;
+    }
+
+    .doc-head img {
+      width: 100%;
+      max-height: 96px;
+      object-fit: contain;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .doc-protocol {
+      text-align: right;
+      font-size: 13px;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    .doc-content {
+      position: relative;
+      padding: 18px 24px 26px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.98)),
+        url('assets/marca_dagua.png') center 52% / 62% no-repeat;
+    }
+
+    .doc-title {
+      margin: 12px 0 28px;
+      text-align: center;
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .doc-paragraph {
+      margin: 0 0 18px;
+      text-align: justify;
+      line-height: 1.9;
+      font-size: 16px;
+      text-indent: 2em;
+      color: #1e293b;
+    }
+
+    .doc-receipt {
+      border: 1px solid rgba(15, 23, 42, 0.14);
+      border-radius: 18px;
+      background: #f8fafc;
+      padding: 18px;
+    }
+
+    .doc-receipt h4 {
+      margin: 0 0 14px;
+      font-size: 15px;
+      text-align: center;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .receipt-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba(15, 23, 42, 0.12);
+      font-size: 15px;
+    }
+
+    .receipt-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .receipt-row strong {
+      color: #0f172a;
+    }
+
+    .doc-footer {
+      padding: 16px 24px 22px;
+      border-top: 1px solid rgba(15, 23, 42, 0.08);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+      background: rgba(248, 250, 252, 0.95);
+    }
+
+    .empty-state {
+      padding: 26px 22px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 960px) {
+      .hero,
+      .meta-grid,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100%, calc(100% - 18px));
+        padding-top: 14px;
+        padding-bottom: 28px;
+      }
+
+      .topbar,
+      .hero-main,
+      .summary,
+      .detail-card,
+      .document-card {
+        padding: 18px;
+      }
+
+      .brand h1 {
+        font-size: 14px;
+      }
+
+      .doc-head,
+      .doc-content,
+      .doc-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .doc-title {
+        font-size: 20px;
+      }
+
+      .doc-paragraph,
+      .receipt-row,
+      .detail-box strong,
+      .detail-box p {
+        font-size: 14px;
+      }
+
+      .receipt-row {
+        flex-direction: column;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="assets/logo.png" alt="RVS Escolar">
+        <div>
+          <h1>Validação Pública de Documentos</h1>
+          <p>Consulta eletrônica em modo somente visualização</p>
+        </div>
+      </div>
+    </div>
+
+    <section class="hero">
+      <article class="card hero-main">
+        <div class="hero-badge">Autenticidade da Secretaria</div>
+        <h2>Conferência digital por protocolo</h2>
+        <p>
+          Esta página confirma os dados principais do documento emitido pela secretaria escolar,
+          apresenta a visualização eletrônica do conteúdo e informa se ele ainda está dentro do prazo oficial de validade.
+        </p>
+      </article>
+
+      <aside class="card summary">
+        <div class="summary-label">Protocolo consultado</div>
+        <div class="protocol-code" id="protocol-code">Carregando...</div>
+        <div class="status-badge status-loading" id="status-badge">Consultando documento</div>
+      </aside>
+    </section>
+
+    <section class="card detail-card">
+      <div class="notice notice-error" id="notice-box">
+        <strong>Aguardando consulta</strong>
+        Leia o QR Code ou acesse esta página com o protocolo do documento para exibir os dados de autenticação.
+      </div>
+
+      <div class="meta-grid" id="meta-grid">
+        <div class="meta-item">
+          <span>Tipo do documento</span>
+          <strong id="meta-tipo">—</strong>
+        </div>
+        <div class="meta-item">
+          <span>Emissão</span>
+          <strong id="meta-emissao">—</strong>
+        </div>
+        <div class="meta-item">
+          <span>Validade</span>
+          <strong id="meta-validade">—</strong>
+        </div>
+        <div class="meta-item">
+          <span>Situação</span>
+          <strong id="meta-situacao">—</strong>
+        </div>
+      </div>
+
+      <div class="detail-grid" id="detail-grid">
+        <div class="detail-box">
+          <span>Estudante</span>
+          <strong id="detail-aluno">—</strong>
+        </div>
+        <div class="detail-box">
+          <span>Matrícula</span>
+          <strong id="detail-matricula">—</strong>
+        </div>
+        <div class="detail-box">
+          <span>Turma / Turno</span>
+          <strong id="detail-turma">—</strong>
+        </div>
+        <div class="detail-box">
+          <span>Responsável pela emissão</span>
+          <strong id="detail-responsavel">—</strong>
+        </div>
+        <div class="detail-box">
+          <span>Solicitante</span>
+          <strong id="detail-solicitante">—</strong>
+        </div>
+        <div class="detail-box">
+          <span>Motivo / Observação</span>
+          <p id="detail-observacao">—</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card document-card hidden" id="document-card">
+      <h3 class="section-title">Visualização do documento</h3>
+      <div class="doc-shell" id="document-shell"></div>
+    </section>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://xjtluflzpkkbckkcwagf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdGx1Zmx6cGtrYmNra2N3YWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjMxNzMsImV4cCI6MjA5MzIzOTE3M30.3Fj_xCwTwx0MYWjFx3xM41BP8DQCsRMgGYmZJkHuidE';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const QUERY_PROTOCOL = new URLSearchParams(window.location.search).get('protocolo') || '';
+
+    const refs = {
+      protocolCode: document.getElementById('protocol-code'),
+      statusBadge: document.getElementById('status-badge'),
+      noticeBox: document.getElementById('notice-box'),
+      metaTipo: document.getElementById('meta-tipo'),
+      metaEmissao: document.getElementById('meta-emissao'),
+      metaValidade: document.getElementById('meta-validade'),
+      metaSituacao: document.getElementById('meta-situacao'),
+      detailAluno: document.getElementById('detail-aluno'),
+      detailMatricula: document.getElementById('detail-matricula'),
+      detailTurma: document.getElementById('detail-turma'),
+      detailResponsavel: document.getElementById('detail-responsavel'),
+      detailSolicitante: document.getElementById('detail-solicitante'),
+      detailObservacao: document.getElementById('detail-observacao'),
+      documentCard: document.getElementById('document-card'),
+      documentShell: document.getElementById('document-shell')
+    };
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function formatDateBr(value) {
+      if (!value) return '—';
+      if (typeof value === 'string' && value.includes('/')) return value;
+      const isoBase = typeof value === 'string' && value.length <= 10 ? `${value}T00:00:00` : value;
+      const date = new Date(isoBase);
+      return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pt-BR');
+    }
+
+    function formatDateLong(value) {
+      if (!value) return '';
+      const date = new Date(`${value}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function formatBirthDate(value) {
+      if (!value) return '—';
+      if (value.includes('/')) return value;
+      const parts = value.split('-');
+      if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      return formatDateBr(value);
+    }
+
+    function setStatus(type, label) {
+      refs.statusBadge.className = `status-badge ${type}`;
+      refs.statusBadge.textContent = label;
+    }
+
+    function setNotice(type, title, message) {
+      refs.noticeBox.className = `notice ${type}`;
+      refs.noticeBox.innerHTML = `<strong>${escapeHtml(title)}</strong>${escapeHtml(message)}`;
+    }
+
+    function paragraph(text) {
+      return `<p class="doc-paragraph">${text}</p>`;
+    }
+
+    function buildDocumentVisualization(data) {
+      const aluno = data.aluno || {};
+      const nome = escapeHtml(aluno.nome || 'Não informado');
+      const matricula = escapeHtml(aluno.matricula || '—');
+      const turma = escapeHtml(aluno.turma || '—');
+      const turno = escapeHtml(aluno.turno || '—');
+      const dataNasc = escapeHtml(formatBirthDate(aluno.data_nascimento || ''));
+      const cidade = escapeHtml(data.cidade_nascimento || '');
+      const uf = escapeHtml(data.uf_nascimento || 'PA');
+      const localNasc = cidade ? `, natural de <strong>${cidade} - ${uf}</strong>` : '';
+      const emissaoExtenso = escapeHtml(formatDateLong(data.data_emissao));
+      const tipo = data.tipo || '';
+
+      let bodyHtml = '';
+
+      if (tipo === 'Declaração de Matrícula') {
+        bodyHtml = [
+          paragraph(`Declaramos, para os devidos fins, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o número de matrícula <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <strong>2026</strong>, cursando a turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
+          paragraph('Referida informação é expressão da verdade.')
+        ].join('');
+      } else if (tipo === 'Declaração de Frequência (Bolsa Família)') {
+        const freqMatch = (data.observacoes || '').match(/Frequência de (\\d+)%/);
+        const frequencia = escapeHtml(freqMatch ? freqMatch[1] : '100');
+        bodyHtml = [
+          paragraph(`Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, que o(a) estudante <strong>${nome}</strong>, matriculado(a) sob o número <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <strong>2026</strong>, na turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
+          paragraph(`Apurou-se, para o período avaliativo correspondente, uma frequência escolar global e relativa de <strong>${frequencia}%</strong>.`)
+        ].join('');
+      } else if (tipo === 'Declaração de Escolaridade') {
+        bodyHtml = [
+          paragraph(`Declaramos, para os devidos fins de direito, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o número de matrícula <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <strong>${turma}</strong> sob regime letivo ordinário.`),
+          paragraph('O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.')
+        ].join('');
+      } else if (tipo === 'Declaração de Transferência') {
+        bodyHtml = [
+          paragraph(`Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <strong>${nome}</strong>, matriculado(a) sob o número <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, que se encontrava devidamente matriculado(a) na turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
+          paragraph('Esta declaração atesta que a vaga de origem está liberada e o processo de transferência ativo. O presente documento tem validade improrrogável de 30 (trinta) dias a partir de sua emissão, prazo este necessário para a confecção e entrega do Histórico Escolar definitivo.')
+        ].join('');
+      } else {
+        bodyHtml = `
+          <div class="doc-receipt">
+            <h4>Detalhes do requerimento</h4>
+            <div class="receipt-row"><strong>Protocolo</strong><span>${escapeHtml(data.protocolo || '—')}</span></div>
+            <div class="receipt-row"><strong>Estudante</strong><span>${nome}</span></div>
+            <div class="receipt-row"><strong>Matrícula</strong><span>${matricula}</span></div>
+            <div class="receipt-row"><strong>Turma / Turno</strong><span>${turma} (${turno})</span></div>
+            <div class="receipt-row"><strong>Solicitante</strong><span>${escapeHtml(data.solicitante || 'O próprio aluno')}</span></div>
+            <div class="receipt-row"><strong>Motivo</strong><span>${escapeHtml(data.motivo || 'Sem justificativa informada')}</span></div>
+            <div class="receipt-row"><strong>Data do requerimento</strong><span>${escapeHtml(formatDateBr(data.data_emissao))}</span></div>
+            <div class="receipt-row"><strong>Responsável pelo cadastro</strong><span>${escapeHtml(data.responsavel || 'Secretaria')}</span></div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="doc-head">
+          <img src="assets/cabecalho_logo.png" alt="Cabeçalho Oficial">
+          <div class="doc-protocol">Protocolo: <strong>${escapeHtml(data.protocolo || '—')}</strong></div>
+        </div>
+        <div class="doc-content">
+          <div class="doc-title">${escapeHtml(tipo || 'Documento')}</div>
+          ${bodyHtml}
+          ${!tipo.startsWith('Requerimento') ? `<p class="doc-paragraph" style="text-indent:0;text-align:right;margin-top:28px">Ourilândia do Norte - PA, ${emissaoExtenso}.</p>` : ''}
+        </div>
+        <div class="doc-footer">
+          Visualização eletrônica do documento protocolado. Este ambiente serve apenas para conferência de autenticidade e prazo de validade.
+        </div>
+      `;
+    }
+
+    function fillDetails(data) {
+      const aluno = data.aluno || {};
+      refs.protocolCode.textContent = data.protocolo || 'Protocolo não informado';
+      refs.metaTipo.textContent = data.tipo || '—';
+      refs.metaEmissao.textContent = formatDateBr(data.data_emissao);
+      refs.metaValidade.textContent = formatDateBr(data.data_validade);
+      refs.metaSituacao.textContent = data.documento_valido ? 'Válido no momento da consulta' : 'Documento fora do prazo';
+      refs.detailAluno.textContent = aluno.nome || '—';
+      refs.detailMatricula.textContent = aluno.matricula || '—';
+      refs.detailTurma.textContent = `${aluno.turma || '—'} / ${aluno.turno || '—'}`;
+      refs.detailResponsavel.textContent = data.responsavel || 'Secretaria';
+      refs.detailSolicitante.textContent = data.solicitante || 'O próprio aluno';
+      refs.detailObservacao.textContent = data.motivo || data.observacoes || 'Sem observações adicionais.';
+      refs.documentShell.innerHTML = buildDocumentVisualization(data);
+      refs.documentCard.classList.remove('hidden');
+    }
+
+    function renderMissingProtocol() {
+      refs.protocolCode.textContent = 'Sem protocolo';
+      setStatus('status-error', 'Protocolo ausente');
+      setNotice('notice-error', 'Consulta não iniciada', 'Nenhum protocolo foi informado nesta URL.');
+    }
+
+    async function init() {
+      refs.protocolCode.textContent = QUERY_PROTOCOL || 'Aguardando leitura';
+
+      if (!QUERY_PROTOCOL) {
+        renderMissingProtocol();
+        return;
+      }
+
+      try {
+        const { data, error } = await supabaseClient.rpc('consultar_documento_secretaria_publico', {
+          p_protocolo: QUERY_PROTOCOL
+        });
+
+        if (error) throw error;
+
+        if (!data || data.status !== 'success') {
+          setStatus('status-error', 'Documento não localizado');
+          setNotice('notice-error', 'Protocolo inválido ou indisponível', (data && data.message) || 'Não foi possível localizar este documento para validação pública.');
+          return;
+        }
+
+        fillDetails(data);
+
+        if (data.documento_valido) {
+          setStatus('status-valid', 'Documento válido');
+          setNotice(
+            'notice-valid',
+            'Autenticidade confirmada',
+            `Documento eletrônico localizado com sucesso. Validade até ${formatDateBr(data.data_validade)}.`
+          );
+        } else {
+          setStatus('status-expired', 'Documento sem validade');
+          setNotice(
+            'notice-expired',
+            'Prazo encerrado',
+            `O documento foi localizado, porém não possui mais validade desde ${formatDateBr(data.data_validade)}.`
+          );
+        }
+      } catch (err) {
+        console.error('[validar-documento] erro:', err);
+        const message = String(err && err.message ? err.message : err || '');
+        const rpcMissing = message.includes('consultar_documento_secretaria_publico') || message.includes('Could not find the function');
+        setStatus('status-error', 'Consulta indisponível');
+        setNotice(
+          'notice-error',
+          'Falha ao validar o documento',
+          rpcMissing
+            ? 'A função pública de validação ainda não foi aplicada no banco do sistema. Execute a migration mais recente do projeto.'
+            : 'Não foi possível concluir a validação agora. Tente novamente em instantes.'
+        );
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
