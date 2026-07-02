@@ -291,6 +291,73 @@
     .log-entry.warn { color: var(--warning); }
     .log-entry.info { color: #93c5fd; }
     .log-entry.success { color: var(--success); font-weight: bold; }
+
+    /* SIGAEDU visual refresh */
+    :root {
+      --primary: #171513;
+      --accent: #f4cf4d;
+      --success: #198754;
+      --danger: #b3261e;
+      --warning: #b68400;
+      --dark-bg: #f6efe8;
+      --card-bg: rgba(255, 255, 255, 0.84);
+      --border-color: rgba(216, 199, 183, 0.82);
+      --text-muted: #6f655d;
+    }
+    html, body {
+      background: linear-gradient(180deg, #fbf7f2 0%, #f2e9df 56%, #eee2d6 100%);
+      color: var(--primary);
+    }
+    body::before {
+      background:
+        radial-gradient(circle 520px at 12% 4%, rgba(244, 207, 77, 0.24) 0%, transparent 58%),
+        radial-gradient(circle 500px at 95% 8%, rgba(23, 21, 19, 0.08) 0%, transparent 62%),
+        linear-gradient(180deg, #fbf7f2 0%, #f2e9df 56%, #eee2d6 100%);
+    }
+    .header {
+      border-bottom: 1px solid var(--border-color);
+    }
+    .header-info h1,
+    .card h3,
+    .input-box label {
+      color: var(--primary);
+    }
+    .header-info p,
+    .card p,
+    .card ul,
+    .input-box .info-subtext {
+      color: var(--text-muted);
+    }
+    .card,
+    .input-box,
+    .progress-container {
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 28px 68px rgba(55, 39, 24, 0.14), 0 10px 24px rgba(55, 39, 24, 0.08);
+    }
+    .btn-compile {
+      background: linear-gradient(135deg, var(--primary), #3c342d);
+      box-shadow: 0 16px 30px rgba(23, 21, 19, 0.14);
+    }
+    .btn-download {
+      background: linear-gradient(135deg, var(--accent), #ffe27c);
+      color: var(--primary);
+      box-shadow: 0 16px 30px rgba(226, 185, 44, 0.22);
+    }
+    .progress-header {
+      color: var(--primary);
+    }
+    .progress-bar-wrapper {
+      background: rgba(244, 207, 77, 0.12);
+    }
+    .progress-bar-fill {
+      background: linear-gradient(135deg, var(--accent), #ddb22d);
+    }
+    .log-container {
+      background: rgba(28, 24, 21, 0.94);
+      border-color: rgba(89, 73, 58, 0.7);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
   </style>
 </head>
 <body>

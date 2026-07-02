@@ -740,7 +740,7 @@ function showPage(p, el) {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', boletins: 'Boletins Escolares',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    'tratamento-ocorrencias': 'Tratamento de Ocorrências'
+    horarios: 'Horário de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   

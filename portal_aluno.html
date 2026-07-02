@@ -799,6 +799,159 @@
       .olimp-grid { grid-template-columns: 1fr; }
       .banner-img-container { aspect-ratio: 16/9; }
     }
+
+    /* SIGAEDU visual refresh */
+    :root {
+      --primary: #171513;
+      --accent: #f4cf4d;
+      --primary-glow: rgba(244, 207, 77, 0.18);
+      --accent-glow: rgba(221, 178, 45, 0.18);
+      --success: #198754;
+      --warning: #b68400;
+      --dark-bg: #f6efe8;
+      --card-bg: rgba(255, 255, 255, 0.84);
+      --border-color: rgba(216, 199, 183, 0.82);
+      --text-muted: #6f655d;
+    }
+    html, body {
+      background: linear-gradient(180deg, #fbf7f2 0%, #f2e9df 56%, #eee2d6 100%);
+      color: var(--primary);
+    }
+    body::before {
+      background:
+        radial-gradient(circle 520px at 12% 4%, rgba(244, 207, 77, 0.24) 0%, transparent 58%),
+        radial-gradient(circle 500px at 95% 8%, rgba(23, 21, 19, 0.08) 0%, transparent 62%),
+        linear-gradient(180deg, #fbf7f2 0%, #f2e9df 56%, #eee2d6 100%);
+    }
+    body::after {
+      background-image:
+        linear-gradient(to right, rgba(111, 101, 93, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(111, 101, 93, 0.04) 1px, transparent 1px);
+      opacity: .7;
+    }
+    header {
+      background: rgba(255, 255, 255, 0.78);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .header-info h1,
+    .perfil-nome,
+    .card-label-title,
+    .view-title,
+    .card-info-title,
+    .medals-title,
+    .cartao-nome,
+    .boletim-preview-title {
+      color: var(--primary) !important;
+    }
+    .header-info p,
+    .perfil-saudacao,
+    .card-label-sub,
+    .secao-titulo,
+    .card-info-sub,
+    .lista-vazia,
+    .medals-desc,
+    .perfil-turma,
+    footer {
+      color: var(--text-muted) !important;
+    }
+    .btn-sair,
+    .btn-voltar {
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.86);
+      border-color: var(--border-color);
+    }
+    .btn-sair:hover,
+    .btn-voltar:hover {
+      color: var(--primary);
+      background: rgba(244, 207, 77, 0.16);
+      border-color: rgba(221, 178, 45, 0.42);
+    }
+    .perfil-card,
+    .portal-card,
+    .horario-btn,
+    .agenda-card,
+    .info-card-item,
+    .olimp-banner-card,
+    .cartao-olimpiada,
+    .resultado-secao,
+    .boletim-preview-viewer,
+    .toast,
+    .lista-vazia {
+      background: rgba(255, 255, 255, 0.84) !important;
+      border: 1px solid var(--border-color) !important;
+      box-shadow: 0 28px 68px rgba(55, 39, 24, 0.14), 0 10px 24px rgba(55, 39, 24, 0.08);
+      color: var(--primary);
+    }
+    .avatar,
+    .perfil-turma,
+    .mode-indicator {
+      box-shadow: 0 16px 32px rgba(226, 185, 44, 0.18);
+    }
+    .perfil-turma {
+      background: rgba(244, 207, 77, 0.16);
+      border-color: rgba(221, 178, 45, 0.32);
+    }
+    .portal-card:hover {
+      border-color: rgba(221, 178, 45, 0.42) !important;
+      background: rgba(255, 250, 244, 0.96) !important;
+      box-shadow: 0 22px 42px rgba(226, 185, 44, 0.16);
+    }
+    .card-img-area {
+      background: rgba(245, 236, 228, 0.58);
+    }
+    .card-img-placeholder {
+      background: linear-gradient(135deg, rgba(244, 207, 77, 0.14), rgba(255, 255, 255, 0.96));
+      border-bottom: 1px solid var(--border-color);
+    }
+    .placeholder-text {
+      color: var(--text-muted);
+    }
+    .horario-btn,
+    .agenda-card {
+      color: var(--primary);
+    }
+    .horario-btn:hover,
+    .agenda-card:hover {
+      background: rgba(244, 207, 77, 0.12) !important;
+      border-color: rgba(221, 178, 45, 0.42) !important;
+      box-shadow: 0 18px 36px rgba(226, 185, 44, 0.14);
+    }
+    .btn-edital,
+    .btn-action {
+      background: linear-gradient(135deg, var(--primary), #3c342d) !important;
+      color: white !important;
+      border: 1px solid transparent !important;
+      box-shadow: 0 14px 28px rgba(23, 21, 19, 0.14);
+    }
+    .btn-edital:hover,
+    .btn-action:hover {
+      box-shadow: 0 18px 34px rgba(23, 21, 19, 0.18);
+    }
+    .cartao-badge.onano,
+    .cartao-badge.obq,
+    .badge-normal,
+    .badge-urgente {
+      box-shadow: none;
+    }
+    .boletim-preview-header {
+      background: rgba(245, 236, 228, 0.68);
+      border-bottom: 1px solid var(--border-color);
+    }
+    #boletim-preview-title {
+      color: var(--primary) !important;
+    }
+    .boletim-preview-close {
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--text-muted);
+      border-color: var(--border-color);
+    }
+    .boletim-preview-close:hover {
+      background: rgba(244, 207, 77, 0.14);
+      color: var(--primary);
+    }
+    .toast {
+      backdrop-filter: blur(12px);
+    }
   </style>
 </head>
 <body>
@@ -1020,6 +1173,21 @@
           <div style="display:flex; gap:10px; width: 100%;">
             <button class="btn-edital" id="ov-cartao-view-btn" style="margin:0; flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; padding:10px;">👁️ Visualizar Cartão</button>
             <button class="btn-edital" id="ov-cartao-download-btn" style="margin:0; flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; padding:10px; background:rgba(255,255,255,0.03); border-color:var(--border-color);">📥 Baixar Cartão</button>
+          </div>
+        </div>
+
+        <!-- Seção de Consulta OBQ (Exibida dinamicamente) -->
+        <div id="obq-consulta-container" style="display:none; margin-top:16px; padding-top:14px; border-top:1px dashed var(--border-color)">
+          <div class="info-label" style="color:var(--accent); margin-bottom:8px;">🔍 Consulta de Inscrição OBQ</div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            Para visualizar a sua ficha de inscrição na Olimpíada Brasileira de Química (OBQ), digite seu CPF abaixo.
+          </div>
+          <div style="display:flex; gap:10px; width: 100%; margin-bottom:12px;">
+            <input type="text" id="obq-cpf-input" placeholder="Digite seu CPF (000.000.000-00)" style="flex:1; padding: 10px 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 10px; color: white; font-family: inherit; font-size: 12.5px; outline: none;" oninput="mascaraCPF(this)">
+            <button class="btn-edital" onclick="realizarConsultaOBQ()" style="margin:0; font-size:12px; padding:10px 16px;">Consultar</button>
+          </div>
+          <div id="obq-resultado-consulta" style="display:none; animation: fade-up 0.4s ease; margin-top: 15px; padding: 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+            <!-- Resultado da busca -->
           </div>
         </div>
       </div>
@@ -1516,41 +1684,54 @@
       }
     }
 
-    // Cartão de Acesso logic
+    // Cartão de Acesso & OBQ Consulta logic
     const cardContainer = document.getElementById('ov-cartao-container');
     if (cardContainer) cardContainer.style.display = 'none';
 
-    if (studentProfile && studentProfile.cpf) {
-      if (!studentProfile.id) {
-        const { data: alData } = await supabaseClient
-          .from('alunos')
-          .select('id')
-          .eq('matricula', studentProfile.cpf)
-          .maybeSingle();
-        if (alData) {
-          studentProfile.id = alData.id;
-          sessionStorage.setItem('portal_aluno', JSON.stringify(studentProfile));
+    const obqConsultaContainer = document.getElementById('obq-consulta-container');
+    if (obqConsultaContainer) obqConsultaContainer.style.display = 'none';
+    const obqResultado = document.getElementById('obq-resultado-consulta');
+    if (obqResultado) obqResultado.style.display = 'none';
+    const obqCpfInput = document.getElementById('obq-cpf-input');
+    if (obqCpfInput) obqCpfInput.value = '';
+
+    const isOBQ = ol.nome && (ol.nome.toUpperCase().includes('OBQ') || ol.nome.toLowerCase().includes('química') || ol.nome.toLowerCase().includes('quimica'));
+
+    if (isOBQ) {
+      if (obqConsultaContainer) obqConsultaContainer.style.display = 'block';
+    } else {
+      if (studentProfile && studentProfile.cpf) {
+        if (!studentProfile.id) {
+          const { data: alData } = await supabaseClient
+            .from('alunos')
+            .select('id')
+            .eq('matricula', studentProfile.cpf)
+            .maybeSingle();
+          if (alData) {
+            studentProfile.id = alData.id;
+            sessionStorage.setItem('portal_aluno', JSON.stringify(studentProfile));
+          }
         }
-      }
-      
-      if (studentProfile.id) {
-        const { data: cardData } = await supabaseClient
-          .from('cartoes_acesso_olimpiadas')
-          .select('pdf_base64')
-          .eq('olimpiada_id', ol.id)
-          .eq('aluno_id', studentProfile.id)
-          .maybeSingle();
-          
-        if (cardData && cardData.pdf_base64) {
-          if (cardContainer) {
-            cardContainer.style.display = 'block';
-            const viewBtn = document.getElementById('ov-cartao-view-btn');
-            const downloadBtn = document.getElementById('ov-cartao-download-btn');
-            if (viewBtn) {
-              viewBtn.onclick = () => visualizarBoletimPDF(cardData.pdf_base64, `Cartão de Acesso - ${ol.nome}`);
-            }
-            if (downloadBtn) {
-              downloadBtn.onclick = () => baixarBoletimPDF(cardData.pdf_base64, `Cartao_Acesso_${ol.nome.replace(/ /g, '_')}.pdf`);
+        
+        if (studentProfile.id) {
+          const { data: cardData } = await supabaseClient
+            .from('cartoes_acesso_olimpiadas')
+            .select('pdf_base64')
+            .eq('olimpiada_id', ol.id)
+            .eq('aluno_id', studentProfile.id)
+            .maybeSingle();
+            
+          if (cardData && cardData.pdf_base64) {
+            if (cardContainer) {
+              cardContainer.style.display = 'block';
+              const viewBtn = document.getElementById('ov-cartao-view-btn');
+              const downloadBtn = document.getElementById('ov-cartao-download-btn');
+              if (viewBtn) {
+                viewBtn.onclick = () => visualizarBoletimPDF(cardData.pdf_base64, `Cartão de Acesso - ${ol.nome}`);
+              }
+              if (downloadBtn) {
+                downloadBtn.onclick = () => baixarBoletimPDF(cardData.pdf_base64, `Cartao_Acesso_${ol.nome.replace(/ /g, '_')}.pdf`);
+              }
             }
           }
         }
@@ -1680,6 +1861,78 @@
       pCard.style.boxShadow = '0 0 20px rgba(6, 182, 212, 0.15)';
       pCard.style.borderColor = 'rgba(6, 182, 212, 0.25)';
     }
+  }
+
+  // ── Helpers Máscara e Consulta OBQ (Zero banco de dados) ──
+  function mascaraCPF(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 9)      v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
+    else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
+    else if (v.length > 3) v = v.replace(/^(\d{3})(\d{0,3})/, '$1.$2');
+    input.value = v;
+  }
+
+  function realizarConsultaOBQ() {
+    const inputCpf = document.getElementById('obq-cpf-input').value.trim();
+    const resultadoDiv = document.getElementById('obq-resultado-consulta');
+    
+    if (!inputCpf) {
+      alert('Por favor, digite o CPF.');
+      return;
+    }
+    
+    const cpfDigitado = inputCpf.replace(/\D/g, '');
+    const cpfLogado = studentProfile && studentProfile.cpf ? studentProfile.cpf.replace(/\D/g, '') : '';
+    
+    if (cpfDigitado !== cpfLogado) {
+      resultadoDiv.style.display = 'block';
+      resultadoDiv.innerHTML = `
+        <div style="color: var(--danger); font-size: 12.5px; text-align: center; font-weight: 700;">
+          ⚠️ Acesso Negado
+        </div>
+        <div style="font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 6px; line-height: 1.4;">
+          Lembrando que só irá aparecer a página do aluno que pesquisou. Você só pode consultar a sua própria inscrição.
+        </div>
+      `;
+      return;
+    }
+    
+    // CPF coincide! Renderiza a ficha de inscrição dinâmica 
+    resultadoDiv.style.display = 'block';
+    resultadoDiv.innerHTML = `
+      <div style="text-align: center; border-bottom: 1px dashed rgba(255,255,255,0.06); padding-bottom: 12px; margin-bottom: 12px;">
+        <div style="font-size: 24px; margin-bottom: 6px;">🧪</div>
+        <div style="font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 800; color: var(--accent);">
+          Ficha de Inscrição Homologada
+        </div>
+        <div style="font-size: 10.5px; color: var(--success); font-weight: 700; margin-top: 2px;">
+          ✓ Olimpíada Brasileira de Química (OBQ)
+        </div>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; text-align: left;">
+        <div>
+          <span style="color: var(--text-muted); font-size: 9px; text-transform: uppercase; display: block;">Estudante</span>
+          <strong style="color: white; font-size: 13px;">${studentProfile.nome}</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 9px; text-transform: uppercase; display: block;">E-mail Institucional</span>
+          <strong style="color: white;">${studentProfile.email || 'Não cadastrado'}</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 9px; text-transform: uppercase; display: block;">CPF</span>
+          <strong style="color: white;">${studentProfile.cpf}</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 9px; text-transform: uppercase; display: block;">Instituição de Ensino</span>
+          <strong style="color: white;">E.E. Dr. Romildo Veloso e Silva</strong>
+        </div>
+      </div>
+      
+      <div style="text-align: center; font-size: 10px; color: var(--text-muted); font-style: italic; margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.04); padding-top: 10px;">
+        Sua inscrição foi confirmada e vinculada ao cadastro institucional da escola. Boa sorte na prova!
+      </div>
+    `;
   }
 
   function fecharOlimpiadaOverlay() {

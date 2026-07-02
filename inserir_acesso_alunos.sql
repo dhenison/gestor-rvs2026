@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════
 --  Importação de Alunos → tabela acesso_alunos
---  Gerado em: 20/05/2026, 11:55:51
+--  Gerado em: 12/06/2026, 19:15:16
 --  Total: 1190 alunos
 --  Cole este arquivo no Supabase → SQL Editor → Run
 -- ═══════════════════════════════════════════════════════════

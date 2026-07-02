@@ -695,6 +695,146 @@
       .card { padding: 24px; }
       .cartao-olimpiada { padding: 18px; }
     }
+
+    /* SIGAEDU visual refresh */
+    :root {
+      --primary: #171513;
+      --accent: #f4cf4d;
+      --primary-glow: rgba(244, 207, 77, 0.18);
+      --accent-glow: rgba(221, 178, 45, 0.18);
+      --success: #198754;
+      --warning: #b68400;
+      --dark-bg: #f6efe8;
+      --card-bg: rgba(255, 255, 255, 0.84);
+      --border-color: rgba(216, 199, 183, 0.82);
+      --text-muted: #6f655d;
+    }
+    html, body {
+      background: linear-gradient(180deg, #fbf7f2 0%, #f2e9df 56%, #eee2d6 100%);
+      color: var(--primary);
+    }
+    body::before {
+      background:
+        radial-gradient(circle 520px at 12% 4%, rgba(244, 207, 77, 0.24) 0%, transparent 58%),
+        radial-gradient(circle 500px at 95% 8%, rgba(23, 21, 19, 0.08) 0%, transparent 62%),
+        linear-gradient(180deg, #fbf7f2 0%, #f2e9df 56%, #eee2d6 100%);
+    }
+    body::after {
+      background-image:
+        linear-gradient(to right, rgba(111, 101, 93, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(111, 101, 93, 0.04) 1px, transparent 1px);
+      opacity: .7;
+    }
+    header {
+      background: rgba(255, 255, 255, 0.78);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .header-info h1,
+    .hero h2,
+    .resultado-secao h3,
+    .cartao-nome,
+    .boletim-preview-title {
+      color: var(--primary);
+    }
+    .header-info p,
+    .hero p,
+    footer,
+    .cartao-info-label {
+      color: var(--text-muted);
+    }
+    .header-back {
+      color: var(--text-muted);
+      border-color: var(--border-color);
+      background: rgba(255, 255, 255, 0.84);
+    }
+    .header-back:hover {
+      color: var(--primary);
+      border-color: rgba(221, 178, 45, 0.42);
+      background: rgba(244, 207, 77, 0.16);
+    }
+    .hero-badge {
+      background: rgba(244, 207, 77, 0.18);
+      border-color: rgba(221, 178, 45, 0.32);
+      color: #7c5b06;
+      box-shadow: none;
+    }
+    .hero-logo {
+      box-shadow:
+        0 0 0 1px rgba(216, 199, 183, 0.72),
+        0 20px 40px rgba(61, 42, 23, 0.12),
+        0 0 34px rgba(244, 207, 77, 0.22);
+    }
+    .hero h2 {
+      background: linear-gradient(135deg, var(--primary) 25%, #6e5847 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .card,
+    .resultado-secao,
+    .cartao-olimpiada,
+    .boletim-preview-viewer,
+    .toast {
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 28px 68px rgba(55, 39, 24, 0.14), 0 10px 24px rgba(55, 39, 24, 0.08);
+      color: var(--primary);
+    }
+    .card-step,
+    .boletim-preview-header {
+      border-bottom-color: rgba(216, 199, 183, 0.72);
+      background: rgba(245, 236, 228, 0.68);
+    }
+    .step-num {
+      background: rgba(244, 207, 77, 0.16);
+      border-color: rgba(221, 178, 45, 0.32);
+      color: #7c5b06;
+    }
+    .step-text,
+    .cartao-info-val {
+      color: var(--text-muted);
+    }
+    .field label {
+      color: var(--text-muted);
+    }
+    .field input {
+      background: #fffdfa;
+      border-color: var(--border-color);
+      color: var(--primary);
+    }
+    .field input:focus {
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(244, 207, 77, 0.18);
+    }
+    .btn-buscar,
+    .btn-action {
+      background: linear-gradient(135deg, var(--primary), #3c342d) !important;
+      color: white !important;
+      border: 1px solid transparent !important;
+      box-shadow: 0 16px 30px rgba(23, 21, 19, 0.14);
+    }
+    .btn-buscar:hover:not(:disabled),
+    .btn-action:hover {
+      box-shadow: 0 20px 36px rgba(23, 21, 19, 0.18);
+    }
+    .erro-box {
+      background: #fff1ef;
+      border-color: #efb8b2;
+      color: #b3261e;
+    }
+    .boletim-preview-close {
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--text-muted);
+      border-color: var(--border-color);
+    }
+    .boletim-preview-close:hover {
+      background: rgba(244, 207, 77, 0.14);
+      color: var(--primary);
+    }
+    .toast {
+      backdrop-filter: blur(12px);
+    }
   </style>
 </head>
 <body>
