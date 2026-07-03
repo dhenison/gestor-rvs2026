@@ -5188,6 +5188,10 @@ function renderTopoSaber(){
 // ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
 let USUARIOS_DATA = [];
 
+function obterFotoUsuario(usuario){
+  return usuario?.foto_url || usuario?.avatar_url || '';
+}
+
 async function carregarUsuarios(){
   const {data, error} = await supabaseClient.from('usuarios').select('*').order('nome');
   if(error){ console.error('Erro ao carregar usuários:', error); return; }
@@ -5338,9 +5342,10 @@ function abrirModalUsuario(id){
     document.getElementById('usr-turma').value   = u.turma_responsavel||'';
     document.getElementById('modal-usuario-title').textContent = '✏️ Editar Usuário';
     if(senhaInfoEl) senhaInfoEl.style.display = 'block'; // Show 'leave blank' hint when editing
-    if(u.avatar_url){
-      document.getElementById('usr-avatar-data').value = u.avatar_url;
-      if(prev) prev.src = u.avatar_url;
+    const fotoUsuario = obterFotoUsuario(u);
+    if(fotoUsuario){
+      document.getElementById('usr-avatar-data').value = fotoUsuario;
+      if(prev) prev.src = fotoUsuario;
     }
   }
   openModal('modal-usuario');
@@ -5479,8 +5484,9 @@ function renderUsuarios(){
       const ativoBadge = u.ativo !== false
         ? '<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;margin-left:6px;vertical-align:middle;">Ativo</span>'
         : '<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;margin-left:6px;vertical-align:middle;">Inativo</span>';
-      const avatarHtml = u.avatar_url
-        ? '<img src="'+u.avatar_url+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid '+cor+'">'
+      const fotoUsuario = obterFotoUsuario(u);
+      const avatarHtml = fotoUsuario
+        ? '<img src="'+fotoUsuario+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid '+cor+'">'
         : '<div style="width:56px;height:56px;border-radius:50%;background:'+cor+';display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:white;border:3px solid '+cor+'">'+initials+'</div>';
       return '<div class="table-card" style="padding:16px;border-top:3px solid '+cor+'">'+
         '<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">'+
