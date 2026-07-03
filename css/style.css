@@ -300,8 +300,11 @@ textarea.form-input{resize:vertical;min-height:70px}
 .tl-connector{width:1.5px;flex:1;background:var(--gray3);margin-top:4px}
 .tl-content h4{font-size:13px;font-weight:600;color:var(--gray7)}.tl-content p{font-size:12px;color:var(--gray5);margin-top:3px}.tl-date{font-size:11px;color:var(--gray4);margin-top:2px}
 .modal-ficha-shell{max-width:1120px;padding:0;overflow:hidden}
-.ficha-modal-header{padding:24px 28px 0;margin-bottom:0}
-.ficha-modal-body{padding:22px 28px 28px}
+.ficha-inline-shell{margin-top:18px;display:grid;gap:18px}
+.ficha-inline-shell[hidden]{display:none !important}
+.ficha-inline-header-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.ficha-modal-header{padding:22px 24px;border-radius:24px;background:rgba(255,255,255,.96);border:1px solid rgba(203,213,225,.9);box-shadow:0 12px 32px rgba(15,23,42,.06);margin-bottom:0;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.ficha-modal-body{padding:0}
 .ficha-hero{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(240px,.75fr);gap:18px;padding:24px;border-radius:var(--radius3);background:linear-gradient(135deg,#0f172a 0%,#1e293b 58%,#312e81 100%);color:white;box-shadow:0 24px 50px rgba(15,23,42,.28)}
 .ficha-hero-main{display:flex;align-items:flex-start;gap:16px;min-width:0}
 .ficha-avatar-shell{width:88px;height:88px;border-radius:var(--radius3);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);flex-shrink:0;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
@@ -352,7 +355,7 @@ textarea.form-input{resize:vertical;min-height:70px}
 .ficha-occ-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
 .ficha-occ-meta .metric-badge{margin-top:0}
 .ficha-empty-inline{padding:14px;border-radius:var(--radius2);background:var(--gray);color:var(--gray5);font-size:12.5px;line-height:1.6;border:1px dashed var(--gray3)}
-.ficha-modal-footer{padding:0 28px 24px;border-top:none;margin-top:18px}
+.ficha-modal-footer{padding:20px 24px;border-top:none;margin-top:0;border-radius:24px;background:rgba(255,255,255,.96);border:1px solid rgba(203,213,225,.9);box-shadow:0 12px 32px rgba(15,23,42,.06);display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .ficha-modal-footer .btn{min-height:38px}
 .tabs{display:flex;gap:2px;background:var(--gray2);border-radius:var(--radius);padding:3px;margin-bottom:18px;width:fit-content}
 .tab{padding:7px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--gray5);transition:all .15s}
@@ -455,14 +458,14 @@ textarea.form-input{resize:vertical;min-height:70px}
     grid-template-columns:1fr;
     gap:8px;
   }
-  .modal-ficha-shell{
-    max-width:calc(100vw - 18px);
-  }
   .ficha-modal-header,
-  .ficha-modal-body,
   .ficha-modal-footer{
     padding-left:18px;
     padding-right:18px;
+  }
+  .ficha-inline-header-actions{
+    width:100%;
+    justify-content:flex-start;
   }
   .ficha-hero{
     grid-template-columns:1fr;

@@ -315,6 +315,160 @@
           </table>
           </div>
         </div>
+        <section class="ficha-inline-shell" id="aluno-ficha-inline" hidden>
+          <div class="modal-header ficha-modal-header">
+            <div>
+              <div class="modal-title">Ficha Individual do Aluno</div>
+              <div style="font-size:12px;color:var(--gray5);margin-top:4px">Visao academica, disciplinar e contatos vinculados.</div>
+            </div>
+            <div class="ficha-inline-header-actions">
+              <button class="btn btn-outline btn-sm" onclick="fecharFichaInline()">Voltar a lista</button>
+              <button class="btn btn-outline btn-sm" style="border-color:var(--blue);color:var(--blue)" onclick="gerarPDFFichaAluno()">Imprimir Ficha</button>
+            </div>
+          </div>
+          <div class="ficha-modal-body">
+            <div class="ficha-hero">
+              <div class="ficha-hero-main">
+                <div class="ficha-avatar-shell">
+                  <img id="ficha-avatar" src="" alt="Foto do aluno" style="display:none">
+                  <div id="ficha-avatar-fallback" style="display:none"></div>
+                </div>
+                <div class="ficha-hero-copy">
+                  <span class="ficha-kicker">Dossie Escolar</span>
+                  <h2 id="ficha-nome"></h2>
+                  <p id="ficha-subtitulo">Carregando dados do estudante.</p>
+                  <div class="ficha-hero-badges">
+                    <span class="metric-badge badge-green" id="ficha-status">Ativo</span>
+                    <span class="metric-badge badge-blue" id="ficha-turno">Turno</span>
+                    <span class="metric-badge badge-yellow" id="ficha-rota-badge">Transporte</span>
+                  </div>
+                </div>
+              </div>
+              <div class="ficha-hero-side">
+                <div class="ficha-hero-card">
+                  <span>CPF</span>
+                  <strong id="ficha-cpf"></strong>
+                </div>
+                <div class="ficha-hero-card">
+                  <span>Matricula</span>
+                  <strong id="ficha-matricula"></strong>
+                </div>
+                <div class="ficha-hero-card">
+                  <span>Turma Atual</span>
+                  <strong id="ficha-turma"></strong>
+                </div>
+              </div>
+            </div>
+            <div class="ficha-summary-grid">
+              <div class="ficha-stat-card is-alert">
+                <span>Faltas</span>
+                <strong id="ficha-faltas"></strong>
+                <small>Consolidado a partir do historico do aluno.</small>
+              </div>
+              <div class="ficha-stat-card">
+                <span>Ocorrencias</span>
+                <strong id="ficha-total-ocorrencias">0</strong>
+                <small>Registros disciplinares vinculados ao estudante.</small>
+              </div>
+              <div class="ficha-stat-card">
+                <span>Responsaveis</span>
+                <strong id="ficha-total-responsaveis">0</strong>
+                <small>Contatos aptos para acompanhamento escolar.</small>
+              </div>
+              <div class="ficha-stat-card">
+                <span>Boletins</span>
+                <strong id="ficha-total-boletins">0</strong>
+                <small>Arquivos publicados disponiveis para consulta.</small>
+              </div>
+            </div>
+            <div class="ficha-layout">
+              <div class="ficha-column">
+                <section class="ficha-section">
+                  <div class="ficha-section-head">
+                    <div>
+                      <h3>Dados Cadastrais</h3>
+                      <p>Informacoes principais do estudante sem alterar a estrutura dos registros atuais.</p>
+                    </div>
+                  </div>
+                  <div class="ficha-detail-grid">
+                    <div class="ficha-detail-item">
+                      <span>Responsavel</span>
+                      <strong id="ficha-resp"></strong>
+                    </div>
+                    <div class="ficha-detail-item">
+                      <span>Contato</span>
+                      <strong id="ficha-contato"></strong>
+                    </div>
+                    <div class="ficha-detail-item">
+                      <span>E-mail</span>
+                      <strong id="ficha-email"></strong>
+                    </div>
+                    <div class="ficha-detail-item">
+                      <span>Rota / Transporte</span>
+                      <strong id="ficha-rota"></strong>
+                    </div>
+                    <div class="ficha-detail-item">
+                      <span>Data de Nascimento</span>
+                      <strong id="ficha-nasc"></strong>
+                    </div>
+                    <div class="ficha-detail-item">
+                      <span>Idade</span>
+                      <strong id="ficha-idade"></strong>
+                    </div>
+                  </div>
+                </section>
+                <section class="ficha-section">
+                  <div class="ficha-section-head">
+                    <div>
+                      <h3>Timeline Academica</h3>
+                      <p>Movimentacoes escolares, frequencia e eventos relevantes do historico.</p>
+                    </div>
+                    <span class="ficha-section-badge" id="ficha-timeline-count">0 itens</span>
+                  </div>
+                  <div class="timeline ficha-scroll" id="ficha-timeline"></div>
+                </section>
+                <section class="ficha-section">
+                  <div class="ficha-section-head">
+                    <div>
+                      <h3>Ocorrencias do Aluno</h3>
+                      <p>Ocorrencias registradas com destaque visual para pendencias e tratativas.</p>
+                    </div>
+                    <span class="ficha-section-badge" id="ficha-ocorrencias-count">0 registros</span>
+                  </div>
+                  <div class="ficha-scroll" id="ficha-ocorrencias"></div>
+                </section>
+              </div>
+              <div class="ficha-column">
+                <section class="ficha-section">
+                  <div class="ficha-section-head">
+                    <div>
+                      <h3>Contatos e Responsaveis</h3>
+                      <p>Vinculos uteis para comunicacao e acompanhamento pedagogico.</p>
+                    </div>
+                    <span class="ficha-section-badge" id="ficha-responsaveis-count">0 contatos</span>
+                  </div>
+                  <div class="ficha-scroll" id="ficha-responsaveis-lista"></div>
+                </section>
+                <section class="ficha-section">
+                  <div class="ficha-section-head">
+                    <div>
+                      <h3>Boletins Publicados</h3>
+                      <p>Documentos disponiveis para visualizacao, download e impressao.</p>
+                    </div>
+                    <span class="ficha-section-badge" id="ficha-boletins-count">0 boletins</span>
+                  </div>
+                  <div class="ficha-scroll" id="ficha-boletins-lista"></div>
+                </section>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer ficha-modal-footer">
+            <button class="btn btn-outline btn-sm" onclick="fecharFichaInline()">Fechar Ficha</button>
+            <button class="btn btn-gray btn-sm" onclick="abrirEditarFicha()">Editar Dados</button>
+            <button class="btn btn-gray btn-sm" onclick="abrirMudancaTurma()">Mudar de Turma</button>
+            <button class="btn btn-red btn-sm" onclick="abrirOcorrDaFicha()">Registrar Ocorrencia</button>
+          </div>
+        </section>
       </div>
 
             <!-- ══════════════════ FREQUÊNCIA ══════════════════ -->
@@ -1579,45 +1733,45 @@
 </div>
 
 <!-- Modal: Ficha do Aluno -->
-<div class="modal-overlay" id="modal-ficha" onclick="if(event.target===this)closeModal('modal-ficha')">
+<div class="modal-overlay" id="modal-ficha-legacy" onclick="if(event.target===this)closeModal('modal-ficha-legacy')">
   <div class="modal modal-ficha-shell">
     <div class="modal-header ficha-modal-header">
       <div>
         <div class="modal-title">Ficha Individual do Aluno</div>
         <div style="font-size:12px;color:var(--gray5);margin-top:4px">Visão acadêmica, disciplinar e contatos vinculados.</div>
       </div>
-      <button class="modal-close" onclick="closeModal('modal-ficha')">✕</button>
+      <button class="modal-close" onclick="closeModal('modal-ficha-legacy')">✕</button>
     </div>
     <div class="ficha-modal-body">
       <div class="ficha-hero">
         <div class="ficha-hero-main">
           <div class="ficha-avatar-shell">
-            <img id="ficha-avatar" src="" alt="Foto do aluno" style="display:none">
-            <div id="ficha-avatar-fallback" style="display:none"></div>
+            <img id="legacy-ficha-avatar" src="" alt="Foto do aluno" style="display:none">
+            <div id="legacy-ficha-avatar-fallback" style="display:none"></div>
           </div>
           <div class="ficha-hero-copy">
             <span class="ficha-kicker">Dossiê Escolar</span>
-            <h2 id="ficha-nome"></h2>
-            <p id="ficha-subtitulo">Carregando dados do estudante.</p>
+            <h2 id="legacy-ficha-nome"></h2>
+            <p id="legacy-ficha-subtitulo">Carregando dados do estudante.</p>
             <div class="ficha-hero-badges">
-              <span class="metric-badge badge-green" id="ficha-status">Ativo</span>
-              <span class="metric-badge badge-blue" id="ficha-turno">Turno</span>
-              <span class="metric-badge badge-yellow" id="ficha-rota-badge">Transporte</span>
+              <span class="metric-badge badge-green" id="legacy-ficha-status">Ativo</span>
+              <span class="metric-badge badge-blue" id="legacy-ficha-turno">Turno</span>
+              <span class="metric-badge badge-yellow" id="legacy-ficha-rota-badge">Transporte</span>
             </div>
           </div>
         </div>
         <div class="ficha-hero-side">
           <div class="ficha-hero-card">
             <span>CPF</span>
-            <strong id="ficha-cpf"></strong>
+            <strong id="legacy-ficha-cpf"></strong>
           </div>
           <div class="ficha-hero-card">
             <span>Matrícula</span>
-            <strong id="ficha-matricula"></strong>
+            <strong id="legacy-ficha-matricula"></strong>
           </div>
           <div class="ficha-hero-card">
             <span>Turma Atual</span>
-            <strong id="ficha-turma"></strong>
+            <strong id="legacy-ficha-turma"></strong>
           </div>
         </div>
       </div>
@@ -1625,22 +1779,22 @@
       <div class="ficha-summary-grid">
         <div class="ficha-stat-card is-alert">
           <span>Faltas</span>
-          <strong id="ficha-faltas"></strong>
+          <strong id="legacy-ficha-faltas"></strong>
           <small>Consolidado a partir do histórico do aluno.</small>
         </div>
         <div class="ficha-stat-card">
           <span>Ocorrências</span>
-          <strong id="ficha-total-ocorrencias">0</strong>
+          <strong id="legacy-ficha-total-ocorrencias">0</strong>
           <small>Registros disciplinares vinculados ao estudante.</small>
         </div>
         <div class="ficha-stat-card">
           <span>Responsáveis</span>
-          <strong id="ficha-total-responsaveis">0</strong>
+          <strong id="legacy-ficha-total-responsaveis">0</strong>
           <small>Contatos aptos para acompanhamento escolar.</small>
         </div>
         <div class="ficha-stat-card">
           <span>Boletins</span>
-          <strong id="ficha-total-boletins">0</strong>
+          <strong id="legacy-ficha-total-boletins">0</strong>
           <small>Arquivos publicados disponíveis para consulta.</small>
         </div>
       </div>
@@ -1657,27 +1811,27 @@
             <div class="ficha-detail-grid">
               <div class="ficha-detail-item">
                 <span>Responsável</span>
-                <strong id="ficha-resp"></strong>
+                <strong id="legacy-ficha-resp"></strong>
               </div>
               <div class="ficha-detail-item">
                 <span>Contato</span>
-                <strong id="ficha-contato"></strong>
+                <strong id="legacy-ficha-contato"></strong>
               </div>
               <div class="ficha-detail-item">
                 <span>E-mail</span>
-                <strong id="ficha-email"></strong>
+                <strong id="legacy-ficha-email"></strong>
               </div>
               <div class="ficha-detail-item">
                 <span>Rota / Transporte</span>
-                <strong id="ficha-rota"></strong>
+                <strong id="legacy-ficha-rota"></strong>
               </div>
               <div class="ficha-detail-item">
                 <span>Data de Nascimento</span>
-                <strong id="ficha-nasc"></strong>
+                <strong id="legacy-ficha-nasc"></strong>
               </div>
               <div class="ficha-detail-item">
                 <span>Idade</span>
-                <strong id="ficha-idade"></strong>
+                <strong id="legacy-ficha-idade"></strong>
               </div>
             </div>
           </section>
@@ -1688,9 +1842,9 @@
                 <h3>Timeline Acadêmica</h3>
                 <p>Movimentações escolares, frequência e eventos relevantes do histórico.</p>
               </div>
-              <span class="ficha-section-badge" id="ficha-timeline-count">0 itens</span>
+              <span class="ficha-section-badge" id="legacy-ficha-timeline-count">0 itens</span>
             </div>
-            <div class="timeline ficha-scroll" id="ficha-timeline"></div>
+            <div class="timeline ficha-scroll" id="legacy-ficha-timeline"></div>
           </section>
 
           <section class="ficha-section">
@@ -1699,9 +1853,9 @@
                 <h3>Ocorrências do Aluno</h3>
                 <p>Ocorrências registradas com destaque visual para pendências e tratativas.</p>
               </div>
-              <span class="ficha-section-badge" id="ficha-ocorrencias-count">0 registros</span>
+              <span class="ficha-section-badge" id="legacy-ficha-ocorrencias-count">0 registros</span>
             </div>
-            <div class="ficha-scroll" id="ficha-ocorrencias"></div>
+            <div class="ficha-scroll" id="legacy-ficha-ocorrencias"></div>
           </section>
         </div>
 
@@ -1712,9 +1866,9 @@
                 <h3>Contatos e Responsáveis</h3>
                 <p>Vínculos úteis para comunicação e acompanhamento pedagógico.</p>
               </div>
-              <span class="ficha-section-badge" id="ficha-responsaveis-count">0 contatos</span>
+              <span class="ficha-section-badge" id="legacy-ficha-responsaveis-count">0 contatos</span>
             </div>
-            <div class="ficha-scroll" id="ficha-responsaveis-lista"></div>
+            <div class="ficha-scroll" id="legacy-ficha-responsaveis-lista"></div>
           </section>
 
           <section class="ficha-section">
@@ -1723,15 +1877,15 @@
                 <h3>Boletins Publicados</h3>
                 <p>Documentos disponíveis para visualização, download e impressão.</p>
               </div>
-              <span class="ficha-section-badge" id="ficha-boletins-count">0 boletins</span>
+              <span class="ficha-section-badge" id="legacy-ficha-boletins-count">0 boletins</span>
             </div>
-            <div class="ficha-scroll" id="ficha-boletins-lista"></div>
+            <div class="ficha-scroll" id="legacy-ficha-boletins-lista"></div>
           </section>
         </div>
       </div>
     </div>
     <div class="modal-footer ficha-modal-footer">
-      <button class="btn btn-outline btn-sm" onclick="closeModal('modal-ficha')">Fechar</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('modal-ficha-legacy')">Fechar</button>
       <button class="btn btn-outline btn-sm" style="border-color:var(--blue);color:var(--blue)" onclick="gerarPDFFichaAluno()">Imprimir Ficha</button>
       <button class="btn btn-gray btn-sm" onclick="abrirEditarFicha()">Editar Dados</button>
       <button class="btn btn-gray btn-sm" onclick="abrirMudancaTurma()">Mudar de Turma</button>

@@ -1730,8 +1730,9 @@ function verFichaLegacy(cpf){
   renderTimeline(a);
   renderFichaOcorrencias(a);
   renderResponsaveisFicha(a.id); renderFichaBoletins(a);
-  document.getElementById('modal-ficha').dataset.cpf=cpf;
-  openModal('modal-ficha');
+  const ficha = getFichaContainer();
+  if (ficha) ficha.dataset.cpf = cpf;
+  exibirFichaInline();
 }
 
 function renderFichaOcorrencias(a){
@@ -1820,7 +1821,34 @@ function formatarStatusFicha(status){
   return { label, badge: 'badge-blue' };
 }
 
+function getFichaContainer(){
+  return document.getElementById('aluno-ficha-inline');
+}
+
+function getFichaCpfAtual(){
+  return getFichaContainer()?.dataset.cpf || '';
+}
+
+function exibirFichaInline(){
+  const ficha = getFichaContainer();
+  if (!ficha) return;
+  ficha.hidden = false;
+  requestAnimationFrame(() => {
+    ficha.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function fecharFichaInline(){
+  const ficha = getFichaContainer();
+  if (!ficha) return;
+  ficha.hidden = true;
+  ficha.dataset.cpf = '';
+}
+
 function verFicha(cpf){
+  if (!document.getElementById('page-alunos')?.classList.contains('active')) {
+    showPage('alunos', null);
+  }
   const a = ALUNOS_DATA.find(x => x.cpf === cpf); if(!a) return;
   const faltas = (a.historico || []).filter(h => h.tipo === 'falta').length;
   const ocorrs = getOcorrenciasAluno(a);
@@ -1872,8 +1900,9 @@ function verFicha(cpf){
   renderFichaOcorrencias(a);
   renderResponsaveisFicha(a.id);
   renderFichaBoletins(a);
-  document.getElementById('modal-ficha').dataset.cpf = cpf;
-  openModal('modal-ficha');
+  const ficha = getFichaContainer();
+  if (ficha) ficha.dataset.cpf = cpf;
+  exibirFichaInline();
 }
 
 function renderFichaOcorrencias(a){
@@ -1926,7 +1955,7 @@ function abrirMudancaTurma(){
   confirmarSenhaAdmin(()=>{ atualizarSelectTurmas(); openModal('modal-mudar-turma'); });
 }
 async function salvarMudancaTurma(){
-  const cpf=document.getElementById('modal-ficha').dataset.cpf;
+  const cpf=getFichaCpfAtual();
   const novaTurma=document.getElementById('select-nova-turma')?.value;
   if(!novaTurma){ showToast('Selecione a nova turma','alerta'); return; }
   
@@ -1955,17 +1984,17 @@ async function salvarMudancaTurma(){
 }
 
 function abrirOcorrDaFicha(){
-  const cpf=document.getElementById('modal-ficha').dataset.cpf;
+  const cpf=getFichaCpfAtual();
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   envolvidos=[{nome:a.nome}];
   document.getElementById('envolvidos-list-ocorr').innerHTML=`<div class="envolvido-tag"><span>👤 ${a.nome}</span></div>`;
   if(document.getElementById('input-ocorr-turma')) document.getElementById('input-ocorr-turma').value=a.turma;
   atualizarAlunosPorTurmaOcorr();
-  closeModal('modal-ficha'); openModal('modal-ocorr');
+  openModal('modal-ocorr');
 }
 
 function abrirEditarFicha(){
-  const cpf=document.getElementById('modal-ficha').dataset.cpf;
+  const cpf=getFichaCpfAtual();
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   const s=prompt('🔐 Edição de dados requer senha do administrador:');
   if(s!==ADMIN_SENHA){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
@@ -6129,7 +6158,7 @@ function gerarPDFIndividual(oId) {
 
 // Ficha de Registro de Aluno em PDF
 function gerarPDFFichaAluno() {
-  const cpf = document.getElementById('modal-ficha')?.dataset.cpf;
+  const cpf = getFichaCpfAtual();
   if (!cpf) return;
   const a = ALUNOS_DATA.find(x => x.cpf === cpf);
   if (!a) return;
