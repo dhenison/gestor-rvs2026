@@ -1843,6 +1843,11 @@ function fecharFichaInline(){
   if (!ficha) return;
   ficha.hidden = true;
   ficha.dataset.cpf = '';
+  requestAnimationFrame(() => {
+    document.getElementById('page-alunos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector('.main')?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 function verFicha(cpf){
