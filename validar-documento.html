@@ -13,6 +13,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
+      /* Paleta própria desta página (documento público/institucional — mantida
+         intencionalmente distinta do tema SIGAEDU usado nos portais do aluno) */
       --bg: #f4f8ff;
       --bg-accent: #e7f0ff;
       --panel: rgba(255, 255, 255, 0.92);
@@ -28,6 +30,11 @@
       --warn-soft: rgba(180, 83, 9, 0.1);
       --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
       --radius: 24px;
+
+      /* Escala adicional, alinhada estruturalmente com css/style.css (Fase 0) */
+      --radius2: 16px;
+      --radius3: 24px;
+      --shadow3: 0 28px 68px rgba(15, 23, 42, 0.12), 0 10px 24px rgba(15, 23, 42, 0.06);
     }
 
     * {
@@ -428,6 +435,13 @@
       display: none !important;
     }
 
+    /* =======================================================================
+       RESPONSIVIDADE
+       Esta página já cobria tablet/mobile antes da Fase 0; mantidos os
+       thresholds próprios (960px/640px, mais conservadores que o padrão
+       768px/480px do projeto) para não alterar um comportamento que já
+       funciona bem — só a nomenclatura dos tokens foi unificada.
+       ======================================================================= */
     @media (max-width: 960px) {
       .hero,
       .meta-grid,
