@@ -212,15 +212,17 @@
           </select>
           <button class="btn btn-outline btn-sm" onclick="renderDashCompleto()">Filtrar</button>
         </div>
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,340px);gap:16px;align-items:start">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,340px);gap:var(--space-4);align-items:start">
           <div>
             <div class="section-header">
               <div class="section-title">Turmas — Resumo</div>
               <button class="btn btn-outline btn-sm" onclick="showPage('turmas',null)">Ver todas →</button>
             </div>
             <div class="table-card">
+              <div class="table-scroll">
               <table><thead><tr><th>Turma</th><th>Turno</th><th>Alunos</th><th>Entrada</th><th>Status Ent.</th><th>Saída</th><th>Status Saí.</th><th>Faltas</th></tr></thead>
               <tbody id="turmas-table-body"></tbody></table>
+              </div>
             </div>
           </div>
           <div>
@@ -306,10 +308,12 @@
               <option value="">Todas as turmas</option>
             </select>
           </div>
+          <div class="table-scroll">
           <table>
             <thead><tr><th>CPF</th><th>Nome</th><th>Turma</th><th>Turno</th><th>Rota</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
             <tbody id="alunos-tbody"></tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -317,9 +321,9 @@
       <!-- ========================================== -->
       <!--            BOLETINS ESCOLARES              -->
       <!-- ========================================== -->
-      <div class="page" id="page-boletins" style="color: #000000 !important;">
+      <div class="page" id="page-boletins" style="color: var(--gray7) !important;">
         <div class="section-header">
-          <div class="section-title" style="color: #000000 !important;">📊 Módulo de Boletins Escolares</div>
+          <div class="section-title" style="color: var(--gray7) !important;">📊 Módulo de Boletins Escolares</div>
         </div>
         
         <!-- Abas de Navegação -->
@@ -354,15 +358,15 @@
               </div>
             </div>
 
-            <div class="table-responsive">
+            <div class="table-scroll">
               <table class="table" style="width:100%; border-collapse:collapse;">
                 <thead>
                   <tr style="border-bottom:2px solid var(--gray3);">
-                    <th style="padding:12px; text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Código</th>
-                    <th style="padding:12px; text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Série</th>
-                    <th style="padding:12px; text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Turno</th>
-                    <th style="padding:12px; text-align:center; font-size:12.5px; font-weight:700; color:var(--gray7);">Status do Boletim</th>
-                    <th style="padding:12px; text-align:center; font-size:12.5px; font-weight:700; color:var(--gray7); width:320px;">Ações</th>
+                    <th style="padding:var(--space-3); text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Código</th>
+                    <th style="padding:var(--space-3); text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Série</th>
+                    <th style="padding:var(--space-3); text-align:left; font-size:12.5px; font-weight:700; color:var(--gray7);">Turno</th>
+                    <th style="padding:var(--space-3); text-align:center; font-size:12.5px; font-weight:700; color:var(--gray7);">Status do Boletim</th>
+                    <th style="padding:var(--space-3); text-align:center; font-size:12.5px; font-weight:700; color:var(--gray7); width:320px;">Ações</th>
                   </tr>
                 </thead>
                 <tbody id="boletins-status-tbody">
@@ -376,7 +380,7 @@
         <!-- ABA 2: UPLOAD E PROCESSAMENTO -->
         <div id="subtab-boletins-upload" style="display:none; animation: fadeIn 0.3s ease;">
           <div class="table-card" style="padding: 25px; background: white;">
-            <h3 style="font-size: 15px; font-weight: 700; color: #000000 !important; margin-bottom: 15px; font-weight: 800; font-family: 'Outfit', sans-serif;">📤 Enviar Boletim Completo da Turma</h3>
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--gray7) !important; margin-bottom: 15px; font-weight: 800; font-family: 'Outfit', sans-serif;">📤 Enviar Boletim Completo da Turma</h3>
             
             <div style="display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; align-items:center;">
               <div style="display:flex; flex-direction:column; gap:4px;">
@@ -406,7 +410,7 @@
             
             <div id="boletim-dropzone" onclick="document.getElementById('boletim-pdf-file').click()" style="border: 2.5px dashed var(--gray3); border-radius: 12px; padding: 40px 20px; text-align: center; background: var(--gray); cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='var(--blue)'; this.style.background='white';" onmouseout="this.style.borderColor='var(--gray3)'; this.style.background='var(--gray)';">
               <div id="boletim-dropzone-icon" style="font-size: 36px; margin-bottom: 12px;">📤</div>
-              <div id="boletim-dropzone-text" style="font-size: 14.5px; font-weight: 800; color: #000000 !important;">Clique ou arraste o arquivo PDF da turma aqui</div>
+              <div id="boletim-dropzone-text" style="font-size: 14.5px; font-weight: 800; color: var(--gray7) !important;">Clique ou arraste o arquivo PDF da turma aqui</div>
               <div style="font-size: 12.5px; color: var(--gray5); margin-top: 6px;">O sistema dividirá e enviará o boletim de cada aluno com base no nome impresso na página</div>
             </div>
             
@@ -425,7 +429,7 @@
 
         <!-- ETAPA 1: Selecionar Turno + Turma -->
         <div id="freq-etapa1">
-          <div class="section-title" style="margin-bottom:16px">Frequência Escolar</div>
+          <div class="section-title" style="margin-bottom:var(--space-4)">Frequência Escolar</div>
           <div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);box-shadow:var(--shadow);padding:28px 24px;max-width:480px">
             <div style="font-size:13px;color:var(--gray5);margin-bottom:20px">Selecione o turno e a turma para iniciar a chamada:</div>
             <div class="form-group">
@@ -458,7 +462,7 @@
           </div>
 
           <!-- Seletor de dia letivo -->
-          <div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);box-shadow:var(--shadow);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);box-shadow:var(--shadow);padding:14px 18px;margin-bottom:var(--space-4);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
             <div style="font-size:13px;font-weight:600;color:var(--gray6)">📅 Dia da Chamada:</div>
             <select class="form-input form-select" style="width:260px" id="sel-dia-freq" onchange="onDiaFreqChange()">
               <option value="">Selecione o dia letivo</option>
@@ -498,8 +502,10 @@
           <div style="margin-top:16px">
             <div class="section-title" style="margin-bottom:12px">📊 Consolidado do Dia</div>
             <div class="table-card">
+              <div class="table-scroll">
               <table><thead><tr><th>Aluno</th><th>Entrada</th><th>Saída</th><th>Resultado</th><th>Obs.</th></tr></thead>
               <tbody id="consolidado-tbody"></tbody></table>
+              </div>
             </div>
           </div>
         </div>
@@ -616,7 +622,7 @@
         </div>
         <!-- Horário Geral -->
         <div id="horario-geral">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
             <div class="table-card" style="padding:20px">
               <div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--gray7)">☀️ Manhã</div>
               <div style="font-size:12.5px;color:var(--gray5);margin-bottom:8px">Link do horário:</div>
@@ -648,7 +654,7 @@
         </div>
         <!-- Horário Professores -->
         <div id="horario-prof" class="hidden">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--space-4)">
             <div class="table-card" style="padding:20px">
               <div style="font-size:15px;font-weight:700;margin-bottom:14px;color:var(--gray7)">☀️ Professores Manhã</div>
               <div style="font-size:12.5px;color:var(--gray5);margin-bottom:8px">Link do horário:</div>
@@ -714,7 +720,7 @@
           <div class="section-title">Controle de Transporte Escolar</div>
           <button class="btn btn-primary btn-sm" onclick="openModal('modal-rota')">+ Nova Rota</button>
         </div>
-        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="display:flex;gap:10px;margin-bottom:var(--space-4);flex-wrap:wrap">
           <select class="form-input form-select" style="width:150px" id="filtro-transp-turno" onchange="renderTransporte()">
             <option value="">Todos os turnos</option>
             <option>Manhã</option><option>Tarde</option><option>Noite</option>
@@ -770,7 +776,7 @@
           <div class="section-title">Controle de Livros Didáticos</div>
         </div>
         <!-- Filtros -->
-        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:10px;margin-bottom:var(--space-4);flex-wrap:wrap;align-items:center">
           <select class="form-input form-select" style="width:150px" id="livros-filtro-turno" onchange="renderLivros()">
             <option value="">Todos os turnos</option>
             <option>Manhã</option><option>Tarde</option><option>Noite</option>
@@ -788,17 +794,19 @@
             <button class="btn btn-outline btn-sm" onclick="fecharLivroAlunos()">← Voltar</button>
           </div>
           <div class="table-card">
+            <div class="table-scroll">
             <table>
               <thead><tr><th>Aluno</th><th>Turma</th><th>Turno</th><th>Recebeu o Livro?</th><th>Data</th></tr></thead>
               <tbody id="livros-alunos-tbody"></tbody>
             </table>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- ══════════════════ RELATÓRIOS ══════════════════ -->
       <div class="page" id="page-relatorios">
-        <div class="section-title" style="margin-bottom:16px">📊 Relatórios</div>
+        <div class="section-title" style="margin-bottom:var(--space-4)">📊 Relatórios</div>
         <div class="tabs">
           <div class="tab active" onclick="setRelTab('freq',this)">Frequência</div>
           <div class="tab" onclick="setRelTab('transp',this)">Transporte</div>
@@ -808,7 +816,7 @@
 
         <!-- FREQUÊNCIA -->
         <div id="rel-freq">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;background:white;padding:16px;border-radius:var(--radius2);border:1px solid var(--gray3)">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4);background:white;padding:var(--space-4);border-radius:var(--radius2);border:1px solid var(--gray3)">
             <div><label class="form-label">Turno</label>
               <select class="form-input form-select" id="rel-freq-turno" onchange="filtrarTurmasRel('freq')" style="width:140px">
                 <option value="">Todos</option><option>Manhã</option><option>Tarde</option><option>Noite</option>
@@ -846,7 +854,7 @@
 
         <!-- TRANSPORTE -->
         <div id="rel-transp" class="hidden">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;background:white;padding:16px;border-radius:var(--radius2);border:1px solid var(--gray3)">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4);background:white;padding:var(--space-4);border-radius:var(--radius2);border:1px solid var(--gray3)">
             <div><label class="form-label">Turno</label>
               <select class="form-input form-select" id="rel-transp-turno" style="width:140px">
                 <option value="">Todos</option><option>Manhã</option><option>Tarde</option><option>Noite</option>
@@ -884,7 +892,7 @@
 
         <!-- OCORRÊNCIAS -->
         <div id="rel-ocorr" class="hidden">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;background:white;padding:16px;border-radius:var(--radius2);border:1px solid var(--gray3)">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4);background:white;padding:var(--space-4);border-radius:var(--radius2);border:1px solid var(--gray3)">
             <div><label class="form-label">Turno</label>
               <select class="form-input form-select" id="rel-ocorr-turno" style="width:140px">
                 <option value="">Todos</option><option>Manhã</option><option>Tarde</option><option>Noite</option>
@@ -929,7 +937,7 @@
 
         <!-- LIVROS -->
         <div id="rel-livros" class="hidden">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px;background:white;padding:16px;border-radius:var(--radius2);border:1px solid var(--gray3)">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:var(--space-4);background:white;padding:var(--space-4);border-radius:var(--radius2);border:1px solid var(--gray3)">
             <div><label class="form-label">Turno</label>
               <select class="form-input form-select" id="rel-livros-turno" onchange="filtrarTurmasRel('livros')" style="width:140px">
                 <option value="">Todos</option><option>Manhã</option><option>Tarde</option><option>Noite</option>
@@ -978,7 +986,7 @@
               <input type="date" id="filtro-sec-data-fim" onchange="filtrarSecDocumentos()" title="Data Final" style="width:140px">
               <button class="btn btn-outline btn-sm" onclick="limparFiltrosSec('historico')">Limpar Filtros</button>
             </div>
-            <div class="table-wrapper">
+            <div class="table-scroll">
               <table>
                 <thead>
                   <tr>
@@ -1020,7 +1028,7 @@
               </select>
               <button class="btn btn-outline btn-sm" onclick="limparFiltrosSec('requerimentos')">Limpar Filtros</button>
             </div>
-            <div class="table-wrapper">
+            <div class="table-scroll">
               <table>
                 <thead>
                   <tr>
@@ -1046,8 +1054,9 @@
 
       <!-- ══════════════════ PERMISSÕES ══════════════════ -->
       <div class="page" id="page-permissoes">
-        <div class="section-title" style="margin-bottom:16px">Controle de Acesso — RBAC</div>
+        <div class="section-title" style="margin-bottom:var(--space-4)">Controle de Acesso — RBAC</div>
         <div class="perm-table">
+          <div class="table-scroll">
           <table>
                         <thead>
               <tr>
@@ -1059,6 +1068,7 @@
             </thead>
             <tbody id="perm-tbody"></tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -1095,7 +1105,7 @@
 
       <!-- ══════════════════ PERFIL ══════════════════ -->
       <div class="page" id="page-perfil">
-        <div class="section-title" style="margin-bottom:16px">👤 Meu Perfil</div>
+        <div class="section-title" style="margin-bottom:var(--space-4)">👤 Meu Perfil</div>
         <div class="profile-card" style="max-width:640px">
 
           <!-- Avatar com câmera/galeria -->
@@ -1167,23 +1177,23 @@
         </div>
 
         <!-- KPIs Alertas -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px">
-          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--red)">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:var(--space-4); margin-bottom:24px">
+          <div class="metric-card" style="background:var(--gray2); padding:var(--space-4); border-radius:12px; border-left:4px solid var(--red)">
             <div style="font-size:12px; color:var(--gray5)">Alunos Críticos (≥ 3 Ocorrências)</div>
             <div style="font-size:28px; font-weight:700; color:var(--red); margin-top:8px" id="to-stats-criticos">0</div>
           </div>
-          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--orange)">
+          <div class="metric-card" style="background:var(--gray2); padding:var(--space-4); border-radius:12px; border-left:4px solid var(--orange)">
             <div style="font-size:12px; color:var(--gray5)">Total de Ocorrências Críticas</div>
             <div style="font-size:28px; font-weight:700; color:var(--orange); margin-top:8px" id="to-stats-total">0</div>
           </div>
-          <div class="metric-card" style="background:var(--gray2); padding:16px; border-radius:12px; border-left:4px solid var(--green)">
+          <div class="metric-card" style="background:var(--gray2); padding:var(--space-4); border-radius:12px; border-left:4px solid var(--green)">
             <div style="font-size:12px; color:var(--gray5)">Ações Recomendadas</div>
             <div style="font-size:13px; color:var(--gray6); font-weight:500; margin-top:14px">Notificar Responsáveis / Suspensão</div>
           </div>
         </div>
 
         <!-- Filtros e Busca -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-4); flex-wrap:wrap; gap:10px">
           <div style="display:flex; gap:10px; width:100%; max-width:600px">
             <input type="text" class="form-input" style="max-width:320px; margin:0" id="to-filtro-busca" placeholder="Buscar aluno..." oninput="filtrarTratamentoOcorrencias()">
             <select class="form-input form-select" style="max-width:180px; margin:0" id="to-filtro-turma" onchange="filtrarTratamentoOcorrencias()">
@@ -1193,7 +1203,7 @@
         </div>
 
         <!-- Lista Grid de Alunos Críticos -->
-        <div style="display:grid; grid-template-columns:1fr; gap:16px" id="to-alunos-alertas-lista">
+        <div style="display:grid; grid-template-columns:1fr; gap:var(--space-4)" id="to-alunos-alertas-lista">
           <!-- Populado via JS -->
         </div>
       </div>
@@ -1213,7 +1223,7 @@
       <span class="modal-title"><i data-lucide="camera" style="width:20px;height:20px;margin-right:6px"></i> Tirar Foto de Perfil</span>
       <button class="modal-close" onclick="fecharCameraPerfil()">✕</button>
     </div>
-    <div style="padding:16px;text-align:center">
+    <div style="padding:var(--space-4);text-align:center">
       <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:14px">
         <video id="camera-perfil-video" autoplay playsinline muted
           style="width:100%;max-height:320px;display:block;border-radius:12px"></video>
@@ -1223,7 +1233,7 @@
         <button class="btn btn-outline" onclick="fecharCameraPerfil()">Cancelar</button>
         <button class="btn btn-primary" onclick="tirarFotoPerfil()"><i data-lucide="camera" style="width:14px;height:14px"></i> Tirar Foto</button>
       </div>
-      <div id="camera-perfil-erro" style="display:none;margin-top:10px;font-size:12px;color:var(--red);padding:8px;background:#fff0f0;border-radius:6px"></div>
+      <div id="camera-perfil-erro" style="display:none;margin-top:10px;font-size:12px;color:var(--red);padding:var(--space-2);background:#fff0f0;border-radius:6px"></div>
     </div>
   </div>
 </div>
@@ -1234,7 +1244,7 @@
       <span class="modal-title"><i data-lucide="camera" style="width:20px;height:20px;margin-right:6px"></i> Tirar Foto do Aluno</span>
       <button class="modal-close" onclick="fecharCameraAluno()">✕</button>
     </div>
-    <div style="padding:16px;text-align:center">
+    <div style="padding:var(--space-4);text-align:center">
       <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:14px">
         <video id="camera-aluno-video" autoplay playsinline muted
           style="width:100%;max-height:320px;display:block;border-radius:12px"></video>
@@ -1244,7 +1254,7 @@
         <button class="btn btn-outline" onclick="fecharCameraAluno()">Cancelar</button>
         <button class="btn btn-primary" onclick="tirarFotoAluno()"><i data-lucide="camera" style="width:14px;height:14px"></i> Tirar Foto</button>
       </div>
-      <div id="camera-aluno-erro" style="display:none;margin-top:10px;font-size:12px;color:var(--red);padding:8px;background:#fff0f0;border-radius:6px"></div>
+      <div id="camera-aluno-erro" style="display:none;margin-top:10px;font-size:12px;color:var(--red);padding:var(--space-2);background:#fff0f0;border-radius:6px"></div>
     </div>
   </div>
 </div>
@@ -1278,7 +1288,7 @@
       <span class="modal-title">Definir Tipo de Dia</span>
       <button class="modal-close" onclick="closeModal('modal-cal-tipo')">✕</button>
     </div>
-    <p style="font-size:13px;color:var(--gray5);margin-bottom:16px" id="modal-cal-d"></p>
+    <p style="font-size:13px;color:var(--gray5);margin-bottom:var(--space-4)" id="modal-cal-d"></p>
     <input type="hidden" id="modal-cal-key">
     <div class="form-group">
       <label class="form-label">Tipo do Dia</label>
@@ -1512,11 +1522,11 @@
     </div>
     
     <!-- Foto do Aluno -->
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:var(--gray2);border-radius:var(--radius2)">
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:20px;padding:var(--space-4);background:var(--gray2);border-radius:var(--radius2)">
       <div style="position:relative">
         <img id="aluno-avatar-preview"
           src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E"
-          style="width:72px;height:72px;border-radius:16px;object-fit:cover;border:3px solid var(--blue)">
+          style="width:72px;height:72px;border-radius:var(--radius2);object-fit:cover;border:3px solid var(--blue)">
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="font-size:13px;font-weight:600;color:var(--gray6)">Foto do Aluno</div>
@@ -1922,7 +1932,7 @@
       <span class="modal-title">FJ — Falta Justificada</span>
       <button class="modal-close" onclick="closeModal('modal-fj')">✕</button>
     </div>
-    <p style="font-size:13px;color:var(--gray5);margin-bottom:16px">Selecione o tipo de justificativa:</p>
+    <p style="font-size:13px;color:var(--gray5);margin-bottom:var(--space-4)">Selecione o tipo de justificativa:</p>
     <input type="hidden" id="fj-tipo-chamada">
     <input type="hidden" id="fj-idx">
     <div style="display:flex;flex-direction:column;gap:10px">
@@ -2020,7 +2030,7 @@
       <label class="form-label">📎 Anexar Arquivo (PDF, Word, Imagem…)</label>
       <label id="solicit-upload-area" for="solicit-arquivo" style="
         display:flex; flex-direction:column; align-items:center; justify-content:center;
-        border:2px dashed var(--gray3); border-radius:10px; padding:20px 16px;
+        border:2px dashed var(--gray3); border-radius:var(--radius); padding:20px 16px;
         cursor:pointer; background:var(--gray2); transition:border-color 0.2s, background 0.2s;
         min-height:90px; text-align:center; gap:6px;
       " ondragover="event.preventDefault();this.style.borderColor='var(--primary)'" 
@@ -2351,11 +2361,11 @@
     </div>
     <input type="hidden" id="usr-edit-id">
     <!-- Avatar -->
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:16px;background:var(--gray2);border-radius:var(--radius2)">
+    <div style="display:flex;align-items:center;gap:var(--space-4);margin-bottom:20px;padding:var(--space-4);background:var(--gray2);border-radius:var(--radius2)">
       <div style="position:relative">
         <img id="usr-avatar-preview"
           src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E"
-          style="width:72px;height:72px;border-radius:16px;object-fit:cover;border:3px solid var(--blue)">
+          style="width:72px;height:72px;border-radius:var(--radius2);object-fit:cover;border:3px solid var(--blue)">
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="font-size:13px;font-weight:600;color:var(--gray6)">Foto do Usuário</div>
@@ -2515,7 +2525,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/pdf.min.js"></script>
 <script src="js/pdf-lib.min.js"></script>
-<script src="js/app.js?v=1.6"></script>
+<script src="js/app.js?v=1.7"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->
 <script>
