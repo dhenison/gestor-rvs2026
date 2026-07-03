@@ -387,13 +387,19 @@ async function carregarDados(){
     if (alunos) {
       const turmaMap = {};
       const turnoMap = {};
+      const serieMap = {};
       if (turmas) {
-        turmas.forEach(t => { turmaMap[t.id] = t.code; turnoMap[t.id] = t.turno; });
+        turmas.forEach(t => {
+          turmaMap[t.id] = t.code;
+          turnoMap[t.id] = t.turno;
+          serieMap[t.id] = t.serie;
+        });
       }
       
       ALUNOS_DATA = alunos.map(a => ({
         id: a.id, cpf: a.matricula, nome: a.nome, turma: turmaMap[a.turma_id] || '', turma_id: a.turma_id,
-        turno: turnoMap[a.turma_id] || '', rota: a.rota || 'Sem transporte', resp: a.responsavel || '',
+        turno: turnoMap[a.turma_id] || '', serie: serieMap[a.turma_id] || '',
+        rota: a.rota || 'Sem transporte', resp: a.responsavel || '',
         contato: a.contato || '', email: a.instagram || '', nasc: a.data_nascimento || '',
         idade: a.data_nascimento ? Math.floor((new Date() - new Date(a.data_nascimento))/(1000*60*60*24*365.25)) : 0,
         status: a.status || 'ativo', historico: [], foto_url: a.foto_url || ''
@@ -742,7 +748,7 @@ function showPage(p, el) {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', boletins: 'Boletins Escolares',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    horarios: 'Horário de Aula', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
+    horarios: 'Horário de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
@@ -8422,6 +8428,14 @@ function normalizarTexto(str) {
     .trim();
 }
 
+function formatarSerieDocumento(serie) {
+  const valor = (serie || '').toString().trim();
+  if (!valor) return '—';
+  return valor
+    .replace(/\s+[—-]\s+(Ensino Médio|Ensino Fundamental)\b/gi, ' do $1')
+    .replace(/\s+[—-]\s+/g, ' - ');
+}
+
 // ─── DOCUMENTOS SECRETARIA ───────────────────────────────────────────────────
 
 let SEC_DOCUMENTOS = [];
@@ -8927,6 +8941,10 @@ async function imprimirDocumentoHtml(id) {
     
     const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
     if (!aluno) throw new Error('Dados do aluno não encontrados.');
+    const turmaAluno = TURMAS_DATA.find(t => t.id === aluno.turma_id) || TURMAS_DATA.find(t => t.code === aluno.turma);
+    const turmaTexto = aluno.turma || turmaAluno?.code || '—';
+    const turnoTexto = aluno.turno || turmaAluno?.turno || '—';
+    const serieTexto = formatarSerieDocumento(aluno.serie || turmaAluno?.serie || '');
     
     const dataPorExtenso = formatarDataPorExtenso(doc.data_emissao);
     const dataBr = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '';
@@ -8983,7 +9001,7 @@ async function imprimirDocumentoHtml(id) {
           Declaramos, para os devidos fins, que o(a) estudante <b>${aluno.nome}</b>, 
           inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, 
-          cursando a turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
+          cursando a turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
           Referida informação é expressão da verdade.
@@ -9000,8 +9018,8 @@ async function imprimirDocumentoHtml(id) {
           Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, 
           que o(a) estudante <b>${aluno.nome}</b>, matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, 
           nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, está regularmente matriculado(a) 
-          e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${aluno.turma || '—'}</b>, 
-          no turno <b>${aluno.turno || '—'}</b>.
+          e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${turmaTexto}</b>, 
+          correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
           Apurou-se, para o período avaliativo correspondente, uma frequência escolar global e relativa de <b>${freqValue}%</b>.
@@ -9012,8 +9030,8 @@ async function imprimirDocumentoHtml(id) {
         <p class="doc-text">
           Declaramos, para os devidos fins de direito, que o(a) estudante <b>${aluno.nome}</b>, 
           inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
-          frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${aluno.turma || '—'}</b> 
-          sob regime letivo ordinário.
+          frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${turmaTexto}</b>, 
+          correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>, sob regime letivo ordinário.
         </p>
         <p class="doc-text">
           O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.
@@ -9024,7 +9042,7 @@ async function imprimirDocumentoHtml(id) {
         <p class="doc-text">
           Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <b>${aluno.nome}</b>, 
           matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
-          que se encontrava devidamente matriculado(a) na turma <b>${aluno.turma || '—'}</b>, no turno <b>${aluno.turno || '—'}</b>.
+          que se encontrava devidamente matriculado(a) na turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
           Esta declaração atesta que a vaga de origem está liberada e o processo de transferência ativo. O presente documento 
@@ -9057,8 +9075,8 @@ async function imprimirDocumentoHtml(id) {
             <span>${aluno.cpf || '—'}</span>
           </div>
           <div class="receipt-row">
-            <span class="receipt-label">Turma / Turno:</span>
-            <span>${aluno.turma || '—'} (${aluno.turno || '—'})</span>
+            <span class="receipt-label">Turma / Ano / Turno:</span>
+            <span>${turmaTexto} (${serieTexto} • ${turnoTexto})</span>
           </div>
           <div class="receipt-row">
             <span class="receipt-label">Serviço/Documento Solicitado:</span>
