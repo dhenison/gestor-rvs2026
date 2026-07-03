@@ -175,6 +175,7 @@ let PERMS = [
   {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
+  {func:'Ficha do Aluno',           id:'page-ficha-aluno',  coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
   {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
@@ -318,6 +319,7 @@ async function carregarDados(){
           {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
+          {func:'Ficha do Aluno',           id:'page-ficha-aluno',  coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
           {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
@@ -358,8 +360,16 @@ async function carregarDados(){
           dPerm.editar_sec = true;
         }
 
+        const fPerm = PERMS.find(p => p.id === 'page-ficha-aluno');
+        if (fPerm && (!fPerm.coord || !fPerm.sec)) {
+          fPerm.coord = true;
+          fPerm.sec = true;
+          fPerm.editar_coord = true;
+          fPerm.editar_sec = false;
+        }
+
         const hasMissing = defaultPerms.some(def => !loaded.some(l => l.id === def.id));
-        const needsSync = hasMissing || (bPerm && (!bPerm.prof || !bPerm.editar_prof)) || (dPerm && (!dPerm.coord || !dPerm.sec));
+        const needsSync = hasMissing || (bPerm && (!bPerm.prof || !bPerm.editar_prof)) || (dPerm && (!dPerm.coord || !dPerm.sec)) || (fPerm && (!fPerm.coord || !fPerm.sec));
         if (needsSync) {
           supabaseClient
             .from('configuracoes')
@@ -745,7 +755,7 @@ function showPage(p, el) {
   document.getElementById('page-' + p)?.classList.add('active');
 
   const titles = {
-    dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', boletins: 'Boletins Escolares',
+    dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', 'ficha-aluno': 'Ficha do Aluno', boletins: 'Boletins Escolares',
     frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
     horarios: 'Horário de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
@@ -1704,35 +1714,7 @@ async function saveAluno(){
 }
 
 function verFichaLegacy(cpf){
-  const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
-  document.getElementById('ficha-nome').textContent=a.nome;
-  document.getElementById('ficha-cpf').textContent=a.cpf;
-  document.getElementById('ficha-turma').textContent=a.turma+' — '+a.turno;
-  document.getElementById('ficha-resp').textContent=a.resp||'—';
-  document.getElementById('ficha-rota').textContent=a.rota||'Sem transporte';
-  document.getElementById('ficha-faltas').textContent=(a.historico||[]).filter(h=>h.tipo==='falta').length+' faltas';
-  document.getElementById('ficha-nasc').textContent=a.nasc?new Date(a.nasc).toLocaleDateString('pt-BR'):'—';
-  document.getElementById('ficha-idade').textContent=a.idade||'—';
-  
-  const imgEl = document.getElementById('ficha-avatar');
-  const fallbackEl = document.getElementById('ficha-avatar-fallback');
-  if (a.foto_url) {
-    if (imgEl) { imgEl.src = a.foto_url; imgEl.style.display = 'block'; }
-    if (fallbackEl) fallbackEl.style.display = 'none';
-  } else {
-    if (imgEl) imgEl.style.display = 'none';
-    if (fallbackEl) {
-      fallbackEl.textContent = a.nome.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
-      fallbackEl.style.display = 'flex';
-    }
-  }
-
-  renderTimeline(a);
-  renderFichaOcorrencias(a);
-  renderResponsaveisFicha(a.id); renderFichaBoletins(a);
-  const ficha = getFichaContainer();
-  if (ficha) ficha.dataset.cpf = cpf;
-  exibirFichaInline();
+  verFicha(cpf);
 }
 
 function renderFichaOcorrencias(a){
@@ -1822,7 +1804,11 @@ function formatarStatusFicha(status){
 }
 
 function getFichaContainer(){
-  return document.getElementById('aluno-ficha-inline');
+  return document.getElementById('ficha-aluno-page');
+}
+
+function getAlunosNavItem(){
+  return document.querySelector(".nav-item[onclick*=\"showPage('alunos',this)\"]");
 }
 
 function getFichaCpfAtual(){
@@ -1832,28 +1818,26 @@ function getFichaCpfAtual(){
 function exibirFichaInline(){
   const ficha = getFichaContainer();
   if (!ficha) return;
-  ficha.hidden = false;
+  showPage('ficha-aluno', getAlunosNavItem());
   requestAnimationFrame(() => {
-    ficha.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector('.main')?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('page-ficha-aluno')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
 
 function fecharFichaInline(){
   const ficha = getFichaContainer();
-  if (!ficha) return;
-  ficha.hidden = true;
-  ficha.dataset.cpf = '';
+  if (ficha) ficha.dataset.cpf = '';
+  showPage('alunos', getAlunosNavItem());
   requestAnimationFrame(() => {
-    document.getElementById('page-alunos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     document.querySelector('.main')?.scrollTo({ top: 0, behavior: 'smooth' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('page-alunos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 }
 
 function verFicha(cpf){
-  if (!document.getElementById('page-alunos')?.classList.contains('active')) {
-    showPage('alunos', null);
-  }
   const a = ALUNOS_DATA.find(x => x.cpf === cpf); if(!a) return;
   const faltas = (a.historico || []).filter(h => h.tipo === 'falta').length;
   const ocorrs = getOcorrenciasAluno(a);
