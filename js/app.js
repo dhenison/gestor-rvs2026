@@ -1574,17 +1574,114 @@ function calcularIdade(){
   idadeEl.value=idade>0?idade+' anos':'—';
 }
 
+function getAlunoAvatarPlaceholder() {
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
+}
+
+function setAlunoFotoOrigem(origem = 'cadastro') {
+  _alunoFotoOrigem = origem === 'ficha' ? 'ficha' : 'cadastro';
+}
+
+function getAlunoFotoRefs(origem = _alunoFotoOrigem) {
+  if (origem === 'ficha') {
+    return {
+      status: document.getElementById('ficha-foto-status'),
+      input: document.getElementById('ficha-foto-input'),
+      img: document.getElementById('ficha-avatar'),
+      fallback: document.getElementById('ficha-avatar-fallback'),
+      saveBtn: document.getElementById('ficha-foto-salvar-btn')
+    };
+  }
+
+  return {
+    status: document.getElementById('aluno-foto-status'),
+    input: document.getElementById('aluno-foto-input'),
+    preview: document.getElementById('aluno-avatar-preview')
+  };
+}
+
+function setAlunoFotoStatus(texto, cor = 'var(--gray4)', origem = _alunoFotoOrigem) {
+  const refs = getAlunoFotoRefs(origem);
+  if (!refs.status) return;
+  refs.status.style.color = cor;
+  refs.status.textContent = texto;
+}
+
+function setSalvarFotoFichaHabilitado(habilitado) {
+  const btn = document.getElementById('ficha-foto-salvar-btn');
+  if (btn) btn.disabled = !habilitado;
+}
+
+function resetarEstadoFotoFichaAluno() {
+  const refs = getAlunoFotoRefs('ficha');
+  if (refs.input) refs.input.value = '';
+  setSalvarFotoFichaHabilitado(false);
+  setAlunoFotoStatus('A foto será salva no Google Drive e vinculada ao cadastro do aluno.', 'rgba(255,255,255,.78)', 'ficha');
+}
+
+function atualizarPreviewFotoAluno(src, origem = _alunoFotoOrigem) {
+  const refs = getAlunoFotoRefs(origem);
+
+  if (origem === 'ficha') {
+    if (refs.img) {
+      refs.img.src = src;
+      refs.img.style.display = 'block';
+    }
+    if (refs.fallback) refs.fallback.style.display = 'none';
+    setSalvarFotoFichaHabilitado(true);
+    return;
+  }
+
+  if (refs.preview) refs.preview.src = src || getAlunoAvatarPlaceholder();
+}
+
+async function enviarFotoAlunoParaDrive(file, alunoRef = {}) {
+  const base64 = await fileParaBase64(file);
+  const nomeBase = (alunoRef.nome || alunoRef.cpf || 'aluno')
+    .replace(/[^a-zA-Z0-9\u00C0-\u00FA\s_-]/g, '')
+    .trim()
+    .replace(/\s+/g, '_') || 'aluno';
+  const ext = ((file.name || 'jpg').split('.').pop() || 'jpg').toLowerCase();
+
+  const response = await fetch(DRIVE_FOTO_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      filename: `aluno_${nomeBase}_${Date.now()}.${ext}`,
+      mimeType: file.type || 'image/jpeg',
+      data: base64,
+      nome: `foto_aluno_${Date.now()}.${ext}`,
+      tipo: file.type || 'image/jpeg',
+      arquivo: base64,
+      subpasta: nomeBase
+    })
+  });
+
+  const resultado = await response.json();
+  if (!resultado.ok) throw new Error(resultado.erro || 'Erro no Google Drive');
+
+  let fotoUrl = resultado.url || '';
+  if (fotoUrl.includes('drive.google.com')) {
+    const match = fotoUrl.match(/id=([^&]+)/) || fotoUrl.match(/d\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) fotoUrl = `https://lh3.googleusercontent.com/d/${match[1]}`;
+  }
+
+  return fotoUrl;
+}
+
 function abrirModalNovoAluno() {
   _alunoFotoPendente = null;
+  setAlunoFotoOrigem('cadastro');
   const prev = document.getElementById('aluno-avatar-preview');
-  if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
-  const st = document.getElementById('aluno-foto-status');
-  if(st) { st.style.color='var(--gray4)'; st.textContent='Mínimo 5MB. Arquivo será salvo no Drive.'; }
+  if(prev) prev.src = getAlunoAvatarPlaceholder();
+  const refs = getAlunoFotoRefs('cadastro');
+  if (refs.input) refs.input.value = '';
+  setAlunoFotoStatus('Máximo 5MB. Arquivo será salvo no Google Drive.', 'var(--gray4)', 'cadastro');
   openModal('modal-aluno');
 }
 
 // ─── CÂMERA E FOTO DO ALUNO ────────────────────────────────────────────────────────
-async function abrirCameraAluno() {
+async function abrirCameraAluno(origem = 'cadastro') {
+  setAlunoFotoOrigem(origem);
   const erroEl = document.getElementById('camera-aluno-erro');
   if (erroEl) erroEl.style.display = 'none';
   const constraints = { video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false };
@@ -1596,7 +1693,7 @@ async function abrirCameraAluno() {
   } catch (err) {
     console.error('[Camera Aluno] Erro:', err);
     if (err.name === 'NotAllowedError') showToast('Permissão de câmera negada. Selecione da galeria.', 'alerta');
-    else document.getElementById('aluno-foto-input')?.click();
+    else getAlunoFotoRefs(_alunoFotoOrigem).input?.click();
   }
 }
 
@@ -1618,24 +1715,27 @@ function tirarFotoAluno() {
   canvas.toBlob((blob) => {
     if (!blob) { showToast('Erro ao capturar foto.', 'evasao'); return; }
     const file = new File([blob], `aluno_${Date.now()}.jpg`, { type: 'image/jpeg' });
-    selecionarFotoAluno({ files: [file] });
+    selecionarFotoAluno({ files: [file] }, _alunoFotoOrigem);
     fecharCameraAluno();
   }, 'image/jpeg', 0.9);
 }
 
-function selecionarFotoAluno(input) {
+function selecionarFotoAluno(input, origem = 'cadastro') {
+  setAlunoFotoOrigem(origem);
   const file = input.files[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) { showToast('Foto muito grande! Máximo 5MB.', 'alerta'); input.value = ''; return; }
   _alunoFotoPendente = file;
   const reader = new FileReader();
   reader.onload = (e) => {
-    const imgEl = document.getElementById('aluno-avatar-preview');
-    if (imgEl) imgEl.src = e.target.result;
+    atualizarPreviewFotoAluno(e.target.result, _alunoFotoOrigem);
   };
   reader.readAsDataURL(file);
-  const status = document.getElementById('aluno-foto-status');
-  if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '📎 Foto selecionada.'; }
+  const msg = _alunoFotoOrigem === 'ficha'
+    ? 'Foto selecionada. Clique em "Salvar foto" para atualizar o cadastro.'
+    : 'Foto selecionada.';
+  const cor = _alunoFotoOrigem === 'ficha' ? '#dbeafe' : 'var(--blue-dark)';
+  setAlunoFotoStatus(msg, cor, _alunoFotoOrigem);
 }
 
 async function saveAluno(){
@@ -1658,26 +1758,10 @@ async function saveAluno(){
 
   let fotoUrl = null;
   if (_alunoFotoPendente) {
-    const status = document.getElementById('aluno-foto-status');
-    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '⏳ Enviando foto ao Google Drive...'; }
+    setAlunoFotoStatus('⏳ Enviando foto ao Google Drive...', 'var(--blue-dark)', 'cadastro');
     try {
-      const base64 = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result.split(',')[1]);
-        reader.readAsDataURL(_alunoFotoPendente);
-      });
-      const response = await fetch(DRIVE_FOTO_URL, {
-        method: 'POST',
-        body: JSON.stringify({ filename: 'aluno_' + cpf + '_' + Date.now() + '.jpg', mimeType: _alunoFotoPendente.type, data: base64 })
-      });
-      const resultado = await response.json();
-      if (!resultado.ok) throw new Error(resultado.erro || 'Erro no Drive');
-      fotoUrl = resultado.url;
-      if(fotoUrl.includes('drive.google.com')){
-        const match = fotoUrl.match(/id=([^&]+)/) || fotoUrl.match(/d\/([a-zA-Z0-9_-]+)/);
-        if(match && match[1]) fotoUrl = 'https://drive.google.com/uc?id=' + match[1] + '&export=view';
-      }
-      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = '✅ Foto salva no Drive!'; }
+      fotoUrl = await enviarFotoAlunoParaDrive(_alunoFotoPendente, { cpf, nome });
+      setAlunoFotoStatus('✅ Foto salva no Google Drive!', 'var(--green-dark)', 'cadastro');
     } catch(err) {
       console.error('[Drive Upload Aluno]', err);
       showToast('Aviso: Foto falhou, mas aluno será salvo. ' + err.message, 'evasao');
@@ -1706,11 +1790,51 @@ async function saveAluno(){
   }
 
   closeModal('modal-aluno');
+  _alunoFotoPendente = null;
   showToast(nome+' cadastrado!','sucesso');
   
   await carregarDados();
   atualizarSelectTurmas();
   renderAlunos(); renderMetricasDash(); renderTurmasTable(); renderTurmaGrid();
+}
+
+async function salvarFotoAlunoFicha() {
+  const cpf = getFichaCpfAtual();
+  const a = ALUNOS_DATA.find(x => x.cpf === cpf);
+  if (!a || !a.id) { showToast('Aluno não localizado para salvar a foto.', 'alerta'); return; }
+  if (!_alunoFotoPendente || _alunoFotoOrigem !== 'ficha') { showToast('Selecione uma foto na ficha antes de salvar.', 'alerta'); return; }
+
+  const btn = document.getElementById('ficha-foto-salvar-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+  }
+
+  setAlunoFotoStatus('⏳ Enviando foto ao Google Drive...', '#dbeafe', 'ficha');
+
+  try {
+    const fotoUrl = await enviarFotoAlunoParaDrive(_alunoFotoPendente, { cpf: a.cpf, nome: a.nome });
+    const { error } = await supabaseClient.from('alunos').update({ foto_url: fotoUrl }).eq('id', a.id);
+    if (error) throw error;
+
+    a.foto_url = fotoUrl;
+    _alunoFotoPendente = null;
+    const refs = getAlunoFotoRefs('ficha');
+    if (refs.input) refs.input.value = '';
+    setAlunoFotoStatus('✅ Foto atualizada e salva no cadastro do aluno.', '#bbf7d0', 'ficha');
+    setSalvarFotoFichaHabilitado(false);
+    verFicha(cpf);
+    renderAlunos();
+    salvarDados();
+    showToast('Foto do aluno atualizada com sucesso!', 'sucesso');
+  } catch (err) {
+    console.error('[salvarFotoAlunoFicha] Erro:', err);
+    setAlunoFotoStatus('Erro ao salvar a foto. Tente novamente.', '#fecaca', 'ficha');
+    setSalvarFotoFichaHabilitado(true);
+    showToast('Erro ao salvar foto: ' + err.message, 'evasao');
+  } finally {
+    if (btn) btn.textContent = 'Salvar foto';
+  }
 }
 
 function verFichaLegacy(cpf){
@@ -1829,6 +1953,8 @@ function exibirFichaInline(){
 function fecharFichaInline(){
   const ficha = getFichaContainer();
   if (ficha) ficha.dataset.cpf = '';
+  _alunoFotoPendente = null;
+  resetarEstadoFotoFichaAluno();
   showPage('alunos', getAlunosNavItem());
   requestAnimationFrame(() => {
     document.querySelector('.main')?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1839,6 +1965,9 @@ function fecharFichaInline(){
 
 function verFicha(cpf){
   const a = ALUNOS_DATA.find(x => x.cpf === cpf); if(!a) return;
+  _alunoFotoPendente = null;
+  setAlunoFotoOrigem('ficha');
+  resetarEstadoFotoFichaAluno();
   const faltas = (a.historico || []).filter(h => h.tipo === 'falta').length;
   const ocorrs = getOcorrenciasAluno(a);
   const statusInfo = formatarStatusFicha(a.status);
@@ -3399,6 +3528,7 @@ async function enviarAlertaChat() {}
 const DRIVE_FOTO_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _perfilFotoPendente = null;
 let _alunoFotoPendente = null;
+let _alunoFotoOrigem = 'cadastro';
 let _cameraStream = null; // guarda o stream ativo da webcam
 
 // Abre o modal com a câmera (getUserMedia — funciona em desktop e celular)

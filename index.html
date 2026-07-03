@@ -332,9 +332,22 @@
           <div class="ficha-modal-body">
             <div class="ficha-hero">
               <div class="ficha-hero-main">
-                <div class="ficha-avatar-shell">
-                  <img id="ficha-avatar" src="" alt="Foto do aluno" style="display:none">
-                  <div id="ficha-avatar-fallback" style="display:none"></div>
+                <div class="ficha-avatar-panel">
+                  <div class="ficha-avatar-shell">
+                    <img id="ficha-avatar" src="" alt="Foto do aluno" style="display:none">
+                    <div id="ficha-avatar-fallback" style="display:none"></div>
+                  </div>
+                  <div class="ficha-avatar-actions">
+                    <div class="ficha-avatar-tools">
+                      <label class="btn btn-outline btn-sm" style="cursor:pointer;margin:0">
+                        <i data-lucide="image" style="width:14px;height:14px"></i> Galeria
+                        <input type="file" id="ficha-foto-input" accept="image/*" style="display:none" onchange="selecionarFotoAluno(this,'ficha')">
+                      </label>
+                      <button class="btn btn-outline btn-sm" onclick="abrirCameraAluno('ficha')"><i data-lucide="camera" style="width:14px;height:14px"></i> Câmera</button>
+                      <button class="btn btn-primary btn-sm" id="ficha-foto-salvar-btn" onclick="salvarFotoAlunoFicha()" disabled>Salvar foto</button>
+                    </div>
+                    <div class="ficha-avatar-status" id="ficha-foto-status">A foto será salva no Google Drive e vinculada ao cadastro do aluno.</div>
+                  </div>
                 </div>
                 <div class="ficha-hero-copy">
                   <span class="ficha-kicker">Dossie Escolar</span>
