@@ -3513,6 +3513,27 @@ function perfilSelecionarFoto(input) {
   }
 }
 
+async function localizarUsuarioPublicoPerfil(user) {
+  const camposUsuario = 'id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno, ativo';
+
+  const porId = await supabaseClient
+    .from('usuarios')
+    .select(camposUsuario)
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (porId.error || porId.data) return porId;
+
+  const emailNormalizado = (user.email || '').trim().toLowerCase();
+  if (!emailNormalizado) return { data: null, error: null };
+
+  return supabaseClient
+    .from('usuarios')
+    .select(camposUsuario)
+    .ilike('email', emailNormalizado)
+    .maybeSingle();
+}
+
 async function salvarPerfil() {
   const user = getCurrentUser();
   if (!user) { showToast('Sessão expirada. Faça login novamente.', 'alerta'); return; }
@@ -3585,18 +3606,53 @@ async function salvarPerfil() {
     foto_url: fotoUrl,
   };
 
-  const { data: savedUser, error: dbError } = await supabaseClient
-    .from('usuarios')
-    .update(updateData)
-    .eq('id', user.id)
-    .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
-    .maybeSingle();
+  const { data: usuarioPublico, error: lookupError } = await localizarUsuarioPublicoPerfil(user);
+
+  if (lookupError) {
+    if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Salvar AlteraÃ§Ãµes'; }
+    console.error('[salvarPerfil] Erro ao localizar registro pÃºblico:', lookupError);
+    showToast('Erro ao localizar perfil pÃºblico: ' + lookupError.message, 'evasao');
+    return;
+  }
+
+  let savedUser = null;
+  let dbError = null;
+
+  if (usuarioPublico) {
+    ({ data: savedUser, error: dbError } = await supabaseClient
+      .from('usuarios')
+      .update(updateData)
+      .eq('id', usuarioPublico.id)
+      .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
+      .maybeSingle());
+  } else {
+    ({ data: savedUser, error: dbError } = await supabaseClient
+      .from('usuarios')
+      .insert({
+        id: user.id,
+        email: user.email,
+        nome,
+        perfil: user.perfil || 'professor',
+        cargo: user.cargo || '',
+        turno: user.turno || '',
+        ativo: true,
+        ...updateData
+      })
+      .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
+      .maybeSingle());
+  }
 
   if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
 
   if (dbError) {
     console.error('[salvarPerfil] Erro no banco:', dbError);
     showToast('Erro ao salvar perfil: ' + dbError.message, 'evasao');
+    return;
+  }
+
+  if (!savedUser) {
+    console.error('[salvarPerfil] Nenhum registro pÃºblico retornado apÃ³s salvar.', { user });
+    showToast('Perfil nÃ£o foi sincronizado no cadastro geral. Tente sair e entrar novamente.', 'alerta');
     return;
   }
 
@@ -3607,6 +3663,11 @@ async function salvarPerfil() {
     if (fotoUrl) merged.foto_url = fotoUrl;
     try { sessionStorage.setItem('rvs_user', JSON.stringify(merged)); } catch(_){}
   }
+
+  const idxUsuario = USUARIOS_DATA.findIndex(u =>
+    u.id === savedUser.id || ((u.email || '').toLowerCase() === (savedUser.email || '').toLowerCase())
+  );
+  if (idxUsuario >= 0) USUARIOS_DATA[idxUsuario] = { ...USUARIOS_DATA[idxUsuario], ...savedUser };
 
   renderPerfil();
   updateSidebarProfile();
