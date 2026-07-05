@@ -104,6 +104,11 @@
       gap: 12px;
     }
 
+    .header-info {
+      flex: 1;
+      min-width: 0;
+    }
+
     .header-logo {
       width: 38px;
       height: 38px;
@@ -119,42 +124,59 @@
       font-weight: 700;
       color: white;
       letter-spacing: -0.02em;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .header-info p {
       font-size: 10.5px;
       color: var(--text-muted);
-      margin-top: 1px;
+      margin: 1px 0 0;
     }
 
     .btn-sair {
       margin-left: auto;
-      display: flex;
+      flex-shrink: 0;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 8px;
       color: #94a3b8;
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
       text-decoration: none;
-      width: 38px;
-      height: 38px;
-      padding: 0;
+      line-height: 1;
+      white-space: nowrap;
+      min-height: 42px;
+      padding: 0 16px;
       border: 1px solid rgba(255,255,255,.1);
-      border-radius: 50%;
+      border-radius: 999px;
       background: rgba(255,255,255,0.03);
       cursor: pointer;
       transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: inherit;
       flex-shrink: 0;
     }
-    .btn-sair span { display: none; }
-    .btn-sair::before { content: '⏻'; line-height: 1; }
-    .btn-sair:hover, .btn-sair:active {
+    .btn-sair-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .btn-sair:hover {
       color: #fda4af;
       border-color: rgba(244,63,94,.4);
       background: rgba(244,63,94,.08);
-      transform: scale(0.94);
+      transform: translateY(-1px);
+    }
+    .btn-sair:active {
+      transform: scale(0.96);
     }
 
     /* ── Main Container ── */
@@ -901,6 +923,8 @@
       .header-inner { padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
       .header-info h1 { font-size: 12px; }
       main { padding: 16px 12px calc(96px + env(safe-area-inset-bottom)); }
+      .btn-sair { min-height: 38px; padding: 0 12px; gap: 6px; font-size: 12px; }
+      .btn-sair-icon { width: 14px; height: 14px; }
 
       .perfil-card { flex-direction: column; text-align: center; padding: 18px 14px; gap: 10px; }
       .perfil-nome { font-size: 16px; white-space: normal; }
@@ -1104,7 +1128,13 @@
         <h1>E.E. Dr. Romildo Veloso e Silva</h1>
         <p>Portal do Aluno</p>
       </div>
-      <button class="btn-sair" onclick="sair()">⬅ Sair</button>
+      <button class="btn-sair" type="button" onclick="sair()" aria-label="Sair do portal do aluno">
+        <svg class="btn-sair-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v9"></path>
+          <path d="M7.05 5.05a9 9 0 1 0 9.9 0"></path>
+        </svg>
+        <span>Sair</span>
+      </button>
     </div>
   </header>
 
