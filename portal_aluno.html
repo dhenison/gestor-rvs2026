@@ -2,9 +2,12 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Meu Portal — E.E. Dr. Romildo Veloso e Silva</title>
   <meta name="description" content="Portal do Aluno da E.E. Dr. Romildo Veloso e Silva.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" type="image/png" href="assets/icon-192.png">
   
   <!-- Typography & Icons -->
@@ -44,6 +47,12 @@
       background: var(--dark-bg);
       color: #f3f4f6;
       overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button, .portal-card, .olimp-banner-card, .horario-btn, .agenda-card, .nav-item, .btn-edital, .btn-voltar, .btn-sair {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     /* ── Ambient Glow Background ── */
@@ -77,10 +86,11 @@
       flex-direction: column;
     }
 
-    /* ── Header ── */
+    /* ── Header (App Top Bar) ── */
     header {
       border-bottom: 1px solid var(--border-color);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       background: rgba(11, 15, 25, 0.75);
       position: sticky;
       top: 0;
@@ -88,16 +98,16 @@
     }
 
     .header-inner {
-      padding: 14px 20px;
+      padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
       display: flex;
       align-items: center;
       gap: 12px;
     }
 
     .header-logo {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
       object-fit: contain;
       box-shadow: 0 4px 12px rgba(0,0,0,.4);
       flex-shrink: 0;
@@ -121,30 +131,36 @@
       margin-left: auto;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       color: #94a3b8;
-      font-size: 12.5px;
+      font-size: 15px;
       font-weight: 600;
       text-decoration: none;
-      padding: 6px 12px;
+      width: 38px;
+      height: 38px;
+      padding: 0;
       border: 1px solid rgba(255,255,255,.1);
-      border-radius: 8px;
+      border-radius: 50%;
       background: rgba(255,255,255,0.03);
       cursor: pointer;
       transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: inherit;
+      flex-shrink: 0;
     }
-    .btn-sair:hover {
+    .btn-sair span { display: none; }
+    .btn-sair::before { content: '⏻'; line-height: 1; }
+    .btn-sair:hover, .btn-sair:active {
       color: #fda4af;
       border-color: rgba(244,63,94,.4);
       background: rgba(244,63,94,.08);
-      transform: scale(0.98);
+      transform: scale(0.94);
     }
 
     /* ── Main Container ── */
     main {
       flex: 1;
-      padding: 24px 16px 48px;
+      padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
       max-width: 600px;
       width: 100%;
       margin: 0 auto;
@@ -154,13 +170,14 @@
     .perfil-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 20px;
+      border-radius: 24px;
       padding: 20px;
       display: flex;
       align-items: center;
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
       backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       box-shadow: 0 10px 30px rgba(0,0,0,.35);
       animation: fade-up .5s cubic-bezier(0.34,1.56,0.64,1);
     }
@@ -251,27 +268,29 @@
 
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
       margin-bottom: 28px;
     }
 
     .portal-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 16px;
+      border-radius: 22px;
       overflow: hidden;
       text-decoration: none;
       cursor: pointer;
-      transition: all .25s cubic-bezier(0.4,0,0.2,1);
+      transition: all .2s cubic-bezier(0.4,0,0.2,1);
       display: flex;
       flex-direction: column;
       animation: fade-up .4s cubic-bezier(0.34,1.56,0.64,1) both;
+      box-shadow: 0 8px 20px rgba(0,0,0,.18);
     }
 
     .portal-card:nth-child(1) { animation-delay: .05s; }
     .portal-card:nth-child(2) { animation-delay: .10s; }
     .portal-card:nth-child(3) { animation-delay: .15s; }
+    .portal-card:nth-child(4) { animation-delay: .20s; }
 
     .portal-card:hover {
       transform: translateY(-4px) scale(1.02);
@@ -279,10 +298,13 @@
       box-shadow: 0 10px 25px rgba(99,102,241,.25);
       background: rgba(255,255,255,.05);
     }
+    .portal-card:active {
+      transform: scale(0.96);
+    }
 
     .card-img-area {
       width: 100%;
-      aspect-ratio: 1.1 / 1;
+      aspect-ratio: 1.3 / 1;
       background: rgba(255,255,255,.02);
       display: flex;
       align-items: center;
@@ -310,9 +332,9 @@
       border-bottom: 1px solid var(--border-color);
     }
 
-    .placeholder-icon { font-size: 24px; }
+    .placeholder-icon { font-size: 32px; }
     .placeholder-text {
-      font-size: 8px;
+      font-size: 9px;
       color: #64748b;
       font-weight: 700;
       text-transform: uppercase;
@@ -320,21 +342,21 @@
     }
 
     .card-label {
-      padding: 8px 10px;
-      text-align: center;
+      padding: 12px 14px 14px;
+      text-align: left;
     }
 
     .card-label-title {
       font-family: 'Outfit', sans-serif;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: 700;
       color: white;
       letter-spacing: -0.01em;
-      margin-bottom: 1px;
+      margin-bottom: 2px;
     }
 
     .card-label-sub {
-      font-size: 9px;
+      font-size: 11px;
       color: var(--text-muted);
       font-weight: 500;
     }
@@ -360,17 +382,20 @@
       background: rgba(255,255,255,.03);
       border: 1px solid rgba(255,255,255,.08);
       color: white;
-      border-radius: 10px;
-      padding: 8px 14px;
+      border-radius: 14px;
+      padding: 10px 16px;
       cursor: pointer;
       font-weight: 600;
-      font-size: 12.5px;
+      font-size: 13px;
       transition: all .2s;
     }
     .btn-voltar:hover {
       background: rgba(255,255,255,.08);
       border-color: rgba(255,255,255,.2);
       transform: translateX(-2px);
+    }
+    .btn-voltar:active {
+      transform: scale(0.94);
     }
     
     .view-title {
@@ -387,13 +412,13 @@
       justify-content: space-between;
       background: rgba(255,255,255,.03);
       border: 1px solid rgba(255,255,255,.06);
-      padding: 16px 20px;
-      border-radius: 14px;
+      padding: 18px 20px;
+      border-radius: 20px;
       color: white;
       text-decoration: none;
       font-weight: 600;
-      margin-bottom: 10px;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-bottom: 12px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .horario-btn:hover {
       background: rgba(99, 102, 241, 0.12);
@@ -401,14 +426,17 @@
       transform: translateY(-2px);
       box-shadow: 0 8px 20px rgba(99, 102, 241, 0.15);
     }
+    .horario-btn:active {
+      transform: scale(0.97);
+    }
 
     /* ── View: Agenda Timeline ── */
     .agenda-card {
       background: rgba(255,255,255,.02);
       border: 1px solid rgba(255,255,255,.05);
-      border-radius: 14px;
-      padding: 14px 16px;
-      margin-bottom: 10px;
+      border-radius: 18px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
       border-left: 4px solid var(--primary);
       display: flex;
       justify-content: space-between;
@@ -417,6 +445,9 @@
     }
     .agenda-card:hover {
       background: rgba(255,255,255,.04);
+    }
+    .agenda-card:active {
+      transform: scale(0.97);
     }
     .agenda-card.urgente {
       border-left-color: var(--danger);
@@ -460,10 +491,10 @@
     .olimp-banner-card {
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 16px;
+      border-radius: 20px;
       overflow: hidden;
       cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
       position: relative;
@@ -473,6 +504,9 @@
       transform: translateY(-4px);
       border-color: var(--accent);
       box-shadow: 0 8px 24px rgba(6, 182, 212, 0.25);
+    }
+    .olimp-banner-card:active {
+      transform: scale(0.96);
     }
 
     .banner-img-container {
@@ -737,13 +771,13 @@
       justify-content: center;
       gap: 6px;
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       background: rgba(99, 102, 241, 0.15);
       border: 1px solid var(--primary);
-      border-radius: 10px;
+      border-radius: 16px;
       color: #a5b4fc;
       font-family: 'Outfit', sans-serif;
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 700;
       text-decoration: none;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -752,6 +786,9 @@
     .btn-edital:hover {
       background: rgba(99, 102, 241, 0.25);
       color: white;
+    }
+    .btn-edital:active {
+      transform: scale(0.96);
     }
 
     /* Results layout */
@@ -786,12 +823,72 @@
     .lista-vazia { text-align: center; padding: 40px 20px; color: #64748b; font-size: 13px; font-weight: 500; }
 
     /* ── Footer ── */
-    footer {
-      text-align: center;
-      padding: 20px;
-      border-top: 1px solid rgba(255,255,255,.03);
-      color: #334155;
-      font-size: 11px;
+    footer { display: none; }
+
+    /* ── Bottom Tab Bar (App Nativo) ── */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(11, 15, 25, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-color);
+      box-shadow: 0 -8px 24px rgba(0,0,0,.25);
+    }
+
+    .nav-item {
+      appearance: none;
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      flex: 1;
+      min-width: 0;
+      padding: 7px 2px;
+      border-radius: 14px;
+      cursor: pointer;
+      color: #64748b;
+      font-family: inherit;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .nav-item .nav-icon {
+      font-size: 19px;
+      line-height: 1;
+      transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    .nav-item .nav-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .nav-item:active {
+      transform: scale(0.9);
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+      background: var(--primary-glow);
+    }
+    .nav-item.active .nav-icon {
+      transform: translateY(-1px) scale(1.08);
     }
 
     /* =======================================================================
@@ -801,19 +898,21 @@
        desktop-compacto ≥769px
        ======================================================================= */
     @media (max-width: 520px) {
-      .header-inner { padding: 12px 14px; }
+      .header-inner { padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
       .header-info h1 { font-size: 12px; }
-      main { padding: 16px 12px 48px; }
+      main { padding: 16px 12px calc(96px + env(safe-area-inset-bottom)); }
 
       .perfil-card { flex-direction: column; text-align: center; padding: 18px 14px; gap: 10px; }
       .perfil-nome { font-size: 16px; white-space: normal; }
 
       .cards-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-      .card-label-title { font-size: 9.5px; }
-      .card-label-sub { font-size: 8px; }
+      .card-label-title { font-size: 12.5px; }
+      .card-label-sub { font-size: 10px; }
 
       .olimp-grid { grid-template-columns: 1fr; }
       .banner-img-container { aspect-ratio: 16/9; }
+
+      .nav-item .nav-label { font-size: 8.8px; }
     }
 
     /* Tablet (≤768px): sem ajustes de grid adicionais — o container <main> já é
@@ -879,6 +978,18 @@
       color: var(--primary);
       background: rgba(244, 207, 77, 0.16);
       border-color: rgba(221, 178, 45, 0.42);
+    }
+    .bottom-nav {
+      background: rgba(255, 250, 244, 0.92) !important;
+      border-top: 1px solid var(--border-color) !important;
+      box-shadow: 0 -14px 32px rgba(55, 39, 24, 0.1);
+    }
+    .nav-item {
+      color: var(--text-muted);
+    }
+    .nav-item.active {
+      color: var(--primary) !important;
+      background: rgba(244, 207, 77, 0.22) !important;
     }
     .perfil-card,
     .portal-card,
@@ -1019,7 +1130,7 @@
       <div class="cards-grid">
 
         <!-- Card 1: Topo do Saber -->
-        <div class="portal-card" id="card-olimpiadas" onclick="abrirOlimpiadas()">
+        <div class="portal-card" id="card-olimpiadas" onclick="abrirOlimpiadas(); setActiveNav('nav-olimpiadas')">
           <div class="card-img-area">
             <img src="assets/topo_saber_logo.jpg" alt="Olimpíadas"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -1035,7 +1146,7 @@
         </div>
 
         <!-- Card 2: Horário de Aula -->
-        <div class="portal-card" id="card-horario" onclick="abrirHorarios()">
+        <div class="portal-card" id="card-horario" onclick="abrirHorarios(); setActiveNav('nav-horarios')">
           <div class="card-img-area">
             <img src="assets/portal_horario.png" alt="Horário de Aula"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -1051,7 +1162,7 @@
         </div>
 
         <!-- Card 3: Agenda Escolar -->
-        <div class="portal-card" id="card-agenda" onclick="abrirAgenda()">
+        <div class="portal-card" id="card-agenda" onclick="abrirAgenda(); setActiveNav('nav-agenda')">
           <div class="card-img-area">
             <img src="assets/portal_agenda.png" alt="Agenda do Aluno"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -1067,7 +1178,7 @@
         </div>
 
         <!-- Card 4: Minhas Notas -->
-        <div class="portal-card" id="card-boletim" onclick="abrirBoletim()">
+        <div class="portal-card" id="card-boletim" onclick="abrirBoletim(); setActiveNav('nav-notas')">
           <div class="card-img-area">
             <img src="assets/portal_boletim.png" alt="Minhas Notas"
                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -1088,7 +1199,7 @@
     <!-- VIEW: TOPO DO SABER (OLIMPÍADAS) -->
     <div id="view-olimpiadas" class="page-view">
       <div class="view-header" style="display:flex; align-items:center; gap:10px;">
-        <button class="btn-voltar" onclick="voltarDashboard()">⬅ Voltar</button>
+        <button class="btn-voltar" onclick="voltarDashboard(); setActiveNav('nav-inicio')">⬅ Voltar</button>
         <img src="assets/topo_saber_logo.jpg" alt="Logo Topo do Saber" style="width:32px; height:32px; border-radius:50%; border:1.5px solid var(--accent); object-fit:cover;">
         <div class="view-title">Topo do Saber</div>
       </div>
@@ -1098,7 +1209,7 @@
     <!-- VIEW: HORÁRIOS DE AULA -->
     <div id="view-horarios" class="page-view">
       <div class="view-header">
-        <button class="btn-voltar" onclick="voltarDashboard()">⬅ Voltar</button>
+        <button class="btn-voltar" onclick="voltarDashboard(); setActiveNav('nav-inicio')">⬅ Voltar</button>
         <div class="view-title">🕐 Horário de Aula</div>
       </div>
       <div id="lista-horarios">Carregando...</div>
@@ -1107,7 +1218,7 @@
     <!-- VIEW: AGENDA ESCOLAR -->
     <div id="view-agenda" class="page-view">
       <div class="view-header">
-        <button class="btn-voltar" onclick="voltarDashboard()">⬅ Voltar</button>
+        <button class="btn-voltar" onclick="voltarDashboard(); setActiveNav('nav-inicio')">⬅ Voltar</button>
         <div class="view-title">📅 Agenda Escolar</div>
       </div>
       <div id="lista-agenda">Carregando...</div>
@@ -1116,13 +1227,37 @@
     <!-- VIEW: MEU BOLETIM / MINHAS NOTAS -->
     <div id="view-boletim" class="page-view">
       <div class="view-header">
-        <button class="btn-voltar" onclick="voltarDashboard()">⬅ Voltar</button>
+        <button class="btn-voltar" onclick="voltarDashboard(); setActiveNav('nav-inicio')">⬅ Voltar</button>
         <div class="view-title">📊 Minhas Notas (Meu Boletim)</div>
       </div>
       <div id="boletim-container" style="margin-top:20px;"></div>
     </div>
 
   </main>
+
+  <!-- BARRA DE NAVEGAÇÃO INFERIOR (APP NATIVO) -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-inicio" onclick="voltarDashboard(); setActiveNav('nav-inicio')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Início</span>
+    </button>
+    <button class="nav-item" id="nav-notas" onclick="abrirBoletim(); setActiveNav('nav-notas')">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Notas</span>
+    </button>
+    <button class="nav-item" id="nav-agenda" onclick="abrirAgenda(); setActiveNav('nav-agenda')">
+      <span class="nav-icon">📅</span>
+      <span class="nav-label">Agenda</span>
+    </button>
+    <button class="nav-item" id="nav-horarios" onclick="abrirHorarios(); setActiveNav('nav-horarios')">
+      <span class="nav-icon">🕐</span>
+      <span class="nav-label">Horários</span>
+    </button>
+    <button class="nav-item" id="nav-olimpiadas" onclick="abrirOlimpiadas(); setActiveNav('nav-olimpiadas')">
+      <span class="nav-icon">🏆</span>
+      <span class="nav-label">Olimpíadas</span>
+    </button>
+  </nav>
 
   <!-- DETALHES DA OLIMPÍADA: FUTURISTIC OVERLAY VIEW -->
   <div class="detail-overlay" id="overlay-olimpiada">
@@ -2008,7 +2143,7 @@
             <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0 0 20px;">
               Seu boletim de notas deste período ainda não foi publicado pela coordenação escolar.
             </p>
-            <button class="btn-edital" style="margin:0 auto" onclick="voltarDashboard()">Voltar ao Painel</button>
+            <button class="btn-edital" style="margin:0 auto" onclick="voltarDashboard(); setActiveNav('nav-inicio')">Voltar ao Painel</button>
           </div>
         `;
         return;
@@ -2121,6 +2256,13 @@
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  // ── Realce visual da barra de navegação inferior (não interfere na lógica das views) ──
+  function setActiveNav(id) {
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
   }
 </script>
 </body>
