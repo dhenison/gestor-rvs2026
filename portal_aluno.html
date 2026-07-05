@@ -503,6 +503,158 @@
     .badge-urgente { background: rgba(244,63,94,.15); color: #fca5a5; border: 1px solid rgba(244,63,94,.3); }
     .badge-ok { background: rgba(16,185,129,.12); color: #a7f3d0; border: 1px solid rgba(16,185,129,.25); }
 
+    .freq-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .freq-metric-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.12);
+    }
+
+    .freq-metric-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .freq-metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .freq-metric-sub {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .freq-overview-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .freq-progress-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      overflow: hidden;
+      margin: 12px 0 10px;
+    }
+
+    .freq-progress-bar {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .freq-history {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .freq-day-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 18px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .freq-day-card.status-p { border-left-color: var(--success); }
+    .freq-day-card.status-f { border-left-color: var(--danger); }
+    .freq-day-card.status-fj { border-left-color: var(--warning); }
+
+    .freq-day-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .freq-day-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 3px;
+    }
+
+    .freq-day-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .freq-day-note {
+      font-size: 12px;
+      color: #e2e8f0;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .freq-day-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .freq-slot-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,.05);
+      color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .freq-slot-pill.status-p {
+      background: rgba(16,185,129,.12);
+      color: #a7f3d0;
+      border-color: rgba(16,185,129,.22);
+    }
+
+    .freq-slot-pill.status-f {
+      background: rgba(244,63,94,.12);
+      color: #fecdd3;
+      border-color: rgba(244,63,94,.22);
+    }
+
+    .freq-slot-pill.status-fj {
+      background: rgba(245,158,11,.12);
+      color: #fde68a;
+      border-color: rgba(245,158,11,.22);
+    }
+
+    .freq-status-pill.status-fj {
+      background: rgba(245,158,11,.14);
+      color: #fde68a;
+      border: 1px solid rgba(245,158,11,.24);
+    }
+
     /* ── View: Topo do Saber (Banners Grid) ── */
     .olimp-grid {
       display: grid;
@@ -1223,6 +1375,20 @@
           </div>
         </div>
 
+        <!-- Card 5: Minha Frequencia -->
+        <div class="portal-card" id="card-frequencia" onclick="abrirFrequencia(); setActiveNav('nav-frequencia')">
+          <div class="card-img-area">
+            <div class="card-img-placeholder">
+              <span class="placeholder-icon">OK</span>
+              <span class="placeholder-text">Registro escolar</span>
+            </div>
+          </div>
+          <div class="card-label">
+            <div class="card-label-title">Minha Frequencia</div>
+            <div class="card-label-sub">Presencas e faltas</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1263,6 +1429,14 @@
       <div id="boletim-container" style="margin-top:20px;"></div>
     </div>
 
+    <div id="view-frequencia" class="page-view">
+      <div class="view-header">
+        <button class="btn-voltar" onclick="voltarDashboard(); setActiveNav('nav-inicio')">⬅ Voltar</button>
+        <div class="view-title">Frequencia Escolar</div>
+      </div>
+      <div id="frequencia-container" style="margin-top:20px;"></div>
+    </div>
+
   </main>
 
   <!-- BARRA DE NAVEGAÇÃO INFERIOR (APP NATIVO) -->
@@ -1274,6 +1448,10 @@
     <button class="nav-item" id="nav-notas" onclick="abrirBoletim(); setActiveNav('nav-notas')">
       <span class="nav-icon">📊</span>
       <span class="nav-label">Notas</span>
+    </button>
+    <button class="nav-item" id="nav-frequencia" onclick="abrirFrequencia(); setActiveNav('nav-frequencia')">
+      <span class="nav-icon">✅</span>
+      <span class="nav-label">Freq.</span>
     </button>
     <button class="nav-item" id="nav-agenda" onclick="abrirAgenda(); setActiveNav('nav-agenda')">
       <span class="nav-icon">📅</span>
@@ -1491,6 +1669,10 @@
   }
 
   async function carregarIdAlunoSessao() {
+    if (studentProfile && studentProfile.id) {
+      return studentProfile.id;
+    }
+
     if (studentProfile && studentProfile.cpf && !studentProfile.id) {
       try {
         const { data, error } = await supabaseClient
@@ -1506,6 +1688,8 @@
         console.warn('Erro ao carregar ID do aluno:', err);
       }
     }
+
+    return studentProfile && studentProfile.id ? studentProfile.id : null;
   }
 
   // Executa imediatamente se o DOM já estiver pronto
@@ -2135,6 +2319,241 @@
   function sair() {
     sessionStorage.removeItem('portal_aluno');
     window.location.href = 'aluno.html';
+  }
+
+  function obterResumoFrequenciaDia(entrada, saida) {
+    const ent = entrada || null;
+    const sai = saida || null;
+    const evasao = ent === 'P' && sai === 'F';
+
+    if ((ent && ent.startsWith('FJ')) || (sai && sai.startsWith('FJ'))) {
+      return {
+        status: 'FJ',
+        titulo: 'Falta justificada',
+        descricao: 'A escola registrou uma justificativa para este dia letivo.'
+      };
+    }
+
+    if (ent === 'F' || sai === 'F' || evasao) {
+      return {
+        status: 'F',
+        titulo: evasao ? 'Ausencia na saida' : 'Falta registrada',
+        descricao: evasao
+          ? 'Presenca na entrada e ausencia na saida registradas no mesmo dia.'
+          : 'Foi registrada ausencia em pelo menos um dos turnos acompanhados.'
+      };
+    }
+
+    if (ent === 'P' && (sai === 'P' || sai === null)) {
+      return {
+        status: 'P',
+        titulo: 'Presenca confirmada',
+        descricao: sai === 'P'
+          ? 'Presenca registrada na entrada e na saida.'
+          : 'Presenca registrada no turno de entrada.'
+      };
+    }
+
+    if (sai === 'P' && !ent) {
+      return {
+        status: 'P',
+        titulo: 'Presenca confirmada',
+        descricao: 'Presenca registrada no turno de saida.'
+      };
+    }
+
+    return {
+      status: 'N',
+      titulo: 'Sem consolidacao',
+      descricao: 'Ainda nao ha um fechamento de frequencia disponivel para este dia.'
+    };
+  }
+
+  function obterClasseStatusFrequencia(status) {
+    if (status === 'P') return 'status-p';
+    if (status === 'F') return 'status-f';
+    if (status === 'FJ') return 'status-fj';
+    return '';
+  }
+
+  function obterRotuloTurnoStatus(status) {
+    if (status === 'P') return 'Presente';
+    if (status === 'F') return 'Falta';
+    if (status && status.startsWith('FJ')) return 'Justificada';
+    return 'Sem registro';
+  }
+
+  function formatarDataFrequencia(dataIso) {
+    const data = new Date(`${dataIso}T00:00:00`);
+    return data.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  async function abrirFrequencia() {
+    mostrarView('view-frequencia');
+    const container = document.getElementById('frequencia-container');
+    container.innerHTML = `
+      <div style="display:flex; justify-content:center; align-items:center; min-height:200px; flex-direction:column; gap:12px;">
+        <div style="width:24px; height:24px; border:2px solid rgba(255,255,255,.05); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;"></div>
+        <span style="font-size:12px; color:var(--text-muted);">Buscando sua frequencia...</span>
+      </div>
+    `;
+
+    try {
+      const alunoId = await carregarIdAlunoSessao();
+
+      if (!alunoId) {
+        container.innerHTML = `
+          <div class="lista-vazia">
+            <span>⚠️</span>
+            <p>Nao foi possivel identificar o aluno para consultar a frequencia.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const dataCorte = new Date();
+      dataCorte.setDate(dataCorte.getDate() - 90);
+      const dataCorteIso = dataCorte.toISOString().split('T')[0];
+
+      const { data, error } = await supabaseClient
+        .from('frequencia')
+        .select('data, tipo, status, consolidado')
+        .eq('aluno_id', alunoId)
+        .eq('consolidado', true)
+        .gte('data', dataCorteIso)
+        .order('data', { ascending: false })
+        .limit(240);
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = `
+          <div style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 16px; padding: 40px 20px; text-align: center; max-width: 520px; margin: 20px auto; animation: fadeIn 0.4s ease;">
+            <div style="font-size: 36px; margin-bottom: 14px;">📌</div>
+            <h3 style="font-size: 15px; font-weight: 700; color: white; margin-bottom: 8px;">Nenhuma frequencia consolidada</h3>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0;">
+              Assim que a chamada for consolidada pela escola, sua presenca e suas faltas aparecerao aqui.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      const diasMap = new Map();
+      data.forEach((item) => {
+        if (!diasMap.has(item.data)) {
+          diasMap.set(item.data, { data: item.data, entrada: null, saida: null });
+        }
+
+        if (item.tipo === 'entrada' || item.tipo === 'saida') {
+          diasMap.get(item.data)[item.tipo] = item.status;
+        }
+      });
+
+      const dias = Array.from(diasMap.values())
+        .sort((a, b) => b.data.localeCompare(a.data))
+        .map((dia) => {
+          const resumo = obterResumoFrequenciaDia(dia.entrada, dia.saida);
+          return { ...dia, ...resumo };
+        });
+
+      const totalDias = dias.length;
+      const presencas = dias.filter((dia) => dia.status === 'P').length;
+      const faltas = dias.filter((dia) => dia.status === 'F').length;
+      const justificadas = dias.filter((dia) => dia.status === 'FJ').length;
+      const percentual = totalDias > 0 ? Math.round((presencas / totalDias) * 100) : 0;
+
+      let html = `
+        <div class="freq-overview-card">
+          <div class="card-info-title" style="margin-bottom:6px;">Acompanhamento recente</div>
+          <div class="card-info-sub">Resumo dos ultimos 90 dias com chamada consolidada pela escola.</div>
+          <div class="freq-progress-track">
+            <div class="freq-progress-bar" style="width:${percentual}%;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <div style="font-size:12px; color:white; font-weight:700;">Frequencia atual: ${percentual}%</div>
+            <div style="font-size:11px; color:var(--text-muted);">${totalDias} dia(s) acompanhado(s)</div>
+          </div>
+        </div>
+
+        <div class="freq-summary-grid">
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Presencas</div>
+            <div class="freq-metric-value" style="color:#a7f3d0;">${presencas}</div>
+            <div class="freq-metric-sub">Dias com presenca confirmada</div>
+          </div>
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Faltas</div>
+            <div class="freq-metric-value" style="color:#fecdd3;">${faltas}</div>
+            <div class="freq-metric-sub">Ausencias registradas</div>
+          </div>
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Justificadas</div>
+            <div class="freq-metric-value" style="color:#fde68a;">${justificadas}</div>
+            <div class="freq-metric-sub">Faltas com justificativa</div>
+          </div>
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Periodo</div>
+            <div class="freq-metric-value" style="font-size:20px;">90d</div>
+            <div class="freq-metric-sub">Janela atual de consulta</div>
+          </div>
+        </div>
+
+        <div class="secao-titulo">Historico recente de frequencia</div>
+        <div class="freq-history">
+      `;
+
+      dias.forEach((dia) => {
+        const classeStatus = obterClasseStatusFrequencia(dia.status);
+        const rotuloEntrada = obterRotuloTurnoStatus(dia.entrada);
+        const rotuloSaida = obterRotuloTurnoStatus(dia.saida);
+        const badgeClass = dia.status === 'P'
+          ? 'badge-ok'
+          : dia.status === 'F'
+            ? 'badge-urgente'
+            : dia.status === 'FJ'
+              ? 'freq-status-pill status-fj'
+              : 'badge-normal';
+
+        html += `
+          <div class="freq-day-card ${classeStatus}">
+            <div class="freq-day-top">
+              <div>
+                <div class="freq-day-title">${formatarDataFrequencia(dia.data)}</div>
+                <div class="freq-day-meta">Registro consolidado pela escola</div>
+              </div>
+              <span class="card-badge ${badgeClass}">${dia.titulo}</span>
+            </div>
+            <div class="freq-day-note">${dia.descricao}</div>
+            <div class="freq-day-slots">
+              <span class="freq-slot-pill ${obterClasseStatusFrequencia(dia.entrada)}">Entrada: ${rotuloEntrada}</span>
+              <span class="freq-slot-pill ${obterClasseStatusFrequencia(dia.saida)}">Saida: ${rotuloSaida}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        </div>
+      `;
+
+      container.innerHTML = html;
+    } catch (e) {
+      console.error('[abrirFrequencia] Exception:', e);
+      container.innerHTML = `
+        <div class="lista-vazia">
+          <span>⚠️</span>
+          <p>Nao foi possivel carregar sua frequencia agora. Tente novamente em instantes.</p>
+        </div>
+      `;
+    }
   }
 
   // ==============================================================================
