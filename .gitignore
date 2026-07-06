@@ -7,3 +7,5 @@ update_*.js
 clear_turmas.js
 insert_turmas.js
 .gemini/
+__pycache__/
+*.pyc
