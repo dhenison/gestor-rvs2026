@@ -137,6 +137,7 @@
       <div class="nav-item" onclick="showPage('turmas',this)"><i data-lucide="library" class="nav-item-icon"></i>Turmas</div>
       <div class="nav-item" onclick="showPage('alunos',this)"><i data-lucide="users" class="nav-item-icon"></i>Alunos</div>
       <div class="nav-item" onclick="showPage('boletins',this)"><i data-lucide="file-spreadsheet" class="nav-item-icon"></i>Boletins</div>
+      <div class="nav-item" onclick="showPage('conselho-classe',this)"><i data-lucide="clipboard-list" class="nav-item-icon"></i>Conselho de Classe</div>
       <div class="nav-item" onclick="showPage('frequencia',this)"><i data-lucide="check-square" class="nav-item-icon"></i>Frequência</div>
       <div class="nav-item" onclick="showPage('solicitacoes',this)"><i data-lucide="file-text" class="nav-item-icon"></i>Solicitações Pedagógicas</div>
       <div class="nav-item" onclick="showPage('rvs-agenda',this)"><i data-lucide="calendar-clock" class="nav-item-icon"></i>RVS Agenda</div>
@@ -602,6 +603,56 @@
           <!-- Resultados do Mapeamento -->
           <div id="boletim-mapeamento-container" style="display:none;"></div>
         </div>
+      </div>
+
+      <div class="page" id="page-conselho-classe">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Conselho de Classe</div>
+            <p class="conselho-page-subtitle">Consolidação bimestral de notas, frequência, ocorrências e pareceres pedagógicos da turma.</p>
+          </div>
+          <div class="conselho-action-row">
+            <button class="btn btn-outline btn-sm" onclick="prepararConselhoClasse()">Atualizar análise</button>
+            <button class="btn btn-outline btn-sm" onclick="abrirModalNotasConselho()">Lançar/Editar Notas</button>
+            <button class="btn btn-primary btn-sm" onclick="salvarConselhoClasse()">Salvar Conselho</button>
+          </div>
+        </div>
+
+        <div class="table-card conselho-filter-card">
+          <div class="conselho-filters-grid">
+            <div>
+              <label class="form-label">Turma</label>
+              <select id="conselho-turma-select" class="form-input form-select select-turmas"></select>
+            </div>
+            <div>
+              <label class="form-label">Ano Letivo</label>
+              <input id="conselho-ano" class="form-input" type="number" value="2026">
+            </div>
+            <div>
+              <label class="form-label">Bimestre</label>
+              <select id="conselho-periodo" class="form-input form-select">
+                <option value="1º Bimestre">1º Bimestre</option>
+                <option value="2º Bimestre">2º Bimestre</option>
+                <option value="3º Bimestre">3º Bimestre</option>
+                <option value="4º Bimestre">4º Bimestre</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Data da Reunião</label>
+              <input id="conselho-data" class="form-input" type="date">
+            </div>
+            <div>
+              <label class="form-label">Status</label>
+              <select id="conselho-status" class="form-input form-select">
+                <option value="Em preparação">Em preparação</option>
+                <option value="Em andamento">Em andamento</option>
+                <option value="Finalizado">Finalizado</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div id="conselho-classe-content"></div>
       </div>
 
       <div class="page" id="page-frequencia">

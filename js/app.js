@@ -141,6 +141,26 @@ let ROTAS_DATA   = [];
 let CALENDARIO   = {};
 let HORARIOS_LINKS = {};
 let OBAFOG_DATA = [];
+let NOTAS_BIMESTRAIS_DATA = [];
+let CONSELHOS_CLASSE_DATA = [];
+let CONSELHO_CLASSE_ALUNOS_DATA = [];
+let CONSELHO_SCHEMA_STATUS = { ready: false, missingTables: [] };
+
+let conselhoClasseAtual = null;
+let conselhoClasseLinhas = [];
+
+const CONSELHO_COMPONENTES_PADRAO = [
+  'Língua Portuguesa',
+  'Matemática',
+  'Ciências',
+  'História',
+  'Geografia',
+  'Arte',
+  'Educação Física',
+  'Inglês'
+];
+
+const CONSELHO_MEDIA_MINIMA = 6;
 
 const CHAT_DATA = { coord:[], sec:[], prof:[] };
 const freq = { entrada:{}, saida:{} };
@@ -189,6 +209,7 @@ let PERMS = [
   {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'Conselho de Classe',       id:'page-conselho-classe', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false},
   {func:'Documentos Secretaria',    id:'page-documentos-secretaria', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false}
 ];
 
@@ -281,6 +302,34 @@ async function fetchAllRows(tableName, select = '*', builderFn = (q)=>q) {
   return { data: allData };
 }
 
+async function fetchOptionalRows(tableName, select = '*', builderFn = (q)=>q) {
+  let allData = [];
+  let from = 0;
+  const step = 1000;
+
+  while (true) {
+    let query = supabaseClient.from(tableName).select(select).range(from, from + step - 1);
+    query = builderFn(query);
+    const { data, error } = await query;
+
+    if (error) {
+      const missing = error.code === '42P01' || /does not exist/i.test(error.message || '');
+      if (missing) {
+        return { data: [], missing: true };
+      }
+
+      console.error(`Erro ao buscar ${tableName}:`, error);
+      return { data: [], error, missing: false };
+    }
+
+    if (data) allData = allData.concat(data);
+    if (!data || data.length < step) break;
+    from += step;
+  }
+
+  return { data: allData, missing: false };
+}
+
 async function carregarDados(){
   try {
     const [
@@ -290,7 +339,10 @@ async function carregarDados(){
       {data: eventos}, 
       {data: rotas}, 
       configResult, // Capture full result instead of destructuring data
-      {data: obafogEq}
+      {data: obafogEq},
+      notasResult,
+      conselhosResult,
+      conselhoAlunosResult
     ] = await Promise.all([
       fetchAllRows('turmas'),
       fetchAllRows('alunos'),
@@ -298,7 +350,10 @@ async function carregarDados(){
       fetchAllRows('eventos'),
       fetchAllRows('rotas'),
       supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios']),
-      fetchAllRows('obafog_equipes', '*', q => q.order('created_at', {ascending:false}))
+      fetchAllRows('obafog_equipes', '*', q => q.order('created_at', {ascending:false})),
+      fetchOptionalRows('notas_bimestrais', '*', q => q.order('ano', { ascending: false }).order('periodo', { ascending: true })),
+      fetchOptionalRows('conselhos_classe', '*', q => q.order('ano', { ascending: false }).order('periodo', { ascending: true })),
+      fetchOptionalRows('conselho_classe_alunos', '*')
     ]);
 
     if (configResult.error) {
@@ -321,6 +376,7 @@ async function carregarDados(){
           {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Ficha do Aluno',           id:'page-ficha-aluno',  coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+          {func:'Conselho de Classe',       id:'page-conselho-classe', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false},
           {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
           {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
@@ -419,6 +475,56 @@ async function carregarDados(){
     if (rotas) {
       ROTAS_DATA = rotas.map(r => ({ id: r.id, nome: r.nome, motorista: r.motorista, veiculo: r.veiculo, cap: r.capacidade }));
     }
+
+    CONSELHO_SCHEMA_STATUS = {
+      ready: !notasResult?.missing && !conselhosResult?.missing && !conselhoAlunosResult?.missing,
+      missingTables: [
+        notasResult?.missing ? 'notas_bimestrais' : null,
+        conselhosResult?.missing ? 'conselhos_classe' : null,
+        conselhoAlunosResult?.missing ? 'conselho_classe_alunos' : null
+      ].filter(Boolean)
+    };
+
+    NOTAS_BIMESTRAIS_DATA = (notasResult?.data || []).map(n => ({
+      id: n.id,
+      aluno_id: n.aluno_id,
+      turma_id: n.turma_id,
+      ano: n.ano,
+      periodo: n.periodo,
+      componente: n.componente,
+      nota: n.nota == null ? null : Number(n.nota),
+      faltas_componente: Number(n.faltas_componente || 0),
+      origem: n.origem || 'manual',
+      created_at: n.created_at
+    }));
+
+    CONSELHOS_CLASSE_DATA = (conselhosResult?.data || []).map(c => ({
+      id: c.id,
+      turma_id: c.turma_id,
+      ano: c.ano,
+      periodo: c.periodo,
+      data_reuniao: c.data_reuniao || '',
+      status: c.status || 'Em preparação',
+      componentes: Array.isArray(c.componentes) ? c.componentes : [],
+      ata_texto: c.ata_texto || '',
+      criado_por: c.criado_por || '',
+      created_at: c.created_at
+    }));
+
+    CONSELHO_CLASSE_ALUNOS_DATA = (conselhoAlunosResult?.data || []).map(item => ({
+      id: item.id,
+      conselho_id: item.conselho_id,
+      aluno_id: item.aluno_id,
+      media_geral: item.media_geral == null ? null : Number(item.media_geral),
+      frequencia_percentual: item.frequencia_percentual == null ? null : Number(item.frequencia_percentual),
+      qtd_componentes_abaixo_media: Number(item.qtd_componentes_abaixo_media || 0),
+      qtd_ocorrencias: Number(item.qtd_ocorrencias || 0),
+      situacao: item.situacao || '',
+      observacao_automatica: item.observacao_automatica || '',
+      observacao_pedagogica: item.observacao_pedagogica || '',
+      parecer_final: item.parecer_final || '',
+      encaminhamento: item.encaminhamento || ''
+    }));
 
     // ── OBAFOG: atribuir dados carregados do banco ──
     if (obafogEq) {
@@ -877,7 +983,7 @@ function showPage(p, el) {
 
   const titles = {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', 'ficha-aluno': 'Ficha do Aluno', boletins: 'Boletins Escolares',
-    frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
+    'conselho-classe': 'Conselho de Classe', frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
     horarios: 'Horário de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
   };
@@ -900,6 +1006,7 @@ function showPage(p, el) {
   if(p==='topo-saber'){ carregarOlimpiadas().then(()=>renderTopoSaber()); }
   if(p==='usuarios'){ carregarUsuarios(); }
   if(p==='rvs-agenda'){ popularDatasAtividade(); popularTurmasAtividade(); renderAgendaMural(); }
+  if(p==='conselho-classe') renderConselhoClassePage();
   if(p==='horarios') carregarLinksHorario();
   if(p==='permissoes') renderPermissoes();
   if(p==='perfil') renderPerfil();
@@ -4120,7 +4227,864 @@ function aplicarPermissoesUI() {
   }
 }
 
+// ─── CONSELHO DE CLASSE ───────────────────────────────────────────────────────
+function parseBrDateToDate(value) {
+  if (!value || !value.includes('/')) return null;
+  const [day, month, year] = value.split('/').map(Number);
+  if (!day || !month || !year) return null;
+  return new Date(year, month - 1, day);
+}
 
+function keyToDate(value) {
+  if (!value || !value.includes('-')) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function dateToKey(date) {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+function normalizePeriodoTexto(value = '') {
+  return String(value)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getConselhoFilters() {
+  const turmaCode = document.getElementById('conselho-turma-select')?.value || '';
+  const turmaObj = TURMAS_DATA.find(t => t.code === turmaCode) || null;
+  return {
+    ano: parseInt(document.getElementById('conselho-ano')?.value, 10) || new Date().getFullYear(),
+    periodo: document.getElementById('conselho-periodo')?.value || '1º Bimestre',
+    turmaCode,
+    turmaObj,
+    dataReuniao: document.getElementById('conselho-data')?.value || '',
+    status: document.getElementById('conselho-status')?.value || 'Em preparação'
+  };
+}
+
+function popularTurmasConselhoClasse() {
+  const select = document.getElementById('conselho-turma-select');
+  if (!select) return;
+  const previous = select.value;
+  select.innerHTML = '<option value="">Selecione a turma</option>' +
+    TURMAS_DATA.map(t => `<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
+  if (previous && TURMAS_DATA.some(t => t.code === previous)) select.value = previous;
+}
+
+function getConselhoPeriodoRange(ano, periodo) {
+  const normalized = normalizePeriodoTexto(periodo);
+  const entries = Object.entries(CALENDARIO)
+    .map(([key, ev]) => ({ key, ev }))
+    .filter(item => item.ev)
+    .sort((a, b) => keyToDate(a.key) - keyToDate(b.key));
+
+  const samePeriodo = item =>
+    normalizePeriodoTexto(item.ev?.bimestre || item.ev?.label || '') === normalized;
+
+  const startEvent = entries.find(item => item.ev?.tipo === 'bimestre' && samePeriodo(item));
+  const endEvent = entries.find(item => item.ev?.tipo === 'fim_bimestre' && samePeriodo(item));
+
+  let startDate = startEvent ? keyToDate(startEvent.key) : null;
+  let endDate = endEvent ? keyToDate(endEvent.key) : null;
+  let warning = '';
+
+  if (!startDate || !endDate) {
+    const fallback = {
+      '1º bimestre': [0, 2],
+      '2º bimestre': [3, 5],
+      '3º bimestre': [6, 8],
+      '4º bimestre': [9, 11]
+    }[normalized];
+
+    if (fallback) {
+      startDate = new Date(ano, fallback[0], 1);
+      endDate = new Date(ano, fallback[1] + 1, 0);
+      warning = 'Calendário sem início/fim de bimestre configurado. A frequência foi estimada por bloco mensal.';
+    }
+  }
+
+  const dias = Object.entries(CALENDARIO)
+    .filter(([, ev]) => ['letivo', 'prova', 'evento', 'bimestre'].includes(ev.tipo))
+    .map(([key]) => key)
+    .filter(key => {
+      const date = keyToDate(key);
+      if (!date) return false;
+      if (startDate && date < startDate) return false;
+      if (endDate && date > endDate) return false;
+      return true;
+    })
+    .sort((a, b) => keyToDate(a) - keyToDate(b));
+
+  return { startDate, endDate, dias, warning };
+}
+
+function agruparNotasPorAlunoComponente(notas) {
+  return notas.reduce((acc, nota) => {
+    if (!acc[nota.aluno_id]) acc[nota.aluno_id] = {};
+    acc[nota.aluno_id][nota.componente] = nota;
+    return acc;
+  }, {});
+}
+
+function calcularMediaAluno(componentes, mapaAluno) {
+  const notas = componentes
+    .map(comp => mapaAluno?.[comp]?.nota)
+    .filter(nota => typeof nota === 'number' && !Number.isNaN(nota));
+
+  if (!notas.length) return null;
+  return Number((notas.reduce((sum, nota) => sum + nota, 0) / notas.length).toFixed(2));
+}
+
+function getComponentesAbaixoDaMedia(componentes, mapaAluno) {
+  return componentes.filter(comp => {
+    const nota = mapaAluno?.[comp]?.nota;
+    return typeof nota === 'number' && nota < CONSELHO_MEDIA_MINIMA;
+  });
+}
+
+function classificarSituacaoConselho({ mediaGeral, frequenciaPercentual, qtdAbaixo, qtdOcorrencias }) {
+  if (mediaGeral == null) return 'Sem notas';
+  if (mediaGeral < 5 || qtdAbaixo >= 3 || (frequenciaPercentual != null && frequenciaPercentual < 75) || qtdOcorrencias >= 4) return 'Crítico';
+  if (mediaGeral < CONSELHO_MEDIA_MINIMA || qtdAbaixo >= 1 || (frequenciaPercentual != null && frequenciaPercentual < 85) || qtdOcorrencias >= 2) return 'Atenção';
+  return 'Adequado';
+}
+
+function gerarObservacaoAutomaticaConselho({ mediaGeral, frequenciaPercentual, componentesAbaixo, qtdOcorrencias }) {
+  if (mediaGeral == null) {
+    return 'Sem notas estruturadas lançadas para este bimestre. Recomenda-se registrar os componentes antes do conselho.';
+  }
+
+  const partes = [];
+
+  if (mediaGeral < 5) partes.push(`desempenho crítico com média geral ${mediaGeral.toFixed(1)}`);
+  else if (mediaGeral < CONSELHO_MEDIA_MINIMA) partes.push(`média geral abaixo do esperado (${mediaGeral.toFixed(1)})`);
+  else partes.push(`desempenho geral satisfatório (${mediaGeral.toFixed(1)})`);
+
+  if (componentesAbaixo.length) {
+    partes.push(`necessita atenção em ${componentesAbaixo.join(', ')}`);
+  }
+
+  if (frequenciaPercentual != null && frequenciaPercentual < 75) partes.push(`frequência crítica (${frequenciaPercentual.toFixed(0)}%)`);
+  else if (frequenciaPercentual != null && frequenciaPercentual < 85) partes.push(`frequência em atenção (${frequenciaPercentual.toFixed(0)}%)`);
+
+  if (qtdOcorrencias >= 3) partes.push(`recorrência disciplinar com ${qtdOcorrencias} ocorrência(s)`);
+  else if (qtdOcorrencias > 0) partes.push(`${qtdOcorrencias} ocorrência(s) registrada(s) no período`);
+
+  return partes.join('; ') + '.';
+}
+
+async function obterMapaFrequenciaConselho(turmaId, dias) {
+  if (!turmaId || !dias.length) return {};
+
+  const { data } = await fetchAllRows('frequencia', 'aluno_id, data, tipo, status, consolidado', q =>
+    q.eq('turma_id', turmaId).eq('consolidado', true).in('data', dias)
+  );
+
+  const mapa = {};
+  (data || []).forEach(item => {
+    const [year, month, day] = String(item.data).split('-');
+    const key = `${parseInt(year, 10)}-${parseInt(month, 10)}-${parseInt(day, 10)}`;
+    if (!mapa[item.aluno_id]) mapa[item.aluno_id] = {};
+    if (!mapa[item.aluno_id][key]) mapa[item.aluno_id][key] = {};
+    mapa[item.aluno_id][key][item.tipo] = item.status;
+  });
+  return mapa;
+}
+
+function calcularFrequenciaAlunoConselho(alunoId, dias, mapaFrequencia) {
+  if (!dias.length) {
+    return { percentual: null, presencas: 0, faltas: 0, justificadas: 0 };
+  }
+
+  let presencas = 0;
+  let faltas = 0;
+  let justificadas = 0;
+
+  dias.forEach(dia => {
+    const entrada = mapaFrequencia[alunoId]?.[dia]?.entrada || null;
+    const saida = mapaFrequencia[alunoId]?.[dia]?.saida || null;
+    let status = '—';
+
+    if (entrada || saida) {
+      const evasao = entrada === 'P' && saida === 'F';
+      if (entrada?.startsWith('FJ') || saida?.startsWith('FJ')) status = 'FJ';
+      else if (entrada === 'F' || evasao) status = 'F';
+      else if (entrada === 'P' && (saida === 'P' || saida === null)) status = 'P';
+      else if (entrada === 'P') status = 'P';
+    }
+
+    if (status === 'P') presencas++;
+    if (status === 'F') faltas++;
+    if (status === 'FJ') justificadas++;
+  });
+
+  const percentual = Number(((presencas / dias.length) * 100).toFixed(1));
+  return { percentual, presencas, faltas, justificadas };
+}
+
+function contarOcorrenciasConselho(alunoId, startDate, endDate) {
+  return OCORR_DATA.filter(item => {
+    if (String(item.aluno_id) !== String(alunoId)) return false;
+    const data = parseBrDateToDate(item.data);
+    if (!data) return false;
+    if (startDate && data < startDate) return false;
+    if (endDate && data > endDate) return false;
+    return true;
+  }).length;
+}
+
+function getSituacaoBadgeClass(situacao) {
+  if (situacao === 'Crítico') return 'badge-red';
+  if (situacao === 'Atenção' || situacao === 'Sem notas') return 'badge-yellow';
+  return 'badge-green';
+}
+
+function getConselhoAtualSalvo(turmaId, ano, periodo) {
+  return CONSELHOS_CLASSE_DATA.find(item =>
+    String(item.turma_id) === String(turmaId) &&
+    Number(item.ano) === Number(ano) &&
+    item.periodo === periodo
+  ) || null;
+}
+
+function getConselhoComponentesAtual(conselhoSalvo, notasTurma) {
+  const componentesNotas = [...new Set((notasTurma || []).map(item => item.componente).filter(Boolean))];
+  const componentesSalvos = Array.isArray(conselhoSalvo?.componentes) ? conselhoSalvo.componentes.filter(Boolean) : [];
+  return [...new Set([...componentesSalvos, ...componentesNotas, ...CONSELHO_COMPONENTES_PADRAO])];
+}
+
+function updateConselhoLinhaField(index, field, value) {
+  const row = conselhoClasseLinhas[index];
+  if (!row) return;
+  row[field] = value;
+}
+
+function gerarAtaConselhoClasse() {
+  if (!conselhoClasseAtual || !conselhoClasseLinhas.length) {
+    showToast('Carregue uma turma antes de gerar a ata.', 'alerta');
+    return;
+  }
+
+  const criticos = conselhoClasseLinhas.filter(item => item.situacao === 'Crítico');
+  const atencao = conselhoClasseLinhas.filter(item => item.situacao === 'Atenção' || item.situacao === 'Sem notas');
+  const mediaTurma = conselhoClasseLinhas
+    .map(item => item.mediaGeral)
+    .filter(value => typeof value === 'number');
+  const mediaConsolidada = mediaTurma.length
+    ? (mediaTurma.reduce((sum, value) => sum + value, 0) / mediaTurma.length).toFixed(1)
+    : 'sem notas';
+
+  const texto = [
+    `Ata prévia do Conselho de Classe - Turma ${conselhoClasseAtual.turmaCode} - ${conselhoClasseAtual.periodo}/${conselhoClasseAtual.ano}.`,
+    `Reunião prevista para ${conselhoClasseAtual.dataReuniao ? new Date(conselhoClasseAtual.dataReuniao + 'T12:00:00').toLocaleDateString('pt-BR') : 'data não informada'}.`,
+    `A turma possui ${conselhoClasseLinhas.length} aluno(s) analisado(s), com média geral consolidada de ${mediaConsolidada}.`,
+    `${criticos.length} aluno(s) foram classificados em situação crítica e ${atencao.length} em situação de atenção.`,
+    criticos.length ? `Alunos em situação crítica: ${criticos.map(item => item.nome).join(', ')}.` : 'Não houve alunos em situação crítica nesta consolidação.',
+    atencao.length ? `Alunos em atenção: ${atencao.map(item => item.nome).join(', ')}.` : 'Não houve alunos em situação de atenção nesta consolidação.',
+    'Deliberações: registrar pareceres individuais, definir encaminhamentos pedagógicos e pactuar devolutiva às famílias quando necessário.'
+  ].join('\n');
+
+  const textarea = document.getElementById('conselho-ata-texto');
+  if (textarea) textarea.value = texto;
+  if (conselhoClasseAtual) conselhoClasseAtual.ata_texto = texto;
+  showToast('Ata preliminar gerada. Revise o texto antes de salvar.', 'sucesso');
+}
+
+function renderConselhoClasseResumo(linhas, dias, periodoInfo) {
+  const comNotas = linhas.filter(item => item.mediaGeral != null);
+  const mediaTurma = comNotas.length
+    ? (comNotas.reduce((sum, item) => sum + item.mediaGeral, 0) / comNotas.length).toFixed(1)
+    : '—';
+  const criticos = linhas.filter(item => item.situacao === 'Crítico').length;
+  const atencao = linhas.filter(item => item.situacao === 'Atenção' || item.situacao === 'Sem notas').length;
+  const baixaFreq = linhas.filter(item => item.frequenciaPercentual != null && item.frequenciaPercentual < 75).length;
+  const comOcorr = linhas.filter(item => item.qtdOcorrencias > 0).length;
+
+  return `
+    <div class="conselho-meta">
+      <div>
+        <strong>Período analisado</strong>
+        <span>${dias.length ? `${formatarDataKey(dias[0])} até ${formatarDataKey(dias[dias.length - 1])}` : 'Sem dias letivos configurados no calendário'}</span>
+      </div>
+      <div>
+        <strong>Componentes considerados</strong>
+        <span>${conselhoClasseAtual.componentes.join(', ')}</span>
+      </div>
+    </div>
+    ${periodoInfo.warning ? `<div class="conselho-warning">${escapeHtml(periodoInfo.warning)}</div>` : ''}
+    <div class="conselho-summary-grid">
+      <div class="conselho-summary-card">
+        <span>Total de alunos</span>
+        <strong>${linhas.length}</strong>
+        <small>Participantes da turma neste conselho</small>
+      </div>
+      <div class="conselho-summary-card">
+        <span>Média da turma</span>
+        <strong>${mediaTurma}</strong>
+        <small>Calculada com as notas estruturadas</small>
+      </div>
+      <div class="conselho-summary-card is-warning">
+        <span>Em atenção</span>
+        <strong>${atencao}</strong>
+        <small>Inclui sem notas lançadas</small>
+      </div>
+      <div class="conselho-summary-card is-danger">
+        <span>Críticos</span>
+        <strong>${criticos}</strong>
+        <small>Demandam encaminhamento prioritário</small>
+      </div>
+      <div class="conselho-summary-card">
+        <span>Baixa frequência</span>
+        <strong>${baixaFreq}</strong>
+        <small>Alunos abaixo de 75% no período</small>
+      </div>
+      <div class="conselho-summary-card">
+        <span>Com ocorrências</span>
+        <strong>${comOcorr}</strong>
+        <small>Registros disciplinares no bimestre</small>
+      </div>
+    </div>
+  `;
+}
+
+function renderConselhoClasseTabela(linhas) {
+  const rows = linhas.map((item, index) => {
+    const notasHtml = conselhoClasseAtual.componentes.map(comp => {
+      const nota = item.notas?.[comp]?.nota;
+      return `<span class="conselho-chip ${typeof nota === 'number' && nota < CONSELHO_MEDIA_MINIMA ? 'is-danger' : ''}">${escapeHtml(comp)}: ${typeof nota === 'number' ? nota.toFixed(1) : '—'}</span>`;
+    }).join('');
+
+    return `
+      <tr>
+        <td>
+          <div class="conselho-student-name">${escapeHtml(item.nome)}</div>
+          <div class="conselho-student-meta">${escapeHtml(item.turma || '')} • ${escapeHtml(item.turno || '')}</div>
+        </td>
+        <td><span class="metric-badge badge-blue">${item.mediaGeral != null ? item.mediaGeral.toFixed(1) : '—'}</span></td>
+        <td>${notasHtml}</td>
+        <td><span class="metric-badge ${item.frequenciaPercentual == null ? 'badge-blue' : item.frequenciaPercentual < 75 ? 'badge-red' : item.frequenciaPercentual < 85 ? 'badge-yellow' : 'badge-green'}">${item.frequenciaPercentual == null ? '—' : `${item.frequenciaPercentual.toFixed(1)}%`}</span></td>
+        <td style="text-align:center">${item.qtdOcorrencias}</td>
+        <td>
+          <select class="form-input form-select conselho-inline-select" onchange="updateConselhoLinhaField(${index}, 'situacao', this.value)">
+            ${['Adequado', 'Atenção', 'Crítico', 'Sem notas'].map(op =>
+              `<option value="${op}" ${item.situacao === op ? 'selected' : ''}>${op}</option>`
+            ).join('')}
+          </select>
+        </td>
+        <td class="conselho-auto-text">${escapeHtml(item.observacaoAutomatica)}</td>
+        <td><textarea class="form-input conselho-inline-textarea" oninput="updateConselhoLinhaField(${index}, 'observacaoPedagogica', this.value)">${escapeHtml(item.observacaoPedagogica || '')}</textarea></td>
+        <td>
+          <select class="form-input form-select conselho-inline-select" onchange="updateConselhoLinhaField(${index}, 'parecerFinal', this.value)">
+            ${['', 'Manter acompanhamento', 'Reforço', 'Recuperação paralela', 'Contato com responsável', 'Encaminhar orientação', 'Sem encaminhamento'].map(op =>
+              `<option value="${op}" ${item.parecerFinal === op ? 'selected' : ''}>${op || 'Selecione'}</option>`
+            ).join('')}
+          </select>
+        </td>
+        <td><textarea class="form-input conselho-inline-textarea" oninput="updateConselhoLinhaField(${index}, 'encaminhamento', this.value)">${escapeHtml(item.encaminhamento || '')}</textarea></td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <div class="table-card conselho-table-card">
+      <div class="table-scroll">
+        <table class="table conselho-table">
+          <thead>
+            <tr>
+              <th>Aluno</th>
+              <th>Média</th>
+              <th>Notas por componente</th>
+              <th>Frequência</th>
+              <th>Ocorr.</th>
+              <th>Situação</th>
+              <th>Observação automática</th>
+              <th>Observação pedagógica</th>
+              <th>Parecer</th>
+              <th>Encaminhamento</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function renderConselhoClassePage(forceReload = false) {
+  const content = document.getElementById('conselho-classe-content');
+  if (!content) return;
+
+  popularTurmasConselhoClasse();
+
+  if (!CONSELHO_SCHEMA_STATUS.ready) {
+    content.innerHTML = `
+      <div class="conselho-empty-card">
+        <h3>Estrutura do Conselho ainda não ativada no banco</h3>
+        <p>Execute a migração <code>supabase_migration_v24_conselho_classe.sql</code> para liberar notas estruturadas, ata do conselho e pareceres individuais.</p>
+        <p>Tabelas pendentes: ${CONSELHO_SCHEMA_STATUS.missingTables.join(', ') || 'não identificadas'}.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const filters = getConselhoFilters();
+  if (!filters.turmaObj) {
+    content.innerHTML = `
+      <div class="conselho-empty-card">
+        <h3>Selecione a turma e o bimestre</h3>
+        <p>O sistema vai cruzar notas estruturadas, frequência consolidada e ocorrências do período para montar o Conselho de Classe.</p>
+      </div>
+    `;
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="conselho-empty-card">
+      <h3>Preparando análise do conselho...</h3>
+      <p>Consolidando notas, frequência e ocorrências do período selecionado.</p>
+    </div>
+  `;
+
+  const alunosTurma = ALUNOS_DATA
+    .filter(aluno => String(aluno.turma_id) === String(filters.turmaObj.id))
+    .sort((a, b) => a.nome.localeCompare(b.nome));
+
+  if (!alunosTurma.length) {
+    content.innerHTML = `
+      <div class="conselho-empty-card">
+        <h3>Sem alunos nesta turma</h3>
+        <p>Cadastre ou vincule alunos à turma selecionada antes de preparar o Conselho de Classe.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const conselhoSalvo = getConselhoAtualSalvo(filters.turmaObj.id, filters.ano, filters.periodo);
+  const notasTurma = NOTAS_BIMESTRAIS_DATA.filter(item =>
+    String(item.turma_id) === String(filters.turmaObj.id) &&
+    Number(item.ano) === Number(filters.ano) &&
+    item.periodo === filters.periodo
+  );
+  const statusAtual = (filters.status && (filters.status !== 'Em preparação' || !conselhoSalvo?.status))
+    ? filters.status
+    : (conselhoSalvo?.status || 'Em preparação');
+  const dataAtual = filters.dataReuniao || conselhoSalvo?.data_reuniao || '';
+
+  const componentes = getConselhoComponentesAtual(conselhoSalvo, notasTurma);
+  const periodoInfo = getConselhoPeriodoRange(filters.ano, filters.periodo);
+  const mapaFrequencia = await obterMapaFrequenciaConselho(filters.turmaObj.id, periodoInfo.dias);
+  const notasPorAluno = agruparNotasPorAlunoComponente(notasTurma);
+  const registrosSalvos = conselhoSalvo
+    ? CONSELHO_CLASSE_ALUNOS_DATA.filter(item => String(item.conselho_id) === String(conselhoSalvo.id))
+    : [];
+  const registrosMap = registrosSalvos.reduce((acc, item) => {
+    acc[item.aluno_id] = item;
+    return acc;
+  }, {});
+
+  conselhoClasseAtual = {
+    id: conselhoSalvo?.id || null,
+    turma_id: filters.turmaObj.id,
+    turmaCode: filters.turmaCode,
+    ano: filters.ano,
+    periodo: filters.periodo,
+    dataReuniao: dataAtual,
+    status: statusAtual,
+    componentes,
+    ata_texto: conselhoSalvo?.ata_texto || '',
+    forceReload
+  };
+
+  const dataInput = document.getElementById('conselho-data');
+  if (dataInput && dataInput.value !== dataAtual) dataInput.value = dataAtual;
+  const statusInput = document.getElementById('conselho-status');
+  if (statusInput && statusInput.value !== statusAtual) statusInput.value = statusAtual;
+
+  conselhoClasseLinhas = alunosTurma.map(aluno => {
+    const notasAluno = notasPorAluno[aluno.id] || {};
+    const mediaGeral = calcularMediaAluno(componentes, notasAluno);
+    const componentesAbaixo = getComponentesAbaixoDaMedia(componentes, notasAluno);
+    const frequencia = calcularFrequenciaAlunoConselho(aluno.id, periodoInfo.dias, mapaFrequencia);
+    const qtdOcorrencias = contarOcorrenciasConselho(aluno.id, periodoInfo.startDate, periodoInfo.endDate);
+    const registroSalvo = registrosMap[aluno.id] || {};
+
+    const situacaoBase = classificarSituacaoConselho({
+      mediaGeral,
+      frequenciaPercentual: frequencia.percentual,
+      qtdAbaixo: componentesAbaixo.length,
+      qtdOcorrencias
+    });
+
+    return {
+      aluno_id: aluno.id,
+      nome: aluno.nome,
+      turma: aluno.turma,
+      turno: aluno.turno,
+      notas: notasAluno,
+      mediaGeral,
+      frequenciaPercentual: frequencia.percentual,
+      qtdComponentesAbaixoMedia: componentesAbaixo.length,
+      qtdOcorrencias,
+      componentesAbaixo,
+      situacao: registroSalvo.situacao || situacaoBase,
+      observacaoAutomatica: gerarObservacaoAutomaticaConselho({
+        mediaGeral,
+        frequenciaPercentual: frequencia.percentual,
+        componentesAbaixo,
+        qtdOcorrencias
+      }),
+      observacaoPedagogica: registroSalvo.observacao_pedagogica || '',
+      parecerFinal: registroSalvo.parecer_final || '',
+      encaminhamento: registroSalvo.encaminhamento || ''
+    };
+  });
+
+  content.innerHTML = `
+    ${renderConselhoClasseResumo(conselhoClasseLinhas, periodoInfo.dias, periodoInfo)}
+    ${renderConselhoClasseTabela(conselhoClasseLinhas)}
+    <div class="table-card conselho-ata-card">
+      <div class="section-header" style="margin-bottom:12px">
+        <div class="section-title" style="font-size:18px">Ata e Resumo do Conselho</div>
+        <button class="btn btn-outline btn-sm" onclick="gerarAtaConselhoClasse()">Gerar Texto Base</button>
+      </div>
+      <textarea id="conselho-ata-texto" class="form-input conselho-ata-textarea" placeholder="Registre aqui a síntese do conselho, os principais pontos discutidos e os encaminhamentos gerais.">${escapeHtml(conselhoClasseAtual.ata_texto || '')}</textarea>
+    </div>
+  `;
+}
+
+async function saveConselhoClasseCabecalho(silent = false) {
+  if (!CONSELHO_SCHEMA_STATUS.ready) {
+    if (!silent) showToast('Execute a migração do Conselho de Classe no banco antes de salvar.', 'alerta');
+    return null;
+  }
+
+  const filters = getConselhoFilters();
+  if (!filters.turmaObj) {
+    if (!silent) showToast('Selecione uma turma antes de salvar o conselho.', 'alerta');
+    return null;
+  }
+
+  if (!conselhoClasseAtual) {
+    await renderConselhoClassePage(true);
+  }
+
+  const ataTexto = document.getElementById('conselho-ata-texto')?.value || conselhoClasseAtual?.ata_texto || '';
+  const payload = {
+    turma_id: filters.turmaObj.id,
+    ano: filters.ano,
+    periodo: filters.periodo,
+    data_reuniao: filters.dataReuniao || null,
+    status: filters.status || 'Em preparação',
+    componentes: conselhoClasseAtual?.componentes || CONSELHO_COMPONENTES_PADRAO,
+    ata_texto: ataTexto,
+    criado_por: getCurrentUser()?.nome || 'Sistema'
+  };
+
+  const { data, error } = await supabaseClient
+    .from('conselhos_classe')
+    .upsert(payload, { onConflict: 'turma_id,ano,periodo' })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[saveConselhoClasseCabecalho] Erro:', error);
+    if (!silent) showToast('Erro ao salvar o cabeçalho do conselho: ' + error.message, 'erro');
+    return null;
+  }
+
+  const normalized = {
+    id: data.id,
+    turma_id: data.turma_id,
+    ano: data.ano,
+    periodo: data.periodo,
+    data_reuniao: data.data_reuniao || '',
+    status: data.status || 'Em preparação',
+    componentes: Array.isArray(data.componentes) ? data.componentes : [],
+    ata_texto: data.ata_texto || '',
+    criado_por: data.criado_por || ''
+  };
+
+  conselhoClasseAtual.id = normalized.id;
+  conselhoClasseAtual.ata_texto = normalized.ata_texto;
+
+  const idx = CONSELHOS_CLASSE_DATA.findIndex(item => item.id === normalized.id);
+  if (idx >= 0) CONSELHOS_CLASSE_DATA[idx] = { ...CONSELHOS_CLASSE_DATA[idx], ...normalized };
+  else CONSELHOS_CLASSE_DATA.push(normalized);
+
+  if (!silent) showToast('Cabeçalho do conselho salvo.', 'sucesso');
+  return normalized;
+}
+
+async function salvarConselhoClasse() {
+  if (!conselhoClasseLinhas.length) {
+    showToast('Carregue uma turma antes de salvar.', 'alerta');
+    return;
+  }
+
+  const cabecalho = await saveConselhoClasseCabecalho(true);
+  if (!cabecalho?.id) return;
+
+  const payload = conselhoClasseLinhas.map(item => ({
+    conselho_id: cabecalho.id,
+    aluno_id: item.aluno_id,
+    media_geral: item.mediaGeral,
+    frequencia_percentual: item.frequenciaPercentual,
+    qtd_componentes_abaixo_media: item.qtdComponentesAbaixoMedia,
+    qtd_ocorrencias: item.qtdOcorrencias,
+    situacao: item.situacao,
+    observacao_automatica: item.observacaoAutomatica,
+    observacao_pedagogica: item.observacaoPedagogica || '',
+    parecer_final: item.parecerFinal || '',
+    encaminhamento: item.encaminhamento || ''
+  }));
+
+  const { data, error } = await supabaseClient
+    .from('conselho_classe_alunos')
+    .upsert(payload, { onConflict: 'conselho_id,aluno_id' })
+    .select();
+
+  if (error) {
+    console.error('[salvarConselhoClasse] Erro:', error);
+    showToast('Erro ao salvar os pareceres do conselho: ' + error.message, 'erro');
+    return;
+  }
+
+  if (Array.isArray(data)) {
+    data.forEach(item => {
+      const normalized = {
+        id: item.id,
+        conselho_id: item.conselho_id,
+        aluno_id: item.aluno_id,
+        media_geral: item.media_geral == null ? null : Number(item.media_geral),
+        frequencia_percentual: item.frequencia_percentual == null ? null : Number(item.frequencia_percentual),
+        qtd_componentes_abaixo_media: Number(item.qtd_componentes_abaixo_media || 0),
+        qtd_ocorrencias: Number(item.qtd_ocorrencias || 0),
+        situacao: item.situacao || '',
+        observacao_automatica: item.observacao_automatica || '',
+        observacao_pedagogica: item.observacao_pedagogica || '',
+        parecer_final: item.parecer_final || '',
+        encaminhamento: item.encaminhamento || ''
+      };
+      const idx = CONSELHO_CLASSE_ALUNOS_DATA.findIndex(row => row.id === normalized.id);
+      if (idx >= 0) CONSELHO_CLASSE_ALUNOS_DATA[idx] = { ...CONSELHO_CLASSE_ALUNOS_DATA[idx], ...normalized };
+      else CONSELHO_CLASSE_ALUNOS_DATA.push(normalized);
+    });
+  }
+
+  showToast('Conselho de Classe salvo com sucesso!', 'sucesso');
+}
+
+function fecharConselhoNotasModal() {
+  document.getElementById('conselho-notas-modal')?.remove();
+}
+
+function renderConselhoNotasGrid(componentes) {
+  const grid = document.getElementById('conselho-notas-grid');
+  if (!grid) return;
+
+  const head = componentes.map(comp => `<th>${escapeHtml(comp)}</th>`).join('');
+  const body = conselhoClasseLinhas.map(item => `
+    <tr>
+      <td>${escapeHtml(item.nome)}</td>
+      ${componentes.map(comp => {
+        const nota = item.notas?.[comp]?.nota;
+        return `
+          <td>
+            <input
+              type="number"
+              min="0"
+              max="10"
+              step="0.1"
+              class="form-input conselho-nota-input"
+              data-aluno="${item.aluno_id}"
+              data-componente="${escapeHtml(comp)}"
+              value="${typeof nota === 'number' ? nota : ''}"
+            >
+          </td>
+        `;
+      }).join('')}
+    </tr>
+  `).join('');
+
+  grid.innerHTML = `
+    <div class="table-scroll">
+      <table class="table conselho-table">
+        <thead>
+          <tr>
+            <th>Aluno</th>
+            ${head}
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function atualizarGradeConselhoNotas() {
+  const input = document.getElementById('conselho-componentes-input');
+  if (!input) return;
+  const componentes = input.value.split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+  if (!componentes.length) {
+    showToast('Informe ao menos um componente curricular.', 'alerta');
+    return;
+  }
+
+  conselhoClasseAtual.componentes = [...new Set(componentes)];
+  renderConselhoNotasGrid(conselhoClasseAtual.componentes);
+}
+
+async function abrirModalNotasConselho() {
+  if (!CONSELHO_SCHEMA_STATUS.ready) {
+    showToast('Execute a migração do Conselho de Classe no banco antes de lançar notas.', 'alerta');
+    return;
+  }
+
+  if (!conselhoClasseLinhas.length) {
+    const filters = getConselhoFilters();
+    if (!filters.turmaObj) {
+      showToast('Selecione uma turma antes de lançar notas.', 'alerta');
+      return;
+    }
+    await renderConselhoClassePage(true);
+    if (!conselhoClasseLinhas.length) return;
+  }
+
+  fecharConselhoNotasModal();
+
+  const modal = document.createElement('div');
+  modal.id = 'conselho-notas-modal';
+  modal.className = 'modal-overlay open';
+  modal.innerHTML = `
+    <div class="modal modal-lg conselho-modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Notas Estruturadas do Bimestre</div>
+          <p class="conselho-modal-subtitle">Defina os componentes e registre as notas para alimentar a análise automática do Conselho de Classe.</p>
+        </div>
+        <button class="modal-close" type="button" onclick="fecharConselhoNotasModal()">×</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Componentes curriculares</label>
+        <div class="conselho-componentes-row">
+          <input id="conselho-componentes-input" class="form-input" value="${escapeHtml(conselhoClasseAtual.componentes.join(', '))}">
+          <button class="btn btn-outline btn-sm" type="button" onclick="atualizarGradeConselhoNotas()">Atualizar grade</button>
+        </div>
+      </div>
+      <div id="conselho-notas-grid"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" type="button" onclick="fecharConselhoNotasModal()">Cancelar</button>
+        <button class="btn btn-primary" type="button" onclick="salvarNotasConselho()">Salvar notas</button>
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', fecharConselhoNotasModal);
+  document.body.appendChild(modal);
+
+  renderConselhoNotasGrid(conselhoClasseAtual.componentes);
+}
+
+async function salvarNotasConselho() {
+  if (!conselhoClasseAtual?.turma_id) {
+    showToast('Carregue o conselho antes de salvar as notas.', 'alerta');
+    return;
+  }
+
+  const componentes = (document.getElementById('conselho-componentes-input')?.value || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  if (!componentes.length) {
+    showToast('Informe ao menos um componente curricular.', 'alerta');
+    return;
+  }
+
+  conselhoClasseAtual.componentes = [...new Set(componentes)];
+  const inputs = [...document.querySelectorAll('#conselho-notas-grid input[data-aluno][data-componente]')];
+
+  const payload = inputs
+    .filter(input => input.value !== '')
+    .map(input => ({
+      aluno_id: input.dataset.aluno,
+      turma_id: conselhoClasseAtual.turma_id,
+      ano: conselhoClasseAtual.ano,
+      periodo: conselhoClasseAtual.periodo,
+      componente: input.dataset.componente,
+      nota: Number(String(input.value).replace(',', '.')),
+      origem: 'manual'
+    }));
+
+  if (!payload.length) {
+    showToast('Preencha pelo menos uma nota para salvar.', 'alerta');
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from('notas_bimestrais')
+    .upsert(payload, { onConflict: 'aluno_id,ano,periodo,componente' })
+    .select();
+
+  if (error) {
+    console.error('[salvarNotasConselho] Erro:', error);
+    showToast('Erro ao salvar notas estruturadas: ' + error.message, 'erro');
+    return;
+  }
+
+  if (Array.isArray(data)) {
+    data.forEach(item => {
+      const normalized = {
+        id: item.id,
+        aluno_id: item.aluno_id,
+        turma_id: item.turma_id,
+        ano: item.ano,
+        periodo: item.periodo,
+        componente: item.componente,
+        nota: item.nota == null ? null : Number(item.nota),
+        faltas_componente: Number(item.faltas_componente || 0),
+        origem: item.origem || 'manual',
+        created_at: item.created_at
+      };
+      const idx = NOTAS_BIMESTRAIS_DATA.findIndex(row => row.id === normalized.id);
+      if (idx >= 0) NOTAS_BIMESTRAIS_DATA[idx] = { ...NOTAS_BIMESTRAIS_DATA[idx], ...normalized };
+      else {
+        const sameUnique = NOTAS_BIMESTRAIS_DATA.findIndex(row =>
+          String(row.aluno_id) === String(normalized.aluno_id) &&
+          Number(row.ano) === Number(normalized.ano) &&
+          row.periodo === normalized.periodo &&
+          row.componente === normalized.componente
+        );
+        if (sameUnique >= 0) NOTAS_BIMESTRAIS_DATA[sameUnique] = normalized;
+        else NOTAS_BIMESTRAIS_DATA.push(normalized);
+      }
+    });
+  }
+
+  await saveConselhoClasseCabecalho(true);
+  fecharConselhoNotasModal();
+  await renderConselhoClassePage(true);
+  showToast('Notas estruturadas salvas com sucesso!', 'sucesso');
+}
+
+function prepararConselhoClasse() {
+  renderConselhoClassePage(true);
+}
 
 // ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
 let relDadosCache = {};
