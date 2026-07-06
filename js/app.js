@@ -407,7 +407,7 @@ async function carregarDados(){
       }
       
       ALUNOS_DATA = alunos.map(a => ({
-        id: a.id, cpf: a.matricula, nome: a.nome, turma: turmaMap[a.turma_id] || '', turma_id: a.turma_id,
+        id: a.id, cpf: formatarCPF(a.matricula), nome: a.nome, turma: turmaMap[a.turma_id] || '', turma_id: a.turma_id,
         turno: turnoMap[a.turma_id] || '', serie: serieMap[a.turma_id] || '',
         rota: a.rota || 'Sem transporte', resp: a.responsavel || '',
         contato: a.contato || '', email: a.instagram || '', nasc: a.data_nascimento || '',
@@ -1740,7 +1740,7 @@ function selecionarFotoAluno(input, origem = 'cadastro') {
 
 async function saveAluno(){
   const nome   =document.getElementById('input-aluno-nome')?.value.trim();
-  const cpf    =document.getElementById('input-aluno-cpf')?.value.trim();
+  const cpf    =formatarCPF(document.getElementById('input-aluno-cpf')?.value.trim());
   const turmaCode =document.getElementById('input-aluno-turma')?.value;
   const turno  =document.getElementById('input-aluno-turno')?.value;
   const resp   =document.getElementById('input-aluno-resp')?.value.trim();
@@ -1751,7 +1751,8 @@ async function saveAluno(){
   const idade  =document.getElementById('input-aluno-idade')?.value;
   
   if(!nome||!cpf||!turmaCode){ showToast('Preencha nome, CPF e turma!','alerta'); return; }
-  if(ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf)){ showToast('CPF/Matrícula já cadastrado!','alerta'); return; }
+  if(normalizarCPF(cpf).length !== 11){ showToast('Informe um CPF vÃ¡lido com 11 dÃ­gitos!','alerta'); return; }
+  if(ALUNOS_DATA.find(a => normalizarCPF(a.cpf) === normalizarCPF(cpf))){ showToast('CPF jÃ¡ cadastrado!','alerta'); return; }
   
   const tObj = TURMAS_DATA.find(t => t.code === turmaCode);
   if (!tObj) { showToast('Turma não encontrada no sistema.', 'alerta'); return; }
@@ -1978,7 +1979,7 @@ function verFicha(cpf){
   setFichaText('ficha-nome', a.nome);
   setFichaText('ficha-subtitulo', `${turmaText} • ${a.resp || 'Responsável não informado'}`);
   setFichaText('ficha-cpf', a.cpf || '—');
-  setFichaText('ficha-matricula', a.matricula || a.cpf || '—');
+  setFichaText('ficha-matricula', formatarCPF(a.matricula || a.cpf || '—'));
   setFichaText('ficha-turma', turmaText);
   setFichaText('ficha-resp', a.resp || '—');
   setFichaText('ficha-contato', a.contato || '—');
@@ -2147,8 +2148,8 @@ function calcularIdadeEdit(){
 }
 
 async function salvarEdicaoFicha(){
-  const cpf=document.getElementById('edit-aluno-cpf')?.value;
-  const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
+  const cpf=formatarCPF(document.getElementById('edit-aluno-cpf')?.value);
+  const a=ALUNOS_DATA.find(x=>normalizarCPF(x.cpf)===normalizarCPF(cpf)); if(!a)return;
   a.nome   =document.getElementById('edit-aluno-nome')?.value.trim()||a.nome;
   a.turno  =document.getElementById('edit-aluno-turno')?.value||a.turno;
   a.nasc   =document.getElementById('edit-aluno-nasc')?.value||a.nasc;
@@ -2260,7 +2261,7 @@ function importarAlunos(){
 
         rows.forEach(r=>{
           const nome    = col(r, /nome.compl/i, /nome/i, /aluno/i);
-          const cpf     = col(r, /^cpf$/i, /matr/i, /registro/i, /cpf/i);
+          const cpf     = formatarCPF(col(r, /^cpf$/i, /matr/i, /registro/i, /cpf/i));
           const turma   = col(r, /^turma$/i, /turma/i).toUpperCase();
           const resp    = col(r, /respons/i, /pai|mae/i);
           const contato = col(r, /contato|fone|tel|cel|whats/i);
@@ -2272,7 +2273,8 @@ function importarAlunos(){
             console.log('[importarAlunos] Linha ignorada:', {nome, cpf, turma});
             erros++; return;
           }
-          if(ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf)){erros++; return;}
+          if(normalizarCPF(cpf).length !== 11){ erros++; return; }
+          if(ALUNOS_DATA.find(a => normalizarCPF(a.cpf) === normalizarCPF(cpf))){erros++; return;}
 
           let turmaId = null;
           const tObj = TURMAS_DATA.find(t => t.code === turma);
@@ -6032,8 +6034,18 @@ function downloadObafogXLSX() {
 // PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 
 /** M�scara CPF: 000.000.000-00 */
+function normalizarCPF(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 11);
+}
+
+function formatarCPF(value) {
+  const digits = normalizarCPF(value);
+  if (digits.length !== 11) return String(value || '').trim();
+  return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+}
+
 function mascaraCPF(input) {
-  let v = input.value.replace(/\D/g, '').slice(0, 11);
+  let v = normalizarCPF(input.value);
   if (v.length > 9)      v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
   else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
   else if (v.length > 3) v = v.replace(/^(\d{3})(\d{0,3})/, '$1.$2');
@@ -9214,7 +9226,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
+          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, 
           cursando a turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
@@ -9231,7 +9243,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, 
-          que o(a) estudante <b>${aluno.nome}</b>, matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, 
+          que o(a) estudante <b>${aluno.nome}</b>, inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, 
           nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, está regularmente matriculado(a) 
           e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${turmaTexto}</b>, 
           correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
@@ -9244,7 +9256,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins de direito, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o número de matrícula <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
+          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${turmaTexto}</b>, 
           correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>, sob regime letivo ordinário.
         </p>
@@ -9256,7 +9268,7 @@ async function imprimirDocumentoHtml(id) {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <b>${aluno.nome}</b>, 
-          matriculado(a) sob o número <b>${aluno.cpf || '—'}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
+          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           que se encontrava devidamente matriculado(a) na turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
@@ -9286,8 +9298,8 @@ async function imprimirDocumentoHtml(id) {
             <span>${aluno.nome}</span>
           </div>
           <div class="receipt-row">
-            <span class="receipt-label">Matrícula:</span>
-            <span>${aluno.cpf || '—'}</span>
+            <span class="receipt-label">CPF:</span>
+            <span>${formatarCPF(aluno.cpf || '—')}</span>
           </div>
           <div class="receipt-row">
             <span class="receipt-label">Turma / Ano / Turno:</span>

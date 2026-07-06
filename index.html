@@ -366,7 +366,7 @@
                   <strong id="ficha-cpf"></strong>
                 </div>
                 <div class="ficha-hero-card">
-                  <span>Matricula</span>
+                  <span>CPF no Cadastro</span>
                   <strong id="ficha-matricula"></strong>
                 </div>
                 <div class="ficha-hero-card">
@@ -1713,7 +1713,7 @@
     
     <div class="form-row">
       <div class="form-group"><label class="form-label">Nome Completo</label><input class="form-input" id="input-aluno-nome" placeholder="Nome completo"></div>
-      <div class="form-group"><label class="form-label">CPF</label><input class="form-input" id="input-aluno-cpf" placeholder="000.000.000-00"></div>
+      <div class="form-group"><label class="form-label">CPF</label><input class="form-input" id="input-aluno-cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)" inputmode="numeric"></div>
     </div>
     <div class="form-row">
       <div class="form-group"><label class="form-label">Turma</label>
@@ -1782,7 +1782,7 @@
             <strong id="legacy-ficha-cpf"></strong>
           </div>
           <div class="ficha-hero-card">
-            <span>Matrícula</span>
+            <span>CPF no Cadastro</span>
             <strong id="legacy-ficha-matricula"></strong>
           </div>
           <div class="ficha-hero-card">
