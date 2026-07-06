@@ -1,15 +1,15 @@
-/* ============================================================
-   RVS ESCOLAR — app.js — versão definitiva
+﻿/* ============================================================
+   RVS ESCOLAR â€” app.js â€” versÃ£o definitiva
    ============================================================ */
 
-// ─── SUPABASE CLIENT ────────────────────────────────────────────────────────────
+// â”€â”€â”€ SUPABASE CLIENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SUPABASE_URL = 'https://xjtluflzpkkbckkcwagf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdGx1Zmx6cGtrYmNra2N3YWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjMxNzMsImV4cCI6MjA5MzIzOTE3M30.3Fj_xCwTwx0MYWjFx3xM41BP8DQCsRMgGYmZJkHuidE';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ─── OFFLINE QUEUE — sync automático sem botão ───────────────────────────────
-// Estratégia: online → Supabase direto | offline → IndexedDB fila local
-// Ao reconectar: evento 'online' dispara sincronização automática
+// â”€â”€â”€ OFFLINE QUEUE â€” sync automÃ¡tico sem botÃ£o â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// EstratÃ©gia: online â†’ Supabase direto | offline â†’ IndexedDB fila local
+// Ao reconectar: evento 'online' dispara sincronizaÃ§Ã£o automÃ¡tica
 
 const OFFLINE_DB_NAME = 'rvs_offline_queue';
 const OFFLINE_DB_VER  = 1;
@@ -66,14 +66,14 @@ async function _removerDaFila(id) {
   });
 }
 
-// Sincroniza fila offline → Supabase (chamado automaticamente ao reconectar)
+// Sincroniza fila offline â†’ Supabase (chamado automaticamente ao reconectar)
 async function sincronizarFilaOffline() {
   if (!navigator.onLine) return;
   let fila;
   try { fila = await _obterFila(); } catch(e) { return; }
   if (!fila || !fila.length) return;
 
-  console.log(`[Sync] ${fila.length} operação(ões) pendente(s) — sincronizando...`);
+  console.log(`[Sync] ${fila.length} operaÃ§Ã£o(Ãµes) pendente(s) â€” sincronizando...`);
   let sucesso = 0;
 
   for (const item of fila) {
@@ -96,7 +96,7 @@ async function sincronizarFilaOffline() {
   }
 
   if (sucesso > 0) {
-    showToast(`✅ ${sucesso} registro(s) sincronizado(s) automaticamente`, 'sucesso');
+    showToast(`âœ… ${sucesso} registro(s) sincronizado(s) automaticamente`, 'sucesso');
     console.log(`[Sync] ${sucesso}/${fila.length} itens sincronizados com sucesso.`);
   }
 }
@@ -110,27 +110,27 @@ async function supabaseSalvar(tabela, dados, conflito = null) {
     if (error) {
       console.error('[Supabase] Erro ao salvar, enfileirando:', error);
       await _enfileirarOp(tabela, 'upsert', dados, conflito);
-      showToast('⚠️ Salvo localmente — será sincronizado em breve', 'alerta');
+      showToast('âš ï¸ Salvo localmente â€” serÃ¡ sincronizado em breve', 'alerta');
     }
   } else {
     await _enfileirarOp(tabela, 'upsert', dados, conflito);
-    showToast('📵 Sem internet — salvo localmente, sync automático ao conectar', 'alerta');
+    showToast('ðŸ“µ Sem internet â€” salvo localmente, sync automÃ¡tico ao conectar', 'alerta');
   }
 }
 
-// Sync automático ao reconectar (sem botão)
+// Sync automÃ¡tico ao reconectar (sem botÃ£o)
 window.addEventListener('online', () => {
-  console.log('[Rede] Conexão restaurada — sincronizando fila offline...');
+  console.log('[Rede] ConexÃ£o restaurada â€” sincronizando fila offline...');
   setTimeout(sincronizarFilaOffline, 1500); // pequeno delay para a rede estabilizar
 });
 
-// Tenta sincronizar itens pendentes ao carregar a página
+// Tenta sincronizar itens pendentes ao carregar a pÃ¡gina
 window.addEventListener('load', () => {
   if (navigator.onLine) setTimeout(sincronizarFilaOffline, 4000);
 });
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ─── ESTADO GLOBAL ────────────────────────────────────────────────────────────
+// â”€â”€â”€ ESTADO GLOBAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ADMIN_SENHA = 'RVS@gestor2026';
 let PERFIL_ATUAL  = 'professor';
 
@@ -150,34 +150,34 @@ let conselhoClasseAtual = null;
 let conselhoClasseLinhas = [];
 
 const CONSELHO_COMPONENTES_PADRAO = [
-  'Língua Portuguesa',
-  'Matemática',
-  'Ciências',
-  'História',
+  'LÃ­ngua Portuguesa',
+  'MatemÃ¡tica',
+  'CiÃªncias',
+  'HistÃ³ria',
   'Geografia',
   'Arte',
-  'Educação Física',
-  'Inglês'
+  'EducaÃ§Ã£o FÃ­sica',
+  'InglÃªs'
 ];
 
 const CONSELHO_MEDIA_MINIMA = 6;
 const CONSELHO_COMPONENTE_ALIAS_MAP = {
-  'LÃ­ngua Portuguesa': ['lingua portuguesa', 'língua portuguesa', 'portugues', 'português', 'lp'],
-  'MatemÃ¡tica': ['matematica', 'matemática'],
-  'CiÃªncias': ['ciencias', 'ciências', 'ciencias naturais', 'ciências naturais'],
-  'HistÃ³ria': ['historia', 'história'],
+  'LÃƒÂ­ngua Portuguesa': ['lingua portuguesa', 'lÃ­ngua portuguesa', 'portugues', 'portuguÃªs', 'lp'],
+  'MatemÃƒÂ¡tica': ['matematica', 'matemÃ¡tica'],
+  'CiÃƒÂªncias': ['ciencias', 'ciÃªncias', 'ciencias naturais', 'ciÃªncias naturais'],
+  'HistÃƒÂ³ria': ['historia', 'histÃ³ria'],
   'Geografia': ['geografia'],
   'Arte': ['arte', 'artes'],
-  'EducaÃ§Ã£o FÃ­sica': ['educacao fisica', 'educação física', 'ed fisica', 'ed. fisica'],
-  'InglÃªs': ['ingles', 'inglês', 'lingua inglesa', 'língua inglesa'],
-  'Ensino Religioso': ['ensino religioso', 'religiao', 'religião'],
+  'EducaÃƒÂ§ÃƒÂ£o FÃƒÂ­sica': ['educacao fisica', 'educaÃ§Ã£o fÃ­sica', 'ed fisica', 'ed. fisica'],
+  'InglÃƒÂªs': ['ingles', 'inglÃªs', 'lingua inglesa', 'lÃ­ngua inglesa'],
+  'Ensino Religioso': ['ensino religioso', 'religiao', 'religiÃ£o'],
   'Projeto de Vida': ['projeto de vida'],
-  'FÃ­sica': ['fisica', 'física'],
-  'QuÃ­mica': ['quimica', 'química'],
+  'FÃƒÂ­sica': ['fisica', 'fÃ­sica'],
+  'QuÃƒÂ­mica': ['quimica', 'quÃ­mica'],
   'Biologia': ['biologia'],
   'Filosofia': ['filosofia'],
   'Sociologia': ['sociologia'],
-  'RedaÃ§Ã£o': ['redacao', 'redação', 'produção textual', 'producao textual'],
+  'RedaÃƒÂ§ÃƒÂ£o': ['redacao', 'redaÃ§Ã£o', 'produÃ§Ã£o textual', 'producao textual'],
   'Literatura': ['literatura'],
   'Espanhol': ['espanhol']
 };
@@ -193,51 +193,51 @@ const chamadaConsolidada = { entrada:false, saida:false };
 let chamadaDesbloqueadaTemporaria = { entrada:false, saida:false };
 
 const LIVROS = [
-  {nome:'Língua Portuguesa',icon:'📖',entregues:0,total:0},
-  {nome:'Matemática',icon:'📐',entregues:0,total:0},
-  {nome:'Física',icon:'⚡',entregues:0,total:0},
-  {nome:'Química',icon:'🧪',entregues:0,total:0},
-  {nome:'Biologia',icon:'🧬',entregues:0,total:0},
-  {nome:'História',icon:'🏛️',entregues:0,total:0},
-  {nome:'Geografia',icon:'🌍',entregues:0,total:0},
-  {nome:'Inglês',icon:'🇺🇸',entregues:0,total:0},
-  {nome:'Artes',icon:'🎨',entregues:0,total:0},
-  {nome:'Educação Física',icon:'⚽',entregues:0,total:0},
-  {nome:'Sociologia',icon:'👥',entregues:0,total:0},
-  {nome:'Filosofia',icon:'💭',entregues:0,total:0},
-  {nome:'Educação Ambiental',icon:'🌱',entregues:0,total:0},
-  {nome:'Prepara Matemática',icon:'🔢',entregues:0,total:0},
-  {nome:'Prepara Língua Portuguesa',icon:'📝',entregues:0,total:0},
+  {nome:'LÃ­ngua Portuguesa',icon:'ðŸ“–',entregues:0,total:0},
+  {nome:'MatemÃ¡tica',icon:'ðŸ“',entregues:0,total:0},
+  {nome:'FÃ­sica',icon:'âš¡',entregues:0,total:0},
+  {nome:'QuÃ­mica',icon:'ðŸ§ª',entregues:0,total:0},
+  {nome:'Biologia',icon:'ðŸ§¬',entregues:0,total:0},
+  {nome:'HistÃ³ria',icon:'ðŸ›ï¸',entregues:0,total:0},
+  {nome:'Geografia',icon:'ðŸŒ',entregues:0,total:0},
+  {nome:'InglÃªs',icon:'ðŸ‡ºðŸ‡¸',entregues:0,total:0},
+  {nome:'Artes',icon:'ðŸŽ¨',entregues:0,total:0},
+  {nome:'EducaÃ§Ã£o FÃ­sica',icon:'âš½',entregues:0,total:0},
+  {nome:'Sociologia',icon:'ðŸ‘¥',entregues:0,total:0},
+  {nome:'Filosofia',icon:'ðŸ’­',entregues:0,total:0},
+  {nome:'EducaÃ§Ã£o Ambiental',icon:'ðŸŒ±',entregues:0,total:0},
+  {nome:'Prepara MatemÃ¡tica',icon:'ðŸ”¢',entregues:0,total:0},
+  {nome:'Prepara LÃ­ngua Portuguesa',icon:'ðŸ“',entregues:0,total:0},
 ];
 
 let PERMS = [
   {func:'Dashboard',                id:'page-dashboard',    coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-  {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
+  {func:'Agenda PedagÃ³gica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Ficha do Aluno',           id:'page-ficha-aluno',  coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
-  {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
-  {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+  {func:'FrequÃªncia',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+  {func:'SolicitaÃ§Ãµes PedagÃ³gicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
-  {func:'Horário de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'HorÃ¡rio de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Topo do Saber',            id:'page-topo-saber',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'Transporte',               id:'page-transporte',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-  {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
-  {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-  {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'OcorrÃªncias',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+  {func:'Livros DidÃ¡ticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'RelatÃ³rios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
-  {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
-  {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'PermissÃµes',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+  {func:'UsuÃ¡rios',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
   {func:'Conselho de Classe',       id:'page-conselho-classe', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false},
   {func:'Documentos Secretaria',    id:'page-documentos-secretaria', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false}
 ];
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
-const TIPO_LABEL = {letivo:'Dia Letivo', feriado:'Feriado', prova:'Prova', evento:'Evento', bimestre:'Início de Bimestre', fim_bimestre:'Fim de Bimestre', ferias:'Férias Escolares'};
-const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const TIPO_LABEL = {letivo:'Dia Letivo', feriado:'Feriado', prova:'Prova', evento:'Evento', bimestre:'InÃ­cio de Bimestre', fim_bimestre:'Fim de Bimestre', ferias:'FÃ©rias Escolares'};
+const MONTHS = ['Janeiro','Fevereiro','MarÃ§o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-// ─── PERSISTÊNCIA ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ PERSISTÃŠNCIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DB_KEY = 'rvs_escolar_db';
 const DRAFTS_KEY = 'rvs_form_drafts';
 
@@ -386,29 +386,29 @@ async function carregarDados(){
       console.log('[carregarDados] configData raw:', configData);
       const permsObj = configData.find(c => c.chave === 'permissoes');
       if (permsObj && permsObj.valor) {
-        console.log('[carregarDados] Permissões carregadas do banco:', permsObj.valor.length, 'itens');
+        console.log('[carregarDados] PermissÃµes carregadas do banco:', permsObj.valor.length, 'itens');
         const loaded = permsObj.valor;
-        // Fusão robusta de permissões para garantir que novos módulos no código (como page-boletins) não sumam
+        // FusÃ£o robusta de permissÃµes para garantir que novos mÃ³dulos no cÃ³digo (como page-boletins) nÃ£o sumam
         const defaultPerms = [
           {func:'Dashboard',                id:'page-dashboard',    coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-          {func:'Agenda Pedagógica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
+          {func:'Agenda PedagÃ³gica',         id:'page-agenda',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Turmas',                   id:'page-turmas',       coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Alunos',                   id:'page-alunos',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Ficha do Aluno',           id:'page-ficha-aluno',  coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Boletins',                 id:'page-boletins',     coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'Conselho de Classe',       id:'page-conselho-classe', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false},
-          {func:'Frequência',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
-          {func:'Solicitações Pedagógicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
+          {func:'FrequÃªncia',               id:'page-frequencia',   coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+          {func:'SolicitaÃ§Ãµes PedagÃ³gicas', id:'page-solicitacoes', coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'RVS Agenda',               id:'page-rvs-agenda',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
-          {func:'Horário de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
+          {func:'HorÃ¡rio de Aula',           id:'page-horarios',     coord:true, sec:true,  prof:true,  editar_coord:false, editar_sec:false, editar_prof:false},
           {func:'Topo do Saber',            id:'page-topo-saber',   coord:true, sec:true,  prof:true,  editar_coord:true,  editar_sec:true,  editar_prof:true},
           {func:'Transporte',               id:'page-transporte',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-          {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
-          {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
-          {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'OcorrÃªncias',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
+          {func:'Livros DidÃ¡ticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'RelatÃ³rios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
           {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
-          {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
-          {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+          {func:'PermissÃµes',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
+          {func:'UsuÃ¡rios',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
           {func:'Documentos Secretaria',    id:'page-documentos-secretaria', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false}
         ];
         PERMS = defaultPerms.map(def => {
@@ -416,7 +416,7 @@ async function carregarDados(){
           return found ? { ...def, ...found } : def;
         });
 
-        // Auto-correção/Self-healing para garantir que o módulo page-boletins esteja ativo para professores, coordenadores e secretaria no banco
+        // Auto-correÃ§Ã£o/Self-healing para garantir que o mÃ³dulo page-boletins esteja ativo para professores, coordenadores e secretaria no banco
         const bPerm = PERMS.find(p => p.id === 'page-boletins');
         if (bPerm && (!bPerm.prof || !bPerm.editar_prof || !bPerm.coord || !bPerm.sec)) {
           bPerm.coord = true;
@@ -427,7 +427,7 @@ async function carregarDados(){
           bPerm.editar_prof = true;
         }
 
-        // Auto-correção/Self-healing para garantir que o módulo page-documentos-secretaria esteja no banco
+        // Auto-correÃ§Ã£o/Self-healing para garantir que o mÃ³dulo page-documentos-secretaria esteja no banco
         const dPerm = PERMS.find(p => p.id === 'page-documentos-secretaria');
         if (dPerm && (!dPerm.coord || !dPerm.sec)) {
           dPerm.coord = true;
@@ -451,17 +451,17 @@ async function carregarDados(){
             .from('configuracoes')
             .upsert({ chave: 'permissoes', valor: PERMS }, { onConflict: 'chave' })
             .then(({ error }) => {
-              if (!error) console.log('[Permissões] Banco de dados sincronizado com novas permissões');
+              if (!error) console.log('[PermissÃµes] Banco de dados sincronizado com novas permissÃµes');
             });
         }
       } else {
-        console.warn('[carregarDados] Permissões não encontradas no banco, usando padrão.');
+        console.warn('[carregarDados] PermissÃµes nÃ£o encontradas no banco, usando padrÃ£o.');
       }
       
       const linksObj = configData.find(c => c.chave === 'links_horarios');
       if (linksObj && linksObj.valor) HORARIOS_LINKS = linksObj.valor;
     } else {
-      console.warn('[carregarDados] configData é nulo ou inválido:', configData);
+      console.warn('[carregarDados] configData Ã© nulo ou invÃ¡lido:', configData);
     }
 
     if (turmas) {
@@ -524,7 +524,7 @@ async function carregarDados(){
       ano: c.ano,
       periodo: c.periodo,
       data_reuniao: c.data_reuniao || '',
-      status: c.status || 'Em preparação',
+      status: c.status || 'Em preparaÃ§Ã£o',
       componentes: Array.isArray(c.componentes) ? c.componentes : [],
       ata_texto: c.ata_texto || '',
       criado_por: c.criado_por || '',
@@ -546,7 +546,7 @@ async function carregarDados(){
       encaminhamento: item.encaminhamento || ''
     }));
 
-    // ── OBAFOG: atribuir dados carregados do banco ──
+    // â”€â”€ OBAFOG: atribuir dados carregados do banco â”€â”€
     if (obafogEq) {
       OBAFOG_DATA = obafogEq;
     }
@@ -572,8 +572,8 @@ async function carregarDados(){
             id: o.id,
             aluno_id: o.aluno_id,
             tipo: tipoView,
-            icon: tipoView === 'evasao' ? '🚨' : tipoView === 'indisciplina' ? '⚠️' : tipoView === 'atraso' ? '⏰' : tipoView === 'liberado_coord' ? '🟢' : tipoView === 'suspensao_celular' ? '📵' : '❌',
-            aluno: o.participante || (al ? al.nome : '—'),
+            icon: tipoView === 'evasao' ? 'ðŸš¨' : tipoView === 'indisciplina' ? 'âš ï¸' : tipoView === 'atraso' ? 'â°' : tipoView === 'liberado_coord' ? 'ðŸŸ¢' : tipoView === 'suspensao_celular' ? 'ðŸ“µ' : 'âŒ',
+            aluno: o.participante || (al ? al.nome : 'â€”'),
             cpf: al ? al.cpf : '',
             turma: tu ? tu.code : '',
             desc: descView,
@@ -624,7 +624,7 @@ async function carregarDados(){
       });
     }
 
-    // ── Carregar Solicitações do Supabase ──
+    // â”€â”€ Carregar SolicitaÃ§Ãµes do Supabase â”€â”€
     const {data: solicits} = await supabaseClient.from('solicitacoes').select('*').order('created_at', {ascending: false});
     if (solicits) {
       SOLICIT_DATA = solicits.map(s => ({
@@ -639,11 +639,11 @@ async function carregarDados(){
         linkDrive: s.link_drive,
         status: s.status,
         responsavel: s.responsavel,
-        criadoEm: s.created_at ? new Date(s.created_at).toLocaleDateString('pt-BR') : '—'
+        criadoEm: s.created_at ? new Date(s.created_at).toLocaleDateString('pt-BR') : 'â€”'
       }));
     }
 
-    // ── Carregar Livros Didáticos do Supabase ──
+    // â”€â”€ Carregar Livros DidÃ¡ticos do Supabase â”€â”€
     const {data: livrosDB} = await supabaseClient.from('livros_alunos').select('*');
     if (livrosDB) {
       livrosDB.forEach(l => {
@@ -656,7 +656,7 @@ async function carregarDados(){
       });
     }
 
-    // ── Manter apenas freq temporária do localStorage (não migrada) ──
+    // â”€â”€ Manter apenas freq temporÃ¡ria do localStorage (nÃ£o migrada) â”€â”€
     const raw = localStorage.getItem(DB_KEY);
     if(raw) {
       try {
@@ -672,7 +672,7 @@ async function carregarDados(){
   }
 }
 
-// ─── AUTH ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ AUTH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function doLogin(){
   let email = (document.getElementById('email-input').value||'').trim();
   const pass  = (document.getElementById('pass-input').value||'');
@@ -689,7 +689,7 @@ async function doLogin(){
   if(btn){ btn.disabled=true; btn.textContent='Verificando...'; }
 
   try {
-    // Autenticação oficial via Supabase Auth
+    // AutenticaÃ§Ã£o oficial via Supabase Auth
     const { data: authData, error: authErr } = await supabaseClient.auth.signInWithPassword({
       email: email,
       password: pass,
@@ -698,13 +698,13 @@ async function doLogin(){
     if(authErr) {
       console.error('[login] authErr:', authErr.message, authErr.status, authErr);
       errEl.style.display='block';
-      // Diferencia os tipos de erro para facilitar diagnóstico
+      // Diferencia os tipos de erro para facilitar diagnÃ³stico
       if (authErr.message && authErr.message.toLowerCase().includes('invalid login')) {
         errEl.textContent = 'E-mail ou senha incorretos. Verifique e tente novamente.';
       } else if (authErr.message && authErr.message.toLowerCase().includes('email not confirmed')) {
-        errEl.textContent = 'E-mail não confirmado. Contate o administrador do sistema.';
+        errEl.textContent = 'E-mail nÃ£o confirmado. Contate o administrador do sistema.';
       } else if (authErr.status === 500 || (authErr.message && authErr.message.toLowerCase().includes('database'))) {
-        errEl.textContent = 'Erro interno no servidor. Contate o administrador (código 500).';
+        errEl.textContent = 'Erro interno no servidor. Contate o administrador (cÃ³digo 500).';
       } else {
         errEl.textContent = 'Erro ao autenticar: ' + (authErr.message || 'Verifique suas credenciais.');
       }
@@ -712,7 +712,7 @@ async function doLogin(){
       return;
     }
 
-    // Busca os dados adicionais do usuário na tabela pública
+    // Busca os dados adicionais do usuÃ¡rio na tabela pÃºblica
     const { data: userData, error: userErr } = await supabaseClient
       .from('usuarios')
       .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo')
@@ -721,10 +721,10 @@ async function doLogin(){
 
     if(userErr) throw userErr;
 
-    // Verifica se está ativo
+    // Verifica se estÃ¡ ativo
     if(userData && userData.ativo === false) {
       errEl.style.display='block';
-      errEl.textContent = 'Acesso negado: Usuário inativo.';
+      errEl.textContent = 'Acesso negado: UsuÃ¡rio inativo.';
       if(btn){ btn.disabled=false; btn.textContent='Entrar no Sistema'; }
       await supabaseClient.auth.signOut();
       return;
@@ -733,7 +733,7 @@ async function doLogin(){
     // Se userData for nulo, cria um fallback com os dados do Auth
     const user = userData || {
       id: authData.user.id,
-      nome: authData.user.user_metadata?.nome || 'Usuário',
+      nome: authData.user.user_metadata?.nome || 'UsuÃ¡rio',
       perfil: authData.user.user_metadata?.perfil || 'professor',
       email: authData.user.email
     };
@@ -742,17 +742,17 @@ async function doLogin(){
   } catch(err){
     console.error('[login exception]', err);
     errEl.style.display='block';
-    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.textContent = 'Erro de conexÃ£o. Tente novamente.';
   }
 
   if(btn){ btn.disabled=false; btn.textContent='Entrar'; }
 }
 
 async function _entrarNoSistema(usuario){
-  // Atualiza variável global de perfil
+  // Atualiza variÃ¡vel global de perfil
   PERFIL_ATUAL = usuario.perfil || 'professor';
   
-  // Guarda usuário logado na sessão
+  // Guarda usuÃ¡rio logado na sessÃ£o
   try { sessionStorage.setItem('rvs_user', JSON.stringify(usuario)); } catch(_){}
   
   const ls = document.getElementById('login-screen');
@@ -761,9 +761,9 @@ async function _entrarNoSistema(usuario){
   document.getElementById('app').classList.add('visible');
   
   updateSidebarProfile();
-  await initApp(); // Agora espera carregar permissões do banco
+  await initApp(); // Agora espera carregar permissÃµes do banco
   initPresenceRealtime();
-  initOcorrenciaRealtime(); // Notificações em tempo real de ocorrências
+  initOcorrenciaRealtime(); // NotificaÃ§Ãµes em tempo real de ocorrÃªncias
 }
 
 function getCurrentUser() {
@@ -780,7 +780,7 @@ function updateSidebarProfile() {
   const roleEl  = document.getElementById('sidebar-user-role');
   const avatarEl = document.getElementById('sidebar-user-avatar');
 
-  if(nameEl) nameEl.textContent = user.nome || 'Usuário';
+  if(nameEl) nameEl.textContent = user.nome || 'UsuÃ¡rio';
   if(roleEl) {
     const pLabel = {admin:'Administrador',coordenador:'Coordenador',secretaria:'Secretaria',professor:'Professor'};
     roleEl.textContent = pLabel[user.perfil] || 'Membro';
@@ -805,10 +805,10 @@ async function doLogout(){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Ao recarregar a página, verifica a sessão ativa do Supabase
+  // Ao recarregar a pÃ¡gina, verifica a sessÃ£o ativa do Supabase
   supabaseClient.auth.getSession().then(({ data: { session } }) => {
     if (session && session.user) {
-      // Rebusca dados adicionais na tabela pública
+      // Rebusca dados adicionais na tabela pÃºblica
       supabaseClient
         .from('usuarios')
         .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
@@ -818,10 +818,10 @@ document.addEventListener('DOMContentLoaded', () => {
           if (data) {
             _entrarNoSistema(data);
           } else {
-            // Se falhar na pública, usa metadados
+            // Se falhar na pÃºblica, usa metadados
             _entrarNoSistema({
               id: session.user.id,
-              nome: session.user.user_metadata?.nome || 'Usuário',
+              nome: session.user.user_metadata?.nome || 'UsuÃ¡rio',
               perfil: session.user.user_metadata?.perfil || 'professor',
               email: session.user.email
             });
@@ -836,7 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ INIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function initApp(){
   await carregarDados();
   initAutoSave();
@@ -855,10 +855,10 @@ async function initApp(){
   setupSidebarDropdowns();
   
   aplicarPermissoesUI(); 
-  console.log('[initApp] UI de permissões aplicada.');
+  console.log('[initApp] UI de permissÃµes aplicada.');
 }
 
-// ─── NAVEGAÇÃO ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ NAVEGAÃ‡ÃƒO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function setNavDropdownState(group, shouldOpen) {
   if (!group) return;
   group.classList.toggle('open', shouldOpen);
@@ -987,12 +987,12 @@ function showPage(p, el) {
   const user = getCurrentUser();
   const rKey = user ? getRoleKey(user.perfil) : 'prof';
 
-  // Verificação de segurança — bloqueia acesso direto mesmo que o menu esteja oculto
+  // VerificaÃ§Ã£o de seguranÃ§a â€” bloqueia acesso direto mesmo que o menu esteja oculto
   if (rKey !== 'admin' && p !== 'perfil') {
     const perm = PERMS.find(item => item.id === 'page-' + p);
     if (perm && !perm[rKey]) {
-      console.warn(`[showPage] Acesso NEGADO: perfil="${user?.perfil}" rKey="${rKey}" página="${p}"`);
-      showToast('Você não tem permissão para acessar esta página.', 'alerta');
+      console.warn(`[showPage] Acesso NEGADO: perfil="${user?.perfil}" rKey="${rKey}" pÃ¡gina="${p}"`);
+      showToast('VocÃª nÃ£o tem permissÃ£o para acessar esta pÃ¡gina.', 'alerta');
       return;
     }
   }
@@ -1002,14 +1002,14 @@ function showPage(p, el) {
   document.getElementById('page-' + p)?.classList.add('active');
 
   const titles = {
-    dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', 'ficha-aluno': 'Ficha do Aluno', boletins: 'Boletins Escolares',
-    'conselho-classe': 'Conselho de Classe', frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
-    livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    horarios: 'Horário de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de Ocorrências'
+    dashboard: 'Dashboard', agenda: 'Agenda PedagÃ³gica', turmas: 'Turmas', alunos: 'Alunos', 'ficha-aluno': 'Ficha do Aluno', boletins: 'Boletins Escolares',
+    'conselho-classe': 'Conselho de Classe', frequencia: 'FrequÃªncia Escolar', solicitacoes: 'SolicitaÃ§Ãµes PedagÃ³gicas', transporte: 'Transporte Escolar', ocorrencias: 'OcorrÃªncias',
+    livros: 'Livros DidÃ¡ticos', chat: 'Chat RVS', permissoes: 'PermissÃµes', usuarios: 'UsuÃ¡rios do Sistema', perfil: 'Meu Perfil',
+    horarios: 'HorÃ¡rio de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de OcorrÃªncias'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
-  // Se não passou o elemento, tenta achar o item no menu lateral para ativar
+  // Se nÃ£o passou o elemento, tenta achar o item no menu lateral para ativar
   if (!el) {
     const selector = `.nav-item[onclick*="showPage('${p}'"]`;
     el = document.querySelector(selector);
@@ -1033,12 +1033,12 @@ function showPage(p, el) {
   if(p==='tratamento-ocorrencias') initTratamentoOcorrenciasPage();
   if(p==='documentos-secretaria') carregarDocumentosSecretaria();
   if(p==='frequencia'){
-    // Sempre mostra etapa1 se não houver chamada em andamento
+    // Sempre mostra etapa1 se nÃ£o houver chamada em andamento
     if(!turmaChamadaAtual){
       document.getElementById('freq-etapa1')?.classList.remove('hidden');
       document.getElementById('freq-etapa2')?.classList.add('hidden');
     }
-    // Popula select de turma com dados já carregados
+    // Popula select de turma com dados jÃ¡ carregados
     popularSelectTurmaFreq();
   }
 }
@@ -1059,8 +1059,8 @@ function renderDashCompleto(){
   renderDashOcorr();
 }
 
-// ─── SISTEMA DE NOTIFICAÇÕES ─────────────────────────────────────────────────
-const NOTIFICATIONS = []; // store em memória
+// â”€â”€â”€ SISTEMA DE NOTIFICAÃ‡Ã•ES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const NOTIFICATIONS = []; // store em memÃ³ria
 let notifPanelOpen = false;
 let ocorrenciaRealtimeSubscription = null;
 
@@ -1070,7 +1070,7 @@ function addNotification({ type, title, body, action }) {
     type,       // 'chat' | 'ocorrencia' | 'alerta'
     title,
     body,
-    action,     // função chamada ao clicar
+    action,     // funÃ§Ã£o chamada ao clicar
     time: new Date(),
     read: false
   };
@@ -1134,34 +1134,34 @@ function renderNotifPanel() {
     wrapper.appendChild(panel);
   }
 
-  const typeIcons = { chat: '💬', ocorrencia: '📋', alerta: '🚨' };
-  const typeLabels = { chat: 'Chat RVS', ocorrencia: 'Ocorrência', alerta: 'Alerta Crítico' };
+  const typeIcons = { chat: 'ðŸ’¬', ocorrencia: 'ðŸ“‹', alerta: 'ðŸš¨' };
+  const typeLabels = { chat: 'Chat RVS', ocorrencia: 'OcorrÃªncia', alerta: 'Alerta CrÃ­tico' };
   const typeIconClass = { chat: 'notif-icon-chat', ocorrencia: 'notif-icon-ocorrencia', alerta: 'notif-icon-alerta' };
 
   const formatTime = (date) => {
     const diff = Math.floor((Date.now() - date.getTime()) / 1000);
     if (diff < 60) return 'agora';
-    if (diff < 3600) return `${Math.floor(diff/60)}min atrás`;
-    if (diff < 86400) return `${Math.floor(diff/3600)}h atrás`;
+    if (diff < 3600) return `${Math.floor(diff/60)}min atrÃ¡s`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h atrÃ¡s`;
     return date.toLocaleDateString('pt-BR');
   };
 
   const items = NOTIFICATIONS.slice(0, 30);
   panel.innerHTML = `
     <div class="notif-panel-header">
-      <h4>🔔 Notificações <span style="font-weight:400;color:var(--gray4);font-size:12px">(${items.length})</span></h4>
+      <h4>ðŸ”” NotificaÃ§Ãµes <span style="font-weight:400;color:var(--gray4);font-size:12px">(${items.length})</span></h4>
       <button class="notif-clear-btn" onclick="clearAllNotifs()">Limpar tudo</button>
     </div>
     <div class="notif-list" id="notif-list">
       ${items.length === 0 ? `
         <div class="notif-empty">
-          <span>🔕</span>
-          Nenhuma notificação ainda
+          <span>ðŸ”•</span>
+          Nenhuma notificaÃ§Ã£o ainda
         </div>
       ` : items.map(n => `
         <div class="notif-item ${n.read ? '' : 'unread'}" onclick="handleNotifClick('${n.id}')">
           <div class="notif-item-icon ${typeIconClass[n.type] || 'notif-icon-alerta'}">
-            ${typeIcons[n.type] || '📌'}
+            ${typeIcons[n.type] || 'ðŸ“Œ'}
           </div>
           <div class="notif-item-body">
             <h5>${n.title}</h5>
@@ -1189,7 +1189,7 @@ function clearAllNotifs() {
   renderNotifPanel();
 }
 
-// ── Realtime: escuta novas ocorrências inseridas por qualquer usuário ──
+// â”€â”€ Realtime: escuta novas ocorrÃªncias inseridas por qualquer usuÃ¡rio â”€â”€
 function initOcorrenciaRealtime() {
   if (ocorrenciaRealtimeSubscription) return;
   ocorrenciaRealtimeSubscription = supabaseClient
@@ -1198,8 +1198,8 @@ function initOcorrenciaRealtime() {
       const o = payload.new;
       const aluno = ALUNOS_DATA.find(a => a.id === o.aluno_id);
       const nomeAluno = aluno ? aluno.nome : 'Aluno';
-      const titulo = `Nova Ocorrência: ${nomeAluno}`;
-      const corpo = o.descricao ? o.descricao.substring(0, 60) + (o.descricao.length > 60 ? '...' : '') : 'Sem descrição';
+      const titulo = `Nova OcorrÃªncia: ${nomeAluno}`;
+      const corpo = o.descricao ? o.descricao.substring(0, 60) + (o.descricao.length > 60 ? '...' : '') : 'Sem descriÃ§Ã£o';
 
       addNotification({
         type: 'ocorrencia',
@@ -1208,14 +1208,14 @@ function initOcorrenciaRealtime() {
         action: () => showPage('ocorrencias', document.querySelector(".nav-item[onclick*=\"'ocorrencias'\"]"))
       });
 
-      showToast(`📋 ${titulo}`, 'ocorrencia', () => {
+      showToast(`ðŸ“‹ ${titulo}`, 'ocorrencia', () => {
         showPage('ocorrencias', document.querySelector(".nav-item[onclick*=\"'ocorrencias'\"]"));
       });
     })
     .subscribe();
 }
 
-// ─── TOASTS / ALERTAS ────────────────────────────────────────────────────────
+// â”€â”€â”€ TOASTS / ALERTAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showToast(msg, type='alerta', onClickAction=null) {
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
@@ -1231,11 +1231,11 @@ function showToast(msg, type='alerta', onClickAction=null) {
     };
   }
 
-  const icons  = { evasao:'🚨', alerta:'ℹ️', sucesso:'✅', chat:'💬', ocorrencia:'📋' };
-  const labels = { evasao:'Alerta de Evasão', alerta:'Notificação', sucesso:'Sucesso', chat:'Chat RVS', ocorrencia:'Ocorrência' };
-  t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span>
+  const icons  = { evasao:'ðŸš¨', alerta:'â„¹ï¸', sucesso:'âœ…', chat:'ðŸ’¬', ocorrencia:'ðŸ“‹' };
+  const labels = { evasao:'Alerta de EvasÃ£o', alerta:'NotificaÃ§Ã£o', sucesso:'Sucesso', chat:'Chat RVS', ocorrencia:'OcorrÃªncia' };
+  t.innerHTML = `<span class="toast-icon">${icons[type]||'â„¹ï¸'}</span>
     <div class="toast-body"><h4>${labels[type]||'Aviso'}</h4><p>${msg}</p></div>
-    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+    <button class="toast-close" onclick="this.parentElement.remove()">âœ•</button>`;
   c.appendChild(t);
 
   // auto-dismiss depois de 6s com fade-out
@@ -1249,24 +1249,24 @@ function showToast(msg, type='alerta', onClickAction=null) {
 function triggerAlert(){ document.getElementById('alert-bar').classList.add('show'); showToast('Aluno fora da sala detectado','evasao'); }
 function dismissAlert(){ document.getElementById('alert-bar').classList.remove('show'); }
 
-// ─── MODAIS ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ MODAIS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function openModal(id){ document.getElementById(id)?.classList.add('open'); }
 function closeModal(id){ document.getElementById(id)?.classList.remove('open'); }
 function confirmarSenhaAdmin(cb){
-  const s=prompt('⚠️ Ação restrita ao Administrador.\nDigite a senha:');
+  const s=prompt('âš ï¸ AÃ§Ã£o restrita ao Administrador.\nDigite a senha:');
   if(s===ADMIN_SENHA){ cb(); } else { showToast('Senha incorreta. Acesso negado.','evasao'); }
 }
 
 function normalizeTurno(t) {
   if(!t) return '';
   const s = t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  if(s.includes('manha')) return 'Manhã';
+  if(s.includes('manha')) return 'ManhÃ£';
   if(s.includes('tarde')) return 'Tarde';
   if(s.includes('noite')) return 'Noite';
   return t.trim();
 }
 
-// ─── EMPTY STATES ────────────────────────────────────────────────────────────
+// â”€â”€â”€ EMPTY STATES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function emptyState(icon,titulo,sub){
   return`<div class="empty-state"><div class="empty-icon">${icon}</div><h4>${titulo}</h4><p>${sub}</p></div>`;
 }
@@ -1274,14 +1274,14 @@ function emptyTr(icon,titulo,sub,cols=8){
   return`<tr><td colspan="${cols}">${emptyState(icon,titulo,sub)}</td></tr>`;
 }
 
-// ─── SELECTS ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ SELECTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function abrirExcluirAluno(){
-  const s=prompt('🔐 Excluir aluno requer senha do administrador:');
+  const s=prompt('ðŸ” Excluir aluno requer senha do administrador:');
   if(s!==ADMIN_SENHA){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
   const sel=document.getElementById('select-excluir-aluno');
   if(sel){
-    sel.innerHTML='<option value="">— Selecione o aluno —</option>'+
-      ALUNOS_DATA.map(a=>`<option value="${a.cpf}">${a.nome} — ${a.turma}</option>`).join('');
+    sel.innerHTML='<option value="">â€” Selecione o aluno â€”</option>'+
+      ALUNOS_DATA.map(a=>`<option value="${a.cpf}">${a.nome} â€” ${a.turma}</option>`).join('');
   }
   openModal('modal-excluir-aluno');
 }
@@ -1290,7 +1290,7 @@ async function excluirAluno(){
   const cpf=document.getElementById('select-excluir-aluno')?.value;
   if(!cpf){ showToast('Selecione um aluno','alerta'); return; }
   const al=ALUNOS_DATA.find(a=>a.cpf===cpf || a.matricula===cpf);
-  if(!al || !al.id){ showToast('Aluno não encontrado no banco de dados.', 'alerta'); return; }
+  if(!al || !al.id){ showToast('Aluno nÃ£o encontrado no banco de dados.', 'alerta'); return; }
   
   const { error } = await supabaseClient.from('alunos').delete().eq('id', al.id);
   if (error) {
@@ -1300,7 +1300,7 @@ async function excluirAluno(){
   }
   
   closeModal('modal-excluir-aluno');
-  showToast(al.nome+' excluído do sistema.','sucesso');
+  showToast(al.nome+' excluÃ­do do sistema.','sucesso');
   
   await carregarDados();
   renderAlunos(); renderMetricasDash(); renderTurmasTable(); renderTurmaGrid();
@@ -1311,22 +1311,22 @@ function atualizarSelectTurmas(){
   document.querySelectorAll('.select-turmas').forEach(sel=>{
     const val=sel.value;
     sel.innerHTML=TURMAS_DATA.length===0
-      ?'<option value="">— Cadastre turmas primeiro —</option>'
-      :['<option value="">Selecione a turma</option>',...TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`)].join('');
+      ?'<option value="">â€” Cadastre turmas primeiro â€”</option>'
+      :['<option value="">Selecione a turma</option>',...TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`)].join('');
     if(val) sel.value=val;
   });
   // Select excluir turma
   const se=document.getElementById('select-excluir-turma');
   if(se) se.innerHTML=TURMAS_DATA.length===0
-    ?'<option value="">— Nenhuma turma —</option>'
-    :TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
-  // Select frequência etapa1 (pode não ter classe select-turmas)
+    ?'<option value="">â€” Nenhuma turma â€”</option>'
+    :TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`).join('');
+  // Select frequÃªncia etapa1 (pode nÃ£o ter classe select-turmas)
   popularSelectTurmaFreq();
   // Select filtro alunos
   const fa=document.getElementById('filtro-turma-alunos');
   if(fa){
     const v=fa.value;
-    fa.innerHTML='<option value="">Todas as turmas</option>'+TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
+    fa.innerHTML='<option value="">Todas as turmas</option>'+TURMAS_DATA.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`).join('');
     if(v) fa.value=v;
   }
   // Select rota alunos
@@ -1359,7 +1359,7 @@ function onTurnoFreqChange(){
   popularSelectTurmaFreq();
 }
 
-// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getDashFiltros(){
   const dia = document.getElementById('dash-filtro-dia')?.value || '';
   return { turno: dashTurnoAtual, dia };
@@ -1380,9 +1380,9 @@ async function renderMetricasDash(){
   if(el('dash-turmas')) el('dash-turmas').textContent = turmas.length;
   if(el('dash-faltas')) el('dash-faltas').textContent = ocorrs.filter(o=>o.tipo==='evasao'&&!o.tratada).length;
 
-  // Busca presentes de hoje direto do Supabase via fetchAllRows para não esbarrar em limite (ex: 1500 alunos)
+  // Busca presentes de hoje direto do Supabase via fetchAllRows para nÃ£o esbarrar em limite (ex: 1500 alunos)
   try {
-    // Corrige fuso horário para garantir a data local correta
+    // Corrige fuso horÃ¡rio para garantir a data local correta
     const tzOffset = (new Date()).getTimezoneOffset() * 60000;
     const hoje = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
     const targetDate = dia || hoje;
@@ -1413,16 +1413,16 @@ async function renderTurmasTable(){
   const b=document.getElementById('turmas-table-body'); if(!b)return;
   const {turno} = getDashFiltros();
   let turmas = turno ? TURMAS_DATA.filter(t=>t.turno===turno) : TURMAS_DATA;
-  if(!turmas.length){b.innerHTML=emptyTr('🏷️','Nenhuma turma encontrada','Cadastre turmas ou altere o filtro',8);return;}
+  if(!turmas.length){b.innerHTML=emptyTr('ðŸ·ï¸','Nenhuma turma encontrada','Cadastre turmas ou altere o filtro',8);return;}
 
-  // Busca frequência do Supabase respeitando o filtro de data (ou hoje)
+  // Busca frequÃªncia do Supabase respeitando o filtro de data (ou hoje)
   const {dia} = getDashFiltros();
-  // Corrige fuso horário para garantir a data local correta
+  // Corrige fuso horÃ¡rio para garantir a data local correta
   const tzOffset = (new Date()).getTimezoneOffset() * 60000;
   const hoje = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
   const targetDate = dia || hoje;
   
-  let freqData = {}; // aluno_id → {entrada, saida}
+  let freqData = {}; // aluno_id â†’ {entrada, saida}
   try{
     const {data:fq} = await fetchAllRows('frequencia', 'aluno_id,tipo,status', q => q.eq('data',targetDate));
     if(fq) fq.forEach(f=>{
@@ -1437,7 +1437,7 @@ async function renderTurmasTable(){
     
     // Conta por freq real
     let entP=0,saiP=0,evasoes=0;
-    let entTotal=0, saiTotal=0; // Total de registros para saber se já foi lançada
+    let entTotal=0, saiTotal=0; // Total de registros para saber se jÃ¡ foi lanÃ§ada
     
     alunosTurma.forEach(a=>{
       const fq=freqData[a.id]||{};
@@ -1449,7 +1449,7 @@ async function renderTurmasTable(){
       if(fq.entrada==='P'&&fq.saida==='F') evasoes++;
     });
     
-    // Fallback: usa chamada em memória se não há dados no Supabase e a data é hoje
+    // Fallback: usa chamada em memÃ³ria se nÃ£o hÃ¡ dados no Supabase e a data Ã© hoje
     if(total>0 && entTotal===0 && saiTotal===0 && targetDate === hoje){
       entP=t.entradaQtd||0;
       saiP=t.saidaQtd||0;
@@ -1463,9 +1463,9 @@ async function renderTurmasTable(){
     
     const stEnt=entTotal>0?`<span class="metric-badge badge-green">${entPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
     const stSai=saiTotal>0?`<span class="metric-badge badge-green">${saiPct}% pres.</span>`:`<span class="metric-badge badge-yellow">Pendente</span>`;
-    const evasBadge=evasoes>0?`<span class="metric-badge badge-red">⚠ ${evasoes}</span>`:'';
+    const evasBadge=evasoes>0?`<span class="metric-badge badge-red">âš  ${evasoes}</span>`:'';
     return`<tr>
-      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar">${t.code} ✏️</strong></td>
+      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar">${t.code} âœï¸</strong></td>
       <td>${t.turno}</td>
       <td>${total}</td>
       <td><span class="metric-badge badge-blue">${entPct}%</span></td>
@@ -1480,7 +1480,7 @@ function renderDashOcorr(){
   const cont=document.getElementById('dash-ocorr'); if(!cont)return;
   const {turno, dia} = getDashFiltros();
   
-  // Define targetDate string no padrão DD/MM/YYYY (do filtro ou hoje)
+  // Define targetDate string no padrÃ£o DD/MM/YYYY (do filtro ou hoje)
   const hojeDate = new Date();
   const targetDateStr = dia ? new Date(dia+'T12:00:00').toLocaleDateString('pt-BR') : hojeDate.toLocaleDateString('pt-BR');
 
@@ -1490,14 +1490,14 @@ function renderDashOcorr(){
     data=data.filter(o=>als.includes(o.aluno));
   }
   
-  // As ocorrências no dashboard são espelho do dia letivo (para bater com a frequência)
+  // As ocorrÃªncias no dashboard sÃ£o espelho do dia letivo (para bater com a frequÃªncia)
   data=data.filter(o=>o.data===targetDateStr);
   data=data.slice(0,5);
   
-  cont.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Tudo tranquilo neste dia');
+  cont.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('âœ…','Nenhuma ocorrÃªncia','Tudo tranquilo neste dia');
 }
 
-// ─── TURMAS ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ TURMAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let TURMA_ACAO_ATUAL_ID = null;
 const ESCOLA_NOME_TURMAS = 'Escola Dr. Romildo Veloso e Silva';
 
@@ -1543,7 +1543,7 @@ function abrirListaAlunosTurma(id = TURMA_ACAO_ATUAL_ID){
     container.innerHTML = alunos.length
       ? alunos.map((aluno, idx) => `
           <div class="turma-aluno-item">
-            <div class="turma-aluno-indice">Nº ${String(idx + 1).padStart(2, '0')}</div>
+            <div class="turma-aluno-indice">NÂº ${String(idx + 1).padStart(2, '0')}</div>
             <div class="turma-aluno-nome">${aluno.nome || '-'}</div>
             <div class="turma-aluno-assinatura" title="Assinatura do aluno"></div>
           </div>
@@ -1625,7 +1625,7 @@ async function baixarListaAlunosTurmaPDF(id = TURMA_ACAO_ATUAL_ID){
         color: rgb(0.35, 0.4, 0.48)
       });
       y -= 24;
-      page.drawText('Nº', { x: margin, y, size: 11, font: fontBold, color: rgb(0.06, 0.09, 0.16) });
+      page.drawText('NÂº', { x: margin, y, size: 11, font: fontBold, color: rgb(0.06, 0.09, 0.16) });
       page.drawText('Nome do Aluno', { x: margin + 36, y, size: 11, font: fontBold, color: rgb(0.06, 0.09, 0.16) });
       page.drawText('Assinatura', { x: signatureStartX, y, size: 11, font: fontBold, color: rgb(0.06, 0.09, 0.16) });
       y -= 8;
@@ -1694,21 +1694,21 @@ async function baixarListaAlunosTurmaPDF(id = TURMA_ACAO_ATUAL_ID){
 
 function renderTurmaGrid(){
   const g=document.getElementById('turma-grid'); if(!g)return;
-  if(!TURMAS_DATA.length){g.innerHTML=emptyState('🏷️','Nenhuma turma cadastrada','Clique em "+ Nova Turma"');return;}
+  if(!TURMAS_DATA.length){g.innerHTML=emptyState('ðŸ·ï¸','Nenhuma turma cadastrada','Clique em "+ Nova Turma"');return;}
   g.innerHTML=TURMAS_DATA.map(t=>{
     const total=ALUNOS_DATA.filter(a=>a.turma===t.code).length;
     const pres=t.presentes||0, pct=total>0?Math.round(pres/total*100):0;
     const color=pct>=90?'var(--green)':pct>=75?'var(--yellow)':'var(--red)';
     return`<div class="turma-card" onclick="abrirEditarTurma('${t.id}')" title="Clique para editar a turma" style="cursor:pointer;transition:box-shadow 0.2s" onmouseenter="this.style.boxShadow='0 4px 18px rgba(0,0,0,0.13)'" onmouseleave="this.style.boxShadow=''">
       <div class="turma-code">${t.code}</div>
-      <div class="turma-info">${t.serie} — ${t.turno}</div>
+      <div class="turma-info">${t.serie} â€” ${t.turno}</div>
       <div class="turma-progress"><div class="turma-progress-bar" style="width:${pct}%;background:${color}"></div></div>
       <div class="turma-stats">
-        <span style="color:var(--gray5)">👥 ${total}</span>
-        <span style="color:var(--green-dark)">✓ ${pres}</span>
-        <span style="color:var(--red)">✗ ${total-pres}</span>
+        <span style="color:var(--gray5)">ðŸ‘¥ ${total}</span>
+        <span style="color:var(--green-dark)">âœ“ ${pres}</span>
+        <span style="color:var(--red)">âœ— ${total-pres}</span>
       </div>
-      <div style="font-size:10px;color:var(--gray4);text-align:center;margin-top:4px">✏️ clique para editar</div>
+      <div style="font-size:10px;color:var(--gray4);text-align:center;margin-top:4px">âœï¸ clique para editar</div>
     </div>`;
   }).join('');
 }
@@ -1717,8 +1717,8 @@ function abrirEditarTurma(id){
   const t=TURMAS_DATA.find(x=>x.id===id); if(!t)return;
   document.getElementById('edit-turma-id').value=t.id;
   document.getElementById('edit-turma-code').value=t.code;
-  document.getElementById('edit-turma-turno').value=t.turno||'Manhã';
-  // Tenta setar a série corretamente
+  document.getElementById('edit-turma-turno').value=t.turno||'ManhÃ£';
+  // Tenta setar a sÃ©rie corretamente
   const serieEl=document.getElementById('edit-turma-serie');
   if(serieEl){
     const opts=Array.from(serieEl.options).map(o=>o.value);
@@ -1731,10 +1731,10 @@ function abrirEditarTurma(id){
 async function salvarEdicaoTurma(){
   const id=document.getElementById('edit-turma-id')?.value;
   const code=(document.getElementById('edit-turma-code')?.value||'').trim().toUpperCase();
-  const turno=document.getElementById('edit-turma-turno')?.value||'Manhã';
+  const turno=document.getElementById('edit-turma-turno')?.value||'ManhÃ£';
   const serie=document.getElementById('edit-turma-serie')?.value||'';
   const professor=(document.getElementById('edit-turma-professor')?.value||'').trim();
-  if(!id||!code){showToast('Preencha o código da turma','alerta');return;}
+  if(!id||!code){showToast('Preencha o cÃ³digo da turma','alerta');return;}
   const {error}=await supabaseClient.from('turmas').update({code,turno,serie,professor}).eq('id',id);
   if(error){showToast('Erro ao salvar: '+error.message,'evasao');return;}
   closeModal('modal-editar-turma');
@@ -1748,13 +1748,13 @@ async function saveTurma(){
   const code  = document.getElementById('input-turma-code')?.value.trim().toUpperCase();
   const turno = document.getElementById('input-turma-turno')?.value;
   const serie = document.getElementById('input-turma-serie')?.value;
-  if(!code){ showToast('Informe o código da turma!','alerta'); return; }
-  if(TURMAS_DATA.find(t=>t.code===code)){ showToast('Turma '+code+' já existe!','alerta'); return; }
+  if(!code){ showToast('Informe o cÃ³digo da turma!','alerta'); return; }
+  if(TURMAS_DATA.find(t=>t.code===code)){ showToast('Turma '+code+' jÃ¡ existe!','alerta'); return; }
   
   const {error} = await supabaseClient.from('turmas').insert({
       code: code,
       serie: serie || code,
-      turno: turno || 'Manhã',
+      turno: turno || 'ManhÃ£',
       professor: 'A Definir'
   });
   
@@ -1784,13 +1784,13 @@ async function excluirTurma(){
   }
   
   closeModal('modal-excluir-turma');
-  showToast('Turma '+code+' excluída.','sucesso');
+  showToast('Turma '+code+' excluÃ­da.','sucesso');
   await carregarDados();
   atualizarSelectTurmas();
   renderTurmaGrid(); renderTurmasTable(); renderMetricasDash();
 }
 
-// ─── ALUNOS ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ ALUNOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderAlunos(filter=''){
   const b=document.getElementById('alunos-tbody'); if(!b)return;
   let data=filter
@@ -1798,16 +1798,16 @@ function renderAlunos(filter=''){
     :ALUNOS_DATA;
   const tf=document.getElementById('filtro-turma-alunos')?.value;
   if(tf) data=data.filter(a=>a.turma===tf);
-  if(!data.length){b.innerHTML=emptyTr('👥','Nenhum aluno encontrado','Ajuste filtros ou cadastre alunos',8);return;}
+  if(!data.length){b.innerHTML=emptyTr('ðŸ‘¥','Nenhum aluno encontrado','Ajuste filtros ou cadastre alunos',8);return;}
   b.innerHTML=data.map(a=>`<tr>
     <td><code>${a.cpf}</code></td>
     <td><strong>${a.nome}</strong></td>
     <td><span class="metric-badge badge-blue">${a.turma}</span></td>
     <td>${a.turno}</td>
     <td>${a.rota||'Sem transporte'}</td>
-    <td>${a.resp||'—'}</td>
+    <td>${a.resp||'â€”'}</td>
     <td><span class="metric-badge ${a.status==='ativo'?'badge-green':'badge-yellow'}">${a.status}</span></td>
-    <td><button class="btn btn-outline btn-xs" onclick="verFicha('${a.cpf}')">📋 Ficha</button></td>
+    <td><button class="btn btn-outline btn-xs" onclick="verFicha('${a.cpf}')">ðŸ“‹ Ficha</button></td>
   </tr>`).join('');
 }
 function filterAlunos(v){ renderAlunos(v); }
@@ -1820,7 +1820,7 @@ function calcularIdade(){
   let idade=hoje.getFullYear()-nascDate.getFullYear();
   const m=hoje.getMonth()-nascDate.getMonth();
   if(m<0||(m===0&&hoje.getDate()<nascDate.getDate())) idade--;
-  idadeEl.value=idade>0?idade+' anos':'—';
+  idadeEl.value=idade>0?idade+' anos':'â€”';
 }
 
 function getAlunoAvatarPlaceholder() {
@@ -1865,7 +1865,7 @@ function resetarEstadoFotoFichaAluno() {
   const refs = getAlunoFotoRefs('ficha');
   if (refs.input) refs.input.value = '';
   setSalvarFotoFichaHabilitado(false);
-  setAlunoFotoStatus('A foto será salva no Google Drive e vinculada ao cadastro do aluno.', 'rgba(255,255,255,.78)', 'ficha');
+  setAlunoFotoStatus('A foto serÃ¡ salva no Google Drive e vinculada ao cadastro do aluno.', 'rgba(255,255,255,.78)', 'ficha');
 }
 
 function atualizarPreviewFotoAluno(src, origem = _alunoFotoOrigem) {
@@ -1924,11 +1924,11 @@ function abrirModalNovoAluno() {
   if(prev) prev.src = getAlunoAvatarPlaceholder();
   const refs = getAlunoFotoRefs('cadastro');
   if (refs.input) refs.input.value = '';
-  setAlunoFotoStatus('Máximo 5MB. Arquivo será salvo no Google Drive.', 'var(--gray4)', 'cadastro');
+  setAlunoFotoStatus('MÃ¡ximo 5MB. Arquivo serÃ¡ salvo no Google Drive.', 'var(--gray4)', 'cadastro');
   openModal('modal-aluno');
 }
 
-// ─── CÂMERA E FOTO DO ALUNO ────────────────────────────────────────────────────────
+// â”€â”€â”€ CÃ‚MERA E FOTO DO ALUNO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function abrirCameraAluno(origem = 'cadastro') {
   setAlunoFotoOrigem(origem);
   const erroEl = document.getElementById('camera-aluno-erro');
@@ -1941,7 +1941,7 @@ async function abrirCameraAluno(origem = 'cadastro') {
     openModal('modal-camera-aluno');
   } catch (err) {
     console.error('[Camera Aluno] Erro:', err);
-    if (err.name === 'NotAllowedError') showToast('Permissão de câmera negada. Selecione da galeria.', 'alerta');
+    if (err.name === 'NotAllowedError') showToast('PermissÃ£o de cÃ¢mera negada. Selecione da galeria.', 'alerta');
     else getAlunoFotoRefs(_alunoFotoOrigem).input?.click();
   }
 }
@@ -1973,7 +1973,7 @@ function selecionarFotoAluno(input, origem = 'cadastro') {
   setAlunoFotoOrigem(origem);
   const file = input.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { showToast('Foto muito grande! Máximo 5MB.', 'alerta'); input.value = ''; return; }
+  if (file.size > 5 * 1024 * 1024) { showToast('Foto muito grande! MÃ¡ximo 5MB.', 'alerta'); input.value = ''; return; }
   _alunoFotoPendente = file;
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -2000,21 +2000,21 @@ async function saveAluno(){
   const idade  =document.getElementById('input-aluno-idade')?.value;
   
   if(!nome||!cpf||!turmaCode){ showToast('Preencha nome, CPF e turma!','alerta'); return; }
-  if(normalizarCPF(cpf).length !== 11){ showToast('Informe um CPF vÃ¡lido com 11 dÃ­gitos!','alerta'); return; }
-  if(ALUNOS_DATA.find(a => normalizarCPF(a.cpf) === normalizarCPF(cpf))){ showToast('CPF jÃ¡ cadastrado!','alerta'); return; }
+  if(normalizarCPF(cpf).length !== 11){ showToast('Informe um CPF vÃƒÂ¡lido com 11 dÃƒÂ­gitos!','alerta'); return; }
+  if(ALUNOS_DATA.find(a => normalizarCPF(a.cpf) === normalizarCPF(cpf))){ showToast('CPF jÃƒÂ¡ cadastrado!','alerta'); return; }
   
   const tObj = TURMAS_DATA.find(t => t.code === turmaCode);
-  if (!tObj) { showToast('Turma não encontrada no sistema.', 'alerta'); return; }
+  if (!tObj) { showToast('Turma nÃ£o encontrada no sistema.', 'alerta'); return; }
 
   let fotoUrl = null;
   if (_alunoFotoPendente) {
-    setAlunoFotoStatus('⏳ Enviando foto ao Google Drive...', 'var(--blue-dark)', 'cadastro');
+    setAlunoFotoStatus('â³ Enviando foto ao Google Drive...', 'var(--blue-dark)', 'cadastro');
     try {
       fotoUrl = await enviarFotoAlunoParaDrive(_alunoFotoPendente, { cpf, nome });
-      setAlunoFotoStatus('✅ Foto salva no Google Drive!', 'var(--green-dark)', 'cadastro');
+      setAlunoFotoStatus('âœ… Foto salva no Google Drive!', 'var(--green-dark)', 'cadastro');
     } catch(err) {
       console.error('[Drive Upload Aluno]', err);
-      showToast('Aviso: Foto falhou, mas aluno será salvo. ' + err.message, 'evasao');
+      showToast('Aviso: Foto falhou, mas aluno serÃ¡ salvo. ' + err.message, 'evasao');
     }
   }
 
@@ -2051,7 +2051,7 @@ async function saveAluno(){
 async function salvarFotoAlunoFicha() {
   const cpf = getFichaCpfAtual();
   const a = ALUNOS_DATA.find(x => x.cpf === cpf);
-  if (!a || !a.id) { showToast('Aluno não localizado para salvar a foto.', 'alerta'); return; }
+  if (!a || !a.id) { showToast('Aluno nÃ£o localizado para salvar a foto.', 'alerta'); return; }
   if (!_alunoFotoPendente || _alunoFotoOrigem !== 'ficha') { showToast('Selecione uma foto na ficha antes de salvar.', 'alerta'); return; }
 
   const btn = document.getElementById('ficha-foto-salvar-btn');
@@ -2060,7 +2060,7 @@ async function salvarFotoAlunoFicha() {
     btn.textContent = 'Salvando...';
   }
 
-  setAlunoFotoStatus('⏳ Enviando foto ao Google Drive...', '#dbeafe', 'ficha');
+  setAlunoFotoStatus('â³ Enviando foto ao Google Drive...', '#dbeafe', 'ficha');
 
   try {
     const fotoUrl = await enviarFotoAlunoParaDrive(_alunoFotoPendente, { cpf: a.cpf, nome: a.nome });
@@ -2071,7 +2071,7 @@ async function salvarFotoAlunoFicha() {
     _alunoFotoPendente = null;
     const refs = getAlunoFotoRefs('ficha');
     if (refs.input) refs.input.value = '';
-    setAlunoFotoStatus('✅ Foto atualizada e salva no cadastro do aluno.', '#bbf7d0', 'ficha');
+    setAlunoFotoStatus('âœ… Foto atualizada e salva no cadastro do aluno.', '#bbf7d0', 'ficha');
     setSalvarFotoFichaHabilitado(false);
     verFicha(cpf);
     renderAlunos();
@@ -2093,30 +2093,30 @@ function verFichaLegacy(cpf){
 
 function renderFichaOcorrencias(a){
   const el=document.getElementById('ficha-ocorrencias'); if(!el)return;
-  // Filtra ocorrências onde o aluno é envolvido (pelo nome ou cpf)
+  // Filtra ocorrÃªncias onde o aluno Ã© envolvido (pelo nome ou cpf)
   const ocorrs=OCORR_DATA.filter(o=>
     o.aluno===a.nome || o.aluno===a.cpf ||
     o.aluno.includes(a.nome) || (a.cpf && o.cpf===a.cpf)
   );
   if(!ocorrs.length){
-    el.innerHTML='<div style="font-size:12.5px;color:var(--gray4);padding:8px 0">Nenhuma ocorrência registrada.</div>';
+    el.innerHTML='<div style="font-size:12.5px;color:var(--gray4);padding:8px 0">Nenhuma ocorrÃªncia registrada.</div>';
     return;
   }
   el.innerHTML=ocorrs.map(o=>{
-    const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'Suspensão Uso Celular'}[o.tipo]||o.tipo;
+    const label={evasao:'EvasÃ£o',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'AgressÃ£o',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'SuspensÃ£o Uso Celular'}[o.tipo]||o.tipo;
     const cor=o.tratada?'var(--green-light)':'var(--red-light)';
     const txt=o.tratada?'var(--green-dark)':'var(--red-dark)';
     return`<div style="background:${cor};border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px">
-      <strong style="color:${txt}">${label}</strong> — ${o.data} ${o.hora}
+      <strong style="color:${txt}">${label}</strong> â€” ${o.data} ${o.hora}
       <div style="color:var(--gray6);margin-top:2px">${o.desc}</div>
-      ${o.tratada?'<div style="color:var(--green-dark);font-size:11px;margin-top:2px">✓ Tratada'+( o.justificativa?' — '+o.justificativa:'')+'</div>':''}
+      ${o.tratada?'<div style="color:var(--green-dark);font-size:11px;margin-top:2px">âœ“ Tratada'+( o.justificativa?' â€” '+o.justificativa:'')+'</div>':''}
     </div>`;
   }).join('');
 }
 
 function renderTimeline(a){
   const tl=document.getElementById('ficha-timeline'); if(!tl)return;
-  if(!(a.historico||[]).length){tl.innerHTML=emptyState('📋','Sem histórico','Nenhuma movimentação');return;}
+  if(!(a.historico||[]).length){tl.innerHTML=emptyState('ðŸ“‹','Sem histÃ³rico','Nenhuma movimentaÃ§Ã£o');return;}
   const cores={presenca:'var(--green)',falta:'var(--red)',ocorrencia:'var(--yellow)',mudanca:'var(--blue)'};
   tl.innerHTML=a.historico.map((h,i)=>`
     <div class="tl-item">
@@ -2130,13 +2130,13 @@ function renderTimeline(a){
 
 function setFichaText(id, value){
   const el = document.getElementById(id);
-  if (el) el.textContent = value || '—';
+  if (el) el.textContent = value || 'â€”';
 }
 
 function setFichaBadge(id, value, badgeClass){
   const el = document.getElementById(id);
   if (!el) return;
-  el.textContent = value || '—';
+  el.textContent = value || 'â€”';
   el.className = `metric-badge ${badgeClass}`;
 }
 
@@ -2149,7 +2149,7 @@ function setFichaCounter(id, count, singular, plural){
   }
   const total = Number(count);
   if (!Number.isFinite(total)) {
-    el.textContent = '—';
+    el.textContent = 'â€”';
     return;
   }
   el.textContent = `${total} ${total === 1 ? singular : plural}`;
@@ -2221,27 +2221,27 @@ function verFicha(cpf){
   const faltas = (a.historico || []).filter(h => h.tipo === 'falta').length;
   const ocorrs = getOcorrenciasAluno(a);
   const statusInfo = formatarStatusFicha(a.status);
-  const turmaText = [a.turma, a.turno].filter(Boolean).join(' — ') || '—';
+  const turmaText = [a.turma, a.turno].filter(Boolean).join(' â€” ') || 'â€”';
   const transporteText = a.rota || 'Sem transporte';
   const transporteBadge = transporteText === 'Sem transporte' ? 'badge-yellow' : 'badge-blue';
 
   setFichaText('ficha-nome', a.nome);
-  setFichaText('ficha-subtitulo', `${turmaText} • ${a.resp || 'Responsável não informado'}`);
-  setFichaText('ficha-cpf', a.cpf || '—');
-  setFichaText('ficha-matricula', formatarCPF(a.matricula || a.cpf || '—'));
+  setFichaText('ficha-subtitulo', `${turmaText} â€¢ ${a.resp || 'ResponsÃ¡vel nÃ£o informado'}`);
+  setFichaText('ficha-cpf', a.cpf || 'â€”');
+  setFichaText('ficha-matricula', formatarCPF(a.matricula || a.cpf || 'â€”'));
   setFichaText('ficha-turma', turmaText);
-  setFichaText('ficha-resp', a.resp || '—');
-  setFichaText('ficha-contato', a.contato || '—');
-  setFichaText('ficha-email', a.email || '—');
+  setFichaText('ficha-resp', a.resp || 'â€”');
+  setFichaText('ficha-contato', a.contato || 'â€”');
+  setFichaText('ficha-email', a.email || 'â€”');
   setFichaText('ficha-rota', transporteText);
-  setFichaText('ficha-nasc', a.nasc ? new Date(a.nasc).toLocaleDateString('pt-BR') : '—');
-  setFichaText('ficha-idade', a.idade || '—');
+  setFichaText('ficha-nasc', a.nasc ? new Date(a.nasc).toLocaleDateString('pt-BR') : 'â€”');
+  setFichaText('ficha-idade', a.idade || 'â€”');
   setFichaText('ficha-faltas', String(faltas));
   setFichaText('ficha-total-ocorrencias', String(ocorrs.length));
   setFichaText('ficha-total-responsaveis', '...');
   setFichaText('ficha-total-boletins', '...');
   setFichaBadge('ficha-status', statusInfo.label, statusInfo.badge);
-  setFichaBadge('ficha-turno', a.turno || 'Turno não informado', 'badge-blue');
+  setFichaBadge('ficha-turno', a.turno || 'Turno nÃ£o informado', 'badge-blue');
   setFichaBadge('ficha-rota-badge', transporteText === 'Sem transporte' ? 'Sem transporte' : 'Transporte ativo', transporteBadge);
   setFichaCounter('ficha-ocorrencias-count', ocorrs.length, 'registro', 'registros');
   setFichaCounter('ficha-timeline-count', (a.historico || []).length, 'item', 'itens');
@@ -2279,11 +2279,11 @@ function renderFichaOcorrencias(a){
   setFichaText('ficha-total-ocorrencias', String(ocorrs.length));
   setFichaCounter('ficha-ocorrencias-count', ocorrs.length, 'registro', 'registros');
   if(!ocorrs.length){
-    el.innerHTML = '<div class="ficha-empty-inline">Nenhuma ocorrência registrada para este aluno até o momento.</div>';
+    el.innerHTML = '<div class="ficha-empty-inline">Nenhuma ocorrÃªncia registrada para este aluno atÃ© o momento.</div>';
     return;
   }
   el.innerHTML = ocorrs.map(o => {
-    const label = {evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coordenação',suspensao_celular:'Suspensão de Celular'}[o.tipo] || o.tipo;
+    const label = {evasao:'EvasÃ£o',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'AgressÃ£o',atraso:'Atraso',liberado_coord:'Liberado pela CoordenaÃ§Ã£o',suspensao_celular:'SuspensÃ£o de Celular'}[o.tipo] || o.tipo;
     const tratada = !!o.tratada;
     return `
       <div class="ficha-occ-card ${tratada ? 'resolved' : 'pending'}">
@@ -2292,8 +2292,8 @@ function renderFichaOcorrencias(a){
             <span class="metric-badge ${tratada ? 'badge-green' : 'badge-red'}">${tratada ? 'Tratada' : 'Pendente'}</span>
             <span class="metric-badge badge-gray">${label}</span>
           </div>
-          <strong>${o.data || 'Data não informada'}${o.hora ? ' • ' + o.hora : ''}</strong>
-          <span>${o.desc || 'Sem descrição informada.'}</span>
+          <strong>${o.data || 'Data nÃ£o informada'}${o.hora ? ' â€¢ ' + o.hora : ''}</strong>
+          <span>${o.desc || 'Sem descriÃ§Ã£o informada.'}</span>
           ${o.justificativa ? `<span>Tratativa: ${o.justificativa}</span>` : ''}
         </div>
       </div>`;
@@ -2305,7 +2305,7 @@ function renderTimeline(a){
   const historico = a.historico || [];
   setFichaCounter('ficha-timeline-count', historico.length, 'item', 'itens');
   if(!historico.length){
-    tl.innerHTML = '<div class="ficha-empty-inline">Sem movimentações registradas para compor a timeline do aluno.</div>';
+    tl.innerHTML = '<div class="ficha-empty-inline">Sem movimentaÃ§Ãµes registradas para compor a timeline do aluno.</div>';
     return;
   }
   const cores = {presenca:'var(--green)',falta:'var(--red)',ocorrencia:'var(--yellow)',mudanca:'var(--blue)'};
@@ -2355,7 +2355,7 @@ function abrirOcorrDaFicha(){
   const cpf=getFichaCpfAtual();
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
   envolvidos=[{nome:a.nome}];
-  document.getElementById('envolvidos-list-ocorr').innerHTML=`<div class="envolvido-tag"><span>👤 ${a.nome}</span></div>`;
+  document.getElementById('envolvidos-list-ocorr').innerHTML=`<div class="envolvido-tag"><span>ðŸ‘¤ ${a.nome}</span></div>`;
   if(document.getElementById('input-ocorr-turma')) document.getElementById('input-ocorr-turma').value=a.turma;
   atualizarAlunosPorTurmaOcorr();
   openModal('modal-ocorr');
@@ -2364,12 +2364,12 @@ function abrirOcorrDaFicha(){
 function abrirEditarFicha(){
   const cpf=getFichaCpfAtual();
   const a=ALUNOS_DATA.find(x=>x.cpf===cpf); if(!a)return;
-  const s=prompt('🔐 Edição de dados requer senha do administrador:');
+  const s=prompt('ðŸ” EdiÃ§Ã£o de dados requer senha do administrador:');
   if(s!==ADMIN_SENHA){ if(s!==null) showToast('Senha incorreta','evasao'); return; }
-  // Preenche o modal de edição
+  // Preenche o modal de ediÃ§Ã£o
   document.getElementById('edit-aluno-nome').value=a.nome||'';
   document.getElementById('edit-aluno-cpf').value=a.cpf||'';
-  document.getElementById('edit-aluno-turno').value=a.turno||'Manhã';
+  document.getElementById('edit-aluno-turno').value=a.turno||'ManhÃ£';
   document.getElementById('edit-aluno-nasc').value=a.nasc||'';
   document.getElementById('edit-aluno-resp').value=a.resp||'';
   document.getElementById('edit-aluno-contato').value=a.contato||'';
@@ -2393,7 +2393,7 @@ function calcularIdadeEdit(){
   let idade=hoje.getFullYear()-nascDate.getFullYear();
   const m=hoje.getMonth()-nascDate.getMonth();
   if(m<0||(m===0&&hoje.getDate()<nascDate.getDate())) idade--;
-  idadeEl.value=idade>0?idade+' anos':'—';
+  idadeEl.value=idade>0?idade+' anos':'â€”';
 }
 
 async function salvarEdicaoFicha(){
@@ -2407,7 +2407,7 @@ async function salvarEdicaoFicha(){
   a.email  =document.getElementById('edit-aluno-email')?.value.trim()||a.email;
   a.rota   =document.getElementById('edit-aluno-rota')?.value||a.rota;
   a.idade  =document.getElementById('edit-aluno-idade')?.value||a.idade;
-  (a.historico=a.historico||[]).push({tipo:'mudanca',titulo:'Dados editados',desc:'Informações do cadastro atualizadas pelo administrador.',data:new Date().toLocaleDateString('pt-BR')});
+  (a.historico=a.historico||[]).push({tipo:'mudanca',titulo:'Dados editados',desc:'InformaÃ§Ãµes do cadastro atualizadas pelo administrador.',data:new Date().toLocaleDateString('pt-BR')});
   
   if (a.id) {
      let dataNasc = null;
@@ -2435,7 +2435,7 @@ async function salvarEdicaoFicha(){
   verFicha(cpf); renderAlunos(); salvarDados();
 }
 
-// IMPORTAÇÃO
+// IMPORTAÃ‡ÃƒO
 function carregarSheetJS(cb){
   if(window.XLSX){cb();return;}
   const s=document.createElement('script');
@@ -2446,8 +2446,8 @@ function carregarSheetJS(cb){
 function downloadModelo(){
   carregarSheetJS(()=>{
     const dados=[
-      ['Nome Completo','CPF','Data de Nascimento','Idade','Turma','Turno','Responsável','Contato','Rota','Email Institucional'],
-      ['Maria da Silva','111.222.333-44','15/03/2008','17 anos','1A','Manhã','José da Silva','(91) 99999-0001','Sem transporte','maria@escola.seduc.pa.gov.br'],
+      ['Nome Completo','CPF','Data de Nascimento','Idade','Turma','Turno','ResponsÃ¡vel','Contato','Rota','Email Institucional'],
+      ['Maria da Silva','111.222.333-44','15/03/2008','17 anos','1A','ManhÃ£','JosÃ© da Silva','(91) 99999-0001','Sem transporte','maria@escola.seduc.pa.gov.br'],
     ];
     const wb=XLSX.utils.book_new();
     const ws=XLSX.utils.aoa_to_sheet(dados);
@@ -2477,7 +2477,7 @@ function importarAlunos(){
         console.log('[importarAlunos] Colunas encontradas:', colunas);
         console.log('[importarAlunos] Primeira linha:', rows[0]);
 
-        // Função auxiliar: encontra a primeira chave que bata com o padrão
+        // FunÃ§Ã£o auxiliar: encontra a primeira chave que bata com o padrÃ£o
         const col = (r, ...patterns) => {
           const key = Object.keys(r).find(k => patterns.some(p => p.test(k)));
           return key ? r[key].toString().trim() : '';
@@ -2493,7 +2493,7 @@ function importarAlunos(){
         const novasTurmasDB = [];
         turmasNoExcel.forEach(tName => {
            if(tName && !TURMAS_DATA.find(t => t.code === tName)) {
-               novasTurmasDB.push({ code: tName, serie: tName, turno: 'Manhã', professor: 'A Definir' });
+               novasTurmasDB.push({ code: tName, serie: tName, turno: 'ManhÃ£', professor: 'A Definir' });
            }
         });
 
@@ -2549,10 +2549,10 @@ function importarAlunos(){
            seen.add(a.matricula); return true;
         });
 
-        console.log('[importarAlunos] Após deduplicação:', alunosFinal.length, '| Ignorados total:', erros);
+        console.log('[importarAlunos] ApÃ³s deduplicaÃ§Ã£o:', alunosFinal.length, '| Ignorados total:', erros);
 
         if (alunosFinal.length === 0) {
-           showToast('Nenhum aluno válido encontrado! ('+erros+' ignorados) — Verifique as colunas da planilha.', 'evasao');
+           showToast('Nenhum aluno vÃ¡lido encontrado! ('+erros+' ignorados) â€” Verifique as colunas da planilha.', 'evasao');
            return;
         }
 
@@ -2583,9 +2583,9 @@ function downloadModeloTurmas(){
   carregarSheetJS(()=>{
     // Modelo simples com colunas diretas
     const ws = XLSX.utils.json_to_sheet([
-      { 'Codigo': 'EM-1A', 'Serie': '1º Ano - Ensino Médio', 'Turno': 'Manhã' },
-      { 'Codigo': 'EM-2A', 'Serie': '2º Ano - Ensino Médio', 'Turno': 'Manhã' },
-      { 'Codigo': 'EJA-1', 'Serie': 'EJA - 1ª Etapa', 'Turno': 'Noite' },
+      { 'Codigo': 'EM-1A', 'Serie': '1Âº Ano - Ensino MÃ©dio', 'Turno': 'ManhÃ£' },
+      { 'Codigo': 'EM-2A', 'Serie': '2Âº Ano - Ensino MÃ©dio', 'Turno': 'ManhÃ£' },
+      { 'Codigo': 'EJA-1', 'Serie': 'EJA - 1Âª Etapa', 'Turno': 'Noite' },
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Turmas");
@@ -2634,7 +2634,7 @@ function importarTurmas(){
           novasTurmasDB.push({
              code: code,
              serie: serie || code,
-             turno: turno || 'Manhã',
+             turno: turno || 'ManhÃ£',
              professor: 'A Definir'
           });
           count++;
@@ -2643,7 +2643,7 @@ function importarTurmas(){
         console.log('[importarTurmas] Para inserir:', novasTurmasDB);
 
         if(novasTurmasDB.length === 0){
-           showToast('Nenhuma turma nova encontrada. ('+erros+' já existiam ou inválidas)', 'alerta');
+           showToast('Nenhuma turma nova encontrada. ('+erros+' jÃ¡ existiam ou invÃ¡lidas)', 'alerta');
            return;
         }
 
@@ -2669,7 +2669,7 @@ function importarTurmas(){
 }
 
 
-// ─── CALENDÁRIO ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ CALENDÃRIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function calKey(y,m,d){ return`${y}-${m+1}-${d}`; }
 function formatarDataKey(k){
   const [y,m,d]=k.split('-').map(Number);
@@ -2705,7 +2705,7 @@ function renderCalendar(){
 }
 
 async function calClick(key){
-  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendário','evasao'); return; }
+  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendÃ¡rio','evasao'); return; }
 
   if(CALENDARIO[key]?.tipo==='letivo'){
     // Desmarcar: deletar do Supabase se tiver ID
@@ -2727,22 +2727,22 @@ async function calClick(key){
     }).select().single();
     if(error){ console.error(error); showToast('Erro ao salvar no banco','evasao'); return; }
     CALENDARIO[key] = {id: data.id, tipo:'letivo', label:'Dia Letivo', turno:'Geral'};
-    showToast('Dia marcado como Letivo ✅','sucesso');
+    showToast('Dia marcado como Letivo âœ…','sucesso');
   }
   renderCalendar(); renderFiltrosDiaFreq();
 }
 
 function calDblClick(key){
-  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendário','evasao'); return; }
+  if(PERFIL_ATUAL!=='admin'){ showToast('Apenas o Administrador pode editar o calendÃ¡rio','evasao'); return; }
   document.getElementById('modal-cal-key').value=key;
   const [y,m,d]=key.split('-').map(Number);
   document.getElementById('modal-cal-d').textContent=`Dia ${d} de ${MONTHS[m-1]} de ${y}`;
-  // Pré-preenche se já tiver tipo
+  // PrÃ©-preenche se jÃ¡ tiver tipo
   if(CALENDARIO[key]){
     document.getElementById('input-cal-tipo').value=CALENDARIO[key].tipo||'letivo';
     document.getElementById('input-cal-turno').value=CALENDARIO[key].turno||'Geral';
     document.getElementById('input-cal-label').value=CALENDARIO[key].label||'';
-    document.getElementById('input-cal-bimestre').value=CALENDARIO[key].bimestre||'1º Bimestre';
+    document.getElementById('input-cal-bimestre').value=CALENDARIO[key].bimestre||'1Âº Bimestre';
   }
   toggleBimestreSelect();
   openModal('modal-cal-tipo');
@@ -2761,9 +2761,9 @@ async function salvarTipoCal(){
   const [y,m,d] = key.split('-').map(Number);
   const dataISO = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
-  // Mapear tipos que não existem no constraint do banco
-  // fim_bimestre → bimestre | ferias → feriado
-  // O tipo real é guardado em observacoes com prefixo 'subtipo:'
+  // Mapear tipos que nÃ£o existem no constraint do banco
+  // fim_bimestre â†’ bimestre | ferias â†’ feriado
+  // O tipo real Ã© guardado em observacoes com prefixo 'subtipo:'
   const tipoMap = { fim_bimestre: 'bimestre', ferias: 'feriado' };
   const tipoDB = tipoMap[tipo] || tipo;
   const obsReal = (tipoMap[tipo] ? `subtipo:${tipo}` : null);
@@ -2790,15 +2790,15 @@ async function salvarTipoCal(){
     savedId = data.id;
   }
 
-  CALENDARIO[key] = {id: savedId, tipo, turno, label: labelFinal, bimestre, hIni, hFim, responsavel: getCurrentUser()?.nome || 'Gestão'};
+  CALENDARIO[key] = {id: savedId, tipo, turno, label: labelFinal, bimestre, hIni, hFim, responsavel: getCurrentUser()?.nome || 'GestÃ£o'};
   closeModal('modal-cal-tipo');
   renderCalendar(); renderFiltrosDiaFreq();
-  showToast('Calendário atualizado e salvo no banco!','sucesso');
+  showToast('CalendÃ¡rio atualizado e salvo no banco!','sucesso');
 }
 
 function toggleBimestreSelect(){
   const tipo=document.getElementById('input-cal-tipo')?.value;
-  // Mostrar o select de bimestre para Início E Fim de Bimestre
+  // Mostrar o select de bimestre para InÃ­cio E Fim de Bimestre
   document.getElementById('row-bimestre')?.classList.toggle('hidden', tipo!=='bimestre' && tipo!=='fim_bimestre');
   document.getElementById('row-evento-label')?.classList.toggle('hidden',tipo!=='evento');
   document.getElementById('row-horario')?.classList.toggle('hidden',tipo==='letivo'||tipo==='feriado'||tipo==='ferias'||tipo==='bimestre'||tipo==='fim_bimestre');
@@ -2809,13 +2809,13 @@ function renderEventosMes(){
   const eventos=Object.entries(CALENDARIO)
     .filter(([k])=>{ const[y,m]=k.split('-').map(Number); return y===calYear&&m===calMonth+1; })
     .sort(([a],[b])=>Number(a.split('-')[2])-Number(b.split('-')[2]));
-  if(!eventos.length){sb.innerHTML=emptyState('📅','Sem eventos neste mês','Clique nos dias para marcar');return;}
+  if(!eventos.length){sb.innerHTML=emptyState('ðŸ“…','Sem eventos neste mÃªs','Clique nos dias para marcar');return;}
   sb.innerHTML=eventos.map(([k,ev])=>{
     const d=String(k.split('-')[2]).padStart(2,'0');
     const m=String(calMonth+1).padStart(2,'0');
     return`<div class="event-item event-${ev.tipo}">
-      <div class="event-title">${d}/${m} — ${ev.label||TIPO_LABEL[ev.tipo]}</div>
-      <div class="event-desc">${ev.turno}${ev.hIni?' | '+ev.hIni+' às '+ev.hFim:''}${ev.responsavel?' | '+ev.responsavel:''}</div>
+      <div class="event-title">${d}/${m} â€” ${ev.label||TIPO_LABEL[ev.tipo]}</div>
+      <div class="event-desc">${ev.turno}${ev.hIni?' | '+ev.hIni+' Ã s '+ev.hFim:''}${ev.responsavel?' | '+ev.responsavel:''}</div>
     </div>`;
   }).join('');
 }
@@ -2835,32 +2835,32 @@ function salvarAgendamento(){
   const hIni=document.getElementById('input-ag-hini')?.value;
   const hFim=document.getElementById('input-ag-hfim')?.value;
   const obs=document.getElementById('input-ag-obs')?.value.trim();
-  if(!titulo||!data){ showToast('Informe título e data','alerta'); return; }
+  if(!titulo||!data){ showToast('Informe tÃ­tulo e data','alerta'); return; }
   const [y,m,d]=data.split('-').map(Number);
   const key=`${y}-${m}-${d}`;
   if(!CALENDARIO[key]||!TIPO_LETIVO_FLAG[CALENDARIO[key].tipo]){
-    showToast('Só é possível agendar em dias letivos já cadastrados','evasao'); return;
+    showToast('SÃ³ Ã© possÃ­vel agendar em dias letivos jÃ¡ cadastrados','evasao'); return;
   }
-  CALENDARIO[key].agendamento={titulo,tipo,turno,hIni,hFim,obs,responsavel: getCurrentUser()?.nome || 'Gestão'};
+  CALENDARIO[key].agendamento={titulo,tipo,turno,hIni,hFim,obs,responsavel: getCurrentUser()?.nome || 'GestÃ£o'};
   closeModal('modal-event');
-  showToast('Agendamento registrado! — '+titulo,'sucesso');
+  showToast('Agendamento registrado! â€” '+titulo,'sucesso');
   renderCalendar(); salvarDados();
 }
 
-// ─── FREQUÊNCIA ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ FREQUÃŠNCIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderFiltrosDiaFreq(){
   const sel=document.getElementById('sel-dia-freq'); if(!sel)return;
   const valAtual=sel.value;
   const dias=diasLetivosDisponiveis();
   if(!dias.length){
-    sel.innerHTML='<option value="">— Cadastre dias letivos na Agenda —</option>';
+    sel.innerHTML='<option value="">â€” Cadastre dias letivos na Agenda â€”</option>';
     return;
   }
   sel.innerHTML='<option value="">Selecione o dia letivo</option>'+
     dias.map(k=>{
       const ev=CALENDARIO[k];
       const label=ev?.label||TIPO_LABEL[ev?.tipo]||'Letivo';
-      return`<option value="${k}">${formatarDataKey(k)} — ${label}</option>`;
+      return`<option value="${k}">${formatarDataKey(k)} â€” ${label}</option>`;
     }).join('');
   if(valAtual&&dias.includes(valAtual)) sel.value=valAtual;
 }
@@ -2906,7 +2906,7 @@ async function carregarDadosFrequencia(turmaSel, diaSel) {
 }
 
 async function carregarChamada(){
-  // Força popular o select antes de ler o valor
+  // ForÃ§a popular o select antes de ler o valor
   popularSelectTurmaFreq();
 
   const sel=document.getElementById('turma-select-freq');
@@ -2914,14 +2914,14 @@ async function carregarChamada(){
   const turnoSel=document.getElementById('sel-turno-freq')?.value||'';
 
   if(!TURMAS_DATA.length){
-    showToast('Nenhuma turma cadastrada. Vá em Turmas e cadastre primeiro.','evasao'); return;
+    showToast('Nenhuma turma cadastrada. VÃ¡ em Turmas e cadastre primeiro.','evasao'); return;
   }
   if(!turmaSel){
     showToast('Selecione uma turma para continuar','alerta'); return;
   }
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaSel);
   if(!alunos.length){
-    showToast('Nenhum aluno nesta turma. Vá em Alunos e cadastre primeiro.','alerta'); return;
+    showToast('Nenhum aluno nesta turma. VÃ¡ em Alunos e cadastre primeiro.','alerta'); return;
   }
 
   turmaChamadaAtual=turmaSel;
@@ -2931,11 +2931,11 @@ async function carregarChamada(){
   freq.entrada={}; freq.saida={};
   chamadaConsolidada.entrada=false; chamadaConsolidada.saida=false;
 
-  // Títulos
+  // TÃ­tulos
   const titulo=document.getElementById('freq-titulo-turma');
   const sub=document.getElementById('freq-subtitulo');
-  if(titulo) titulo.textContent=`Frequência — Turma ${turmaSel}`;
-  if(sub) sub.textContent=`${turmaObj?.serie||''} — ${turmaObj?.turno||turnoSel||''}  •  ${alunos.length} alunos`;
+  if(titulo) titulo.textContent=`FrequÃªncia â€” Turma ${turmaSel}`;
+  if(sub) sub.textContent=`${turmaObj?.serie||''} â€” ${turmaObj?.turno||turnoSel||''}  â€¢  ${alunos.length} alunos`;
 
   // Status badges
   const ent=document.getElementById('entrada-status');
@@ -2954,7 +2954,7 @@ async function carregarChamada(){
   // Mostra estado inicial das listas
   ['entrada','saida'].forEach(tipo=>{
     const cont=document.getElementById('chamada-'+tipo);
-    if(cont) cont.innerHTML=msgVazia('📅','Selecione o dia letivo acima');
+    if(cont) cont.innerHTML=msgVazia('ðŸ“…','Selecione o dia letivo acima');
   });
   updateConsolidado();
   atualizarBloqueioSaida();
@@ -2994,7 +2994,7 @@ function renderChamada(){
   if(badge){
     if(diaSel&&CALENDARIO[diaSel]){
       const ev=CALENDARIO[diaSel];
-      badge.textContent='📅 '+formatarDataKey(diaSel)+' — '+(ev.label||TIPO_LABEL[ev.tipo]||'Letivo');
+      badge.textContent='ðŸ“… '+formatarDataKey(diaSel)+' â€” '+(ev.label||TIPO_LABEL[ev.tipo]||'Letivo');
       badge.style.display='inline-block';
     } else { badge.style.display='none'; }
   }
@@ -3003,22 +3003,22 @@ function renderChamada(){
     const container=document.getElementById('chamada-'+tipo); if(!container)return;
     if(tipo==='saida'&&!chamadaConsolidada.entrada){
       container.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--gray5)">
-        <div style="font-size:36px;margin-bottom:10px">🔒</div>
-        <div style="font-size:14px;font-weight:700;color:var(--gray6)">Saída bloqueada</div>
+        <div style="font-size:36px;margin-bottom:10px">ðŸ”’</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gray6)">SaÃ­da bloqueada</div>
         <div style="font-size:12px;margin-top:6px;color:var(--gray4)">Consolide a <strong>Entrada</strong> primeiro</div>
       </div>`;
       atualizarBloqueioSaida(); return;
     }
-    if(!diaSel){container.innerHTML=msgVazia('📅','Selecione o dia letivo acima');return;}
-    if(!alunos.length){container.innerHTML=msgVazia('👥','Nenhum aluno nesta turma');return;}
-    // Pré-marca P para todos
+    if(!diaSel){container.innerHTML=msgVazia('ðŸ“…','Selecione o dia letivo acima');return;}
+    if(!alunos.length){container.innerHTML=msgVazia('ðŸ‘¥','Nenhum aluno nesta turma');return;}
+    // PrÃ©-marca P para todos
     alunos.forEach((_,i)=>{ if(!freq[tipo][i]) freq[tipo][i]='P'; });
     const consolidado=chamadaConsolidada[tipo];
     const temporario=chamadaDesbloqueadaTemporaria[tipo];
     const bgLista=consolidado && !temporario ? 'var(--green-light)' : 'var(--red-light)';
     const podeEditarFreq = !consolidado || temporario;
     
-    // Controle de exibição dos botões Consolidar / Desbloquear
+    // Controle de exibiÃ§Ã£o dos botÃµes Consolidar / Desbloquear
     const btnConsolidar = document.getElementById('btn-consolidar-' + tipo);
     const btnDesbloquear = document.getElementById('btn-desbloquear-' + tipo);
     if(btnConsolidar) btnConsolidar.style.display = (consolidado && !temporario) ? 'none' : 'inline-block';
@@ -3029,7 +3029,7 @@ function renderChamada(){
       const evasao=freq.entrada[i]==='P'&&freq.saida[i]==='F';
       const bg=evasao?'#ffe4e4':bgLista;
       const lockStyle=podeEditarFreq?'':'opacity:0.55;cursor:not-allowed;pointer-events:none';
-      const lockTag=consolidado && !temporario?'<span style="font-size:10px;color:var(--gray5);margin-left:4px">🔒</span>':'';
+      const lockTag=consolidado && !temporario?'<span style="font-size:10px;color:var(--gray5);margin-left:4px">ðŸ”’</span>':'';
       return`<div class="aluno-row" style="background:${bg};transition:background .35s">
         <span class="aluno-name">${i+1}. ${al.nome}${lockTag}</span>
         <div class="freq-btn-group" style="${lockStyle}">
@@ -3057,7 +3057,7 @@ function atualizarBloqueioSaida(){
   const bloqueado=!chamadaConsolidada.entrada;
   btn.disabled=bloqueado;
   btn.style.opacity=bloqueado?'0.4':'1';
-  btn.title=bloqueado?'Consolide a Entrada primeiro':'Consolidar Saída';
+  btn.title=bloqueado?'Consolide a Entrada primeiro':'Consolidar SaÃ­da';
 }
 
 async function presencaTodos(tipo){
@@ -3089,11 +3089,11 @@ async function presencaTodos(tipo){
   }));
   await supabaseSalvar('frequencia', payload, 'aluno_id,data,tipo');
 
-  showToast('Todos marcados como Presentes ✅','sucesso');
+  showToast('Todos marcados como Presentes âœ…','sucesso');
   updateConsolidado();
 }
 
-// Armazena referência ao botão FJ pendente
+// Armazena referÃªncia ao botÃ£o FJ pendente
 let fjBtnRef=null;
 
 function abrirModalFJ(tipo,idx,btn){
@@ -3122,7 +3122,7 @@ async function markFreq(tipo,idx,val,btn){
   
   let fjLabel=rowEl.querySelector('.fj-label');
   if(val.startsWith('FJ')){
-    const labels={'FJ-Atestado':'🏥 Atestado','FJ-Pais':'👨‍👩‍👧 Pais','FJ-Coord':'🏫 Coordenação','FJ':'FJ'};
+    const labels={'FJ-Atestado':'ðŸ¥ Atestado','FJ-Pais':'ðŸ‘¨â€ðŸ‘©â€ðŸ‘§ Pais','FJ-Coord':'ðŸ« CoordenaÃ§Ã£o','FJ':'FJ'};
     if(!fjLabel){ fjLabel=document.createElement('span'); fjLabel.className='fj-label'; fjLabel.style.cssText='font-size:10.5px;color:var(--yellow-dark);font-weight:600;white-space:nowrap'; rowEl.insertBefore(fjLabel,rowEl.querySelector('.freq-btn-group')); }
     fjLabel.textContent=labels[val]||'FJ';
   } else if(fjLabel){ fjLabel.remove(); }
@@ -3145,16 +3145,16 @@ async function markFreq(tipo,idx,val,btn){
   }
 
   if(evasao){
-    showToast('⚠️ Evasão: '+(aluno?.nome||'Aluno'),'evasao');
+    showToast('âš ï¸ EvasÃ£o: '+(aluno?.nome||'Aluno'),'evasao');
     const agora = new Date();
     const novaOcorr = {
       id: Date.now(),
       tipo: 'evasao',
-      icon: '🚨',
-      aluno: aluno?.nome||'—',
+      icon: 'ðŸš¨',
+      aluno: aluno?.nome||'â€”',
       cpf: aluno?.cpf||'',
       turma: aluno?.turma||'',
-      desc: 'Presente na entrada, ausente na saída — gerado automaticamente pela frequência',
+      desc: 'Presente na entrada, ausente na saÃ­da â€” gerado automaticamente pela frequÃªncia',
       hora: agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
       data: agora.toLocaleDateString('pt-BR'),
       tratada: false,
@@ -3163,12 +3163,12 @@ async function markFreq(tipo,idx,val,btn){
       auto_gerada: true
     };
     OCORR_DATA.push(novaOcorr);
-    // Adiciona ao histórico do aluno em memória
+    // Adiciona ao histÃ³rico do aluno em memÃ³ria
     if(aluno){
       (aluno.historico=aluno.historico||[]).unshift({
         tipo:'ocorrencia',
-        titulo:'⚠️ Evasão detectada',
-        desc:'Presente na entrada, ausente na saída — '+agora.toLocaleDateString('pt-BR'),
+        titulo:'âš ï¸ EvasÃ£o detectada',
+        desc:'Presente na entrada, ausente na saÃ­da â€” '+agora.toLocaleDateString('pt-BR'),
         data:agora.toLocaleDateString('pt-BR')
       });
     }
@@ -3189,9 +3189,9 @@ async function markFreq(tipo,idx,val,btn){
 
 async function consolidar(tipo){
   if(tipo==='saida'&&!chamadaConsolidada.entrada){showToast('Consolide a Entrada primeiro','alerta');return;}
-  // Verifica se está consolidada e não está desbloqueada temporariamente
+  // Verifica se estÃ¡ consolidada e nÃ£o estÃ¡ desbloqueada temporariamente
   if(chamadaConsolidada[tipo] && !chamadaDesbloqueadaTemporaria[tipo]){
-    showToast('Frequência trancada. É necessário desbloquear primeiro.','alerta');
+    showToast('FrequÃªncia trancada. Ã‰ necessÃ¡rio desbloquear primeiro.','alerta');
     return;
   }
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual);
@@ -3212,10 +3212,10 @@ async function consolidar(tipo){
   await supabaseSalvar('frequencia', payload, 'aluno_id,data,tipo');
 
   chamadaConsolidada[tipo]=true;
-  chamadaDesbloqueadaTemporaria[tipo]=false; // Remove estado temporário
+  chamadaDesbloqueadaTemporaria[tipo]=false; // Remove estado temporÃ¡rio
   const s=document.getElementById(tipo+'-status');
   if(s){s.textContent='Consolidado';s.className='chamada-status status-consolidado';}
-  showToast('Chamada de '+tipo+' consolidada! ✅','sucesso');
+  showToast('Chamada de '+tipo+' consolidada! âœ…','sucesso');
   const container=document.getElementById('chamada-'+tipo);
   if(container){
     container.querySelectorAll('.aluno-row').forEach((row,i)=>{
@@ -3225,7 +3225,7 @@ async function consolidar(tipo){
   }
   if(tipo==='entrada') renderChamada();
   atualizarBloqueioSaida();
-  // Atualiza o Dashboard em tempo real após consolidação
+  // Atualiza o Dashboard em tempo real apÃ³s consolidaÃ§Ã£o
   renderTurmasTable();
   renderMetricasDash();
 
@@ -3234,10 +3234,10 @@ async function consolidar(tipo){
 
 function desbloquearFrequencia(tipo){
   const senhaMestra = 'RVS@gestor#2026';
-  const digitada = prompt('Frequência trancada.\\nDigite a senha de Administrador para desbloquear:');
+  const digitada = prompt('FrequÃªncia trancada.\\nDigite a senha de Administrador para desbloquear:');
   if(digitada === senhaMestra){
     chamadaDesbloqueadaTemporaria[tipo] = true;
-    showToast('Edição desbloqueada!', 'sucesso');
+    showToast('EdiÃ§Ã£o desbloqueada!', 'sucesso');
     renderChamada();
   } else if(digitada !== null) {
     showToast('Senha incorreta!', 'erro');
@@ -3247,13 +3247,13 @@ function desbloquearFrequencia(tipo){
 function updateConsolidado(){
   const b=document.getElementById('consolidado-tbody'); if(!b)return;
   const alunos=ALUNOS_DATA.filter(a=>a.turma===turmaChamadaAtual);
-  if(!alunos.length){b.innerHTML=emptyTr('👥','Selecione turma e dia','',5);return;}
+  if(!alunos.length){b.innerHTML=emptyTr('ðŸ‘¥','Selecione turma e dia','',5);return;}
   b.innerHTML=alunos.map((al,i)=>{
-    const e=freq.entrada[i]||'—',s=freq.saida[i]||'—';
+    const e=freq.entrada[i]||'â€”',s=freq.saida[i]||'â€”';
     let res='Aguardando',rc='',obs='';
-    if(e!=='—'&&s!=='—'){
+    if(e!=='â€”'&&s!=='â€”'){
       if(e==='P'&&s==='P'){res='Presente';rc='badge-green';}
-      else if(e==='P'&&s==='F'){res='Evasão';rc='badge-red';obs='⚠ Verificar';}
+      else if(e==='P'&&s==='F'){res='EvasÃ£o';rc='badge-red';obs='âš  Verificar';}
       else if(e==='F'||s==='F'){res='Falta';rc='badge-red';}
       else{res='F.Justificada';rc='badge-yellow';}
     }
@@ -3269,26 +3269,26 @@ function updateConsolidado(){
   }).join('');
 }
 
-// ─── OCORRÊNCIAS ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ OCORRÃŠNCIAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ocorrItemHTML(o){
   const cls=o.tratada?'tratada':o.aguardandoPais?'aguardando-pais':'nao-tratada';
-  const label={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'Suspensão Uso Celular'}[o.tipo]||o.tipo;
+  const label={evasao:'EvasÃ£o',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'AgressÃ£o',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'SuspensÃ£o Uso Celular'}[o.tipo]||o.tipo;
   const clicavel=o.cpf?`onclick="verFicha('${o.cpf}')" style="cursor:pointer" title="Ver ficha de ${o.aluno}"`:
-                 `onclick="showPage('ocorrencias',null)" style="cursor:pointer" title="Ver todas as ocorrências"`;
+                 `onclick="showPage('ocorrencias',null)" style="cursor:pointer" title="Ver todas as ocorrÃªncias"`;
   return`<div class="ocorr-item ${cls}" ${clicavel}>
-    <div class="ocorr-icon ocorr-${o.tipo}">${o.icon||'⚠️'}</div>
+    <div class="ocorr-icon ocorr-${o.tipo}">${o.icon||'âš ï¸'}</div>
     <div class="ocorr-content">
-      <h4>${label} — ${o.aluno}${o.turma?' ('+o.turma+')':''}</h4>
+      <h4>${label} â€” ${o.aluno}${o.turma?' ('+o.turma+')':''}</h4>
       <p>${o.desc}</p>
       ${o.aguardandoPais?'<span class="metric-badge badge-yellow" style="margin-top:4px">Aguardando pais</span>':''}
-      ${o.origem==='frequencia'?'<span class="metric-badge badge-red" style="margin-top:4px">Originada na Frequência</span>':''}
+      ${o.origem==='frequencia'?'<span class="metric-badge badge-red" style="margin-top:4px">Originada na FrequÃªncia</span>':''}
     </div>
     <div class="ocorr-time">
       <div>${o.hora}</div><div style="margin-top:4px">${o.data||''}</div>
       <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;align-items:flex-end">
         ${!o.tratada?`<button class="btn btn-xs btn-outline" onclick="event.stopPropagation();abrirTratarOcorr('${o.id}')">Tratar</button>`
-          :'<span style="color:var(--green-dark);font-size:11px;font-weight:600">✓ Tratada</span>'}
-        <button class="btn btn-xs btn-outline" style="border-color:var(--blue);color:var(--blue)" onclick="event.stopPropagation();gerarPDFIndividual('${o.id}')">🖨️ PDF</button>
+          :'<span style="color:var(--green-dark);font-size:11px;font-weight:600">âœ“ Tratada</span>'}
+        <button class="btn btn-xs btn-outline" style="border-color:var(--blue);color:var(--blue)" onclick="event.stopPropagation();gerarPDFIndividual('${o.id}')">ðŸ–¨ï¸ PDF</button>
       </div>
     </div>
   </div>`;
@@ -3306,12 +3306,12 @@ function renderOcorrencias(){
   if(tipoF) data=data.filter(o=>o.tipo===tipoF);
   if(statusF==='tratada') data=data.filter(o=>o.tratada);
   if(statusF==='nao-tratada') data=data.filter(o=>!o.tratada);
-  c.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('✅','Nenhuma ocorrência','Sem registros');
+  c.innerHTML=data.length?data.map(o=>ocorrItemHTML(o)).join(''):emptyState('âœ…','Nenhuma ocorrÃªncia','Sem registros');
 }
 
 async function saveOcorrencia(){
   const btn = document.querySelector('button[onclick="saveOcorrencia()"]');
-  if (btn && btn.disabled) return; // Evita reentrada se já estiver salvando
+  if (btn && btn.disabled) return; // Evita reentrada se jÃ¡ estiver salvando
   
   if (btn) { btn.disabled = true; btn.textContent = 'Gravando...'; }
 
@@ -3320,7 +3320,7 @@ async function saveOcorrencia(){
     const turma=document.getElementById('input-ocorr-turma')?.value;
     const desc=document.getElementById('input-ocorr-desc')?.value.trim();
     const comunicarPais=document.querySelector('input[name="comunicar-pais"]:checked')?.value==='sim';
-    const icons={evasao:'🚨',indisciplina:'📵',bullying:'⚡',agressao:'👊',atraso:'⏰',liberado_coord:'🟢',suspensao_celular:'📵'};
+    const icons={evasao:'ðŸš¨',indisciplina:'ðŸ“µ',bullying:'âš¡',agressao:'ðŸ‘Š',atraso:'â°',liberado_coord:'ðŸŸ¢',suspensao_celular:'ðŸ“µ'};
     const alunoSel=document.getElementById('sel-aluno-principal')?.value;
     const nomes=[alunoSel,...envolvidos.map(e=>e.nome)].filter(Boolean).join(', ');
     const user = getCurrentUser();
@@ -3344,7 +3344,7 @@ async function saveOcorrencia(){
 
     const descFinal = prefixoOcorr + desc + 
       (comunicarPais ? '\n[AGUARDANDO PAIS]' : '') + 
-      '\nResponsável: ' + (user?.nome || 'Usuário');
+      '\nResponsÃ¡vel: ' + (user?.nome || 'UsuÃ¡rio');
 
     const payload = {
       tipo: tipoDb,
@@ -3366,7 +3366,7 @@ async function saveOcorrencia(){
     const oHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     OCORR_DATA.push({
       id: insertedOcorr?.id || Date.now(),
-      tipo, icon: icons[tipo]||'⚠️', aluno: nomes||'—', turma,
+      tipo, icon: icons[tipo]||'âš ï¸', aluno: nomes||'â€”', turma,
       desc: descFinal, hora: oHora, data: oData,
       tratada: false, aguardandoPais: comunicarPais, origem: 'manual'
     });
@@ -3375,13 +3375,13 @@ async function saveOcorrencia(){
     const el=document.getElementById('envolvidos-list-ocorr');
     if(el) el.innerHTML='';
     closeModal('modal-ocorr');
-    showToast('Ocorrência registrada! ✅','sucesso');
+    showToast('OcorrÃªncia registrada! âœ…','sucesso');
     renderOcorrencias(); renderDashOcorr();
   } catch (error) {
     console.error('[saveOcorrencia] Erro:', error);
-    showToast('Erro ao salvar ocorrência: ' + error.message, 'evasao');
+    showToast('Erro ao salvar ocorrÃªncia: ' + error.message, 'evasao');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Registrar Ocorrência'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Registrar OcorrÃªncia'; }
   }
 }
 
@@ -3401,9 +3401,9 @@ async function salvarTratamento(manter){
     o.tratada = true;
     o.justificativa = just;
     
-    // Anexa a tag [TRATADA] e a justificativa à descrição original
+    // Anexa a tag [TRATADA] e a justificativa Ã  descriÃ§Ã£o original
     const novaDesc = o.desc + '\n[TRATADA] ' + just;
-    o.desc = novaDesc; // atualiza na memória
+    o.desc = novaDesc; // atualiza na memÃ³ria
     
     // Persiste no Supabase
     const { error } = await supabaseClient
@@ -3413,9 +3413,9 @@ async function salvarTratamento(manter){
     
     if(error) {
       console.error('[salvarTratamento] Erro:', error);
-      showToast('Aviso: tratamento salvo localmente, mas não sincronizado.', 'alerta');
+      showToast('Aviso: tratamento salvo localmente, mas nÃ£o sincronizado.', 'alerta');
     } else {
-      showToast('Ocorrência tratada ✅','sucesso');
+      showToast('OcorrÃªncia tratada âœ…','sucesso');
     }
   } else {
     showToast('Mantida sem tratamento','alerta');
@@ -3457,13 +3457,13 @@ function abrirAddEnvolvido(listId){
 function confirmarEnvolvido(){
   const nome=document.getElementById('sel-envolvido-aluno')?.value;
   if(!nome){showToast('Selecione um aluno','alerta');return;}
-  if(envolvidos.find(e=>e.nome===nome)){showToast('Já adicionado','alerta');return;}
+  if(envolvidos.find(e=>e.nome===nome)){showToast('JÃ¡ adicionado','alerta');return;}
   envolvidos.push({nome});
   const listId=document.getElementById('modal-env-lista-id')?.value;
   const ul=document.getElementById(listId);
   if(ul){
     const li=document.createElement('div'); li.className='envolvido-tag';
-    li.innerHTML=`<span>👤 ${nome}</span><button onclick="removerEnvolvido('${nome}',this)">✕</button>`;
+    li.innerHTML=`<span>ðŸ‘¤ ${nome}</span><button onclick="removerEnvolvido('${nome}',this)">âœ•</button>`;
     ul.appendChild(li);
   }
   closeModal('modal-add-envolvido');
@@ -3473,16 +3473,16 @@ function removerEnvolvido(nome,btn){
   btn.parentElement.remove();
 }
 
-// ─── TRANSPORTE ───────────────────────────────────────────────────────────────
-// Frequência de transporte por rota
-const freqTransp = {}; // cpf → {vinda, ida}
-const transpConsolidado = {}; // rotaNome → {vinda:bool, ida:bool}
+// â”€â”€â”€ TRANSPORTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// FrequÃªncia de transporte por rota
+const freqTransp = {}; // cpf â†’ {vinda, ida}
+const transpConsolidado = {}; // rotaNome â†’ {vinda:bool, ida:bool}
 
 function popularDiasFiltroTransp(){
   const sel=document.getElementById('filtro-transp-dia'); if(!sel)return;
   const dias=diasLetivosDisponiveis();
   sel.innerHTML='<option value="">Selecione o dia letivo</option>'+
-    dias.map(k=>`<option value="${k}">${formatarDataKey(k)} — ${(CALENDARIO[k]?.label||'Letivo')}</option>`).join('');
+    dias.map(k=>`<option value="${k}">${formatarDataKey(k)} â€” ${(CALENDARIO[k]?.label||'Letivo')}</option>`).join('');
 }
 
 function renderTransporte(){
@@ -3503,7 +3503,7 @@ function renderTransporte(){
 
   let rotas=ROTAS_DATA;
   if(rotaF) rotas=rotas.filter(r=>r.nome===rotaF);
-  if(!rotas.length){cont.innerHTML=emptyState('🚌','Nenhuma rota cadastrada','Clique em "+ Nova Rota"');return;}
+  if(!rotas.length){cont.innerHTML=emptyState('ðŸšŒ','Nenhuma rota cadastrada','Clique em "+ Nova Rota"');return;}
 
   cont.innerHTML=rotas.map(r=>{
     let alunos=ALUNOS_DATA.filter(a=>a.rota===r.nome);
@@ -3511,24 +3511,24 @@ function renderTransporte(){
     const tc=transpConsolidado[r.nome]||{};
     const bgVinda=tc.vinda?'var(--green-light)':'var(--red-light)';
     const bgIda=tc.ida?'var(--green-light)':'var(--red-light)';
-    const monitora=r.monitora||'—';
-    const diaLabel=diaF?(' — '+formatarDataKey(diaF)):'';
+    const monitora=r.monitora||'â€”';
+    const diaLabel=diaF?(' â€” '+formatarDataKey(diaF)):'';
     return`<div class="rota-card">
       <div class="rota-header">
         <div>
-          <span class="rota-title">🚌 ${r.nome}${diaLabel}</span>
-          <span style="font-size:12px;color:var(--gray5);margin-left:12px">${r.motorista||'—'} — ${r.veiculo||'—'}</span>
+          <span class="rota-title">ðŸšŒ ${r.nome}${diaLabel}</span>
+          <span style="font-size:12px;color:var(--gray5);margin-left:12px">${r.motorista||'â€”'} â€” ${r.veiculo||'â€”'}</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="metric-badge badge-blue">${alunos.length} alunos</span>
-          ${diaF?`<span class="metric-badge badge-gray" style="font-size:11px">👩‍🏫 Monitora: ${monitora}</span>`:''}
-          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','vinda')">✓ Consolidar Vinda</button>
-          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','ida')">✓ Consolidar Ida</button>
-          <button class="btn btn-red btn-xs" onclick="excluirRota('${r.id||''}','${r.nome}')">🗑 Excluir Rota</button>
+          ${diaF?`<span class="metric-badge badge-gray" style="font-size:11px">ðŸ‘©â€ðŸ« Monitora: ${monitora}</span>`:''}
+          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','vinda')">âœ“ Consolidar Vinda</button>
+          <button class="btn btn-green btn-xs" onclick="consolidarTransp('${r.nome}','ida')">âœ“ Consolidar Ida</button>
+          <button class="btn btn-red btn-xs" onclick="excluirRota('${r.id||''}','${r.nome}')">ðŸ—‘ Excluir Rota</button>
         </div>
       </div>
       ${diaF?`<div style="padding:6px 16px;background:var(--blue-light);font-size:12px;color:var(--blue-dark);font-weight:600">
-        📅 Frequência do dia ${formatarDataKey(diaF)} | Responsável: ${monitora}
+        ðŸ“… FrequÃªncia do dia ${formatarDataKey(diaF)} | ResponsÃ¡vel: ${monitora}
       </div>`:''}
       <div style="padding:12px 16px">
         ${!alunos.length?'<div style="text-align:center;padding:20px;color:var(--gray4);font-size:13px">Nenhum aluno nesta rota com os filtros selecionados</div>':
@@ -3539,7 +3539,7 @@ function renderTransporte(){
             const evasaoTransp=ft.vinda==='P'&&ft.ida==='F';
             const bgAluno=evasaoTransp?'#ffe4e4':'var(--gray2)';
             return`<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:8px;background:${bgAluno};cursor:pointer" onclick="verFicha('${a.cpf}')" title="Ver ficha de ${a.nome}">
-              <span style="font-size:12.5px;flex:1;font-weight:500">👤 ${a.nome}${evasaoTransp?' 🚨':''}</span>
+              <span style="font-size:12.5px;flex:1;font-weight:500">ðŸ‘¤ ${a.nome}${evasaoTransp?' ðŸš¨':''}</span>
               <span style="font-size:10px;font-weight:700;color:var(--blue-dark)">V</span>
               <div style="display:flex;gap:2px;background:${bgVinda};border-radius:5px;padding:1px">
                 <button class="freq-btn P btn-xs ${ft.vinda==='P'?'selected':''}" onclick="event.stopPropagation();markFreqTransp('${a.cpf}','vinda','P',this,'${r.nome}')">P</button>
@@ -3564,18 +3564,18 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
   btn.closest('div[style*="display:flex;gap:2px"]').querySelectorAll('.freq-btn').forEach(b=>b.classList.remove('selected'));
   btn.classList.add('selected');
 
-  // Detecta evasão no transporte (Vinda P + Ida F)
+  // Detecta evasÃ£o no transporte (Vinda P + Ida F)
   const ft=freqTransp[cpf];
   if(ft.vinda==='P' && ft.ida==='F'){
     const aluno=ALUNOS_DATA.find(a=>a.cpf===cpf);
     const diaF=document.getElementById('filtro-transp-dia')?.value||'';
     const rota=ROTAS_DATA.find(r=>r.nome===rotaNome);
-    showToast('🚨 Evasão no Transporte: '+(aluno?.nome||'Aluno'),'evasao');
+    showToast('ðŸš¨ EvasÃ£o no Transporte: '+(aluno?.nome||'Aluno'),'evasao');
     const ocorrId=Date.now();
     OCORR_DATA.push({
-      id:ocorrId, tipo:'evasao', icon:'🚌',
-      aluno:aluno?.nome||'—', cpf, turma:aluno?.turma||'—',
-      desc:`Evasão no transporte escolar — Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'—'}`,
+      id:ocorrId, tipo:'evasao', icon:'ðŸšŒ',
+      aluno:aluno?.nome||'â€”', cpf, turma:aluno?.turma||'â€”',
+      desc:`EvasÃ£o no transporte escolar â€” Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'â€”'}`,
       hora:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
       data:diaF?formatarDataKey(diaF):new Date().toLocaleDateString('pt-BR'),
       tratada:false, aguardandoPais:false, origem:'transporte', rota:rotaNome
@@ -3583,8 +3583,8 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
     // Registra na ficha do aluno
     if(aluno){
       (aluno.historico=aluno.historico||[]).push({
-        tipo:'ocorrencia', titulo:'Evasão no Transporte',
-        desc:`Vinda: P — Ida: F — Rota: ${rotaNome}`,
+        tipo:'ocorrencia', titulo:'EvasÃ£o no Transporte',
+        desc:`Vinda: P â€” Ida: F â€” Rota: ${rotaNome}`,
         data:new Date().toLocaleDateString('pt-BR')
       });
     }
@@ -3593,7 +3593,7 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
           tipo: 'evasao',
           aluno_id: aluno.id,
           turma_id: aluno.turma_id,
-          descricao: `Evasão no transporte escolar — Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'—'}`,
+          descricao: `EvasÃ£o no transporte escolar â€” Rota: ${rotaNome}. Presente na Vinda, ausente na Ida. Monitora: ${rota?.monitora||'â€”'}`,
           hora: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),
           data_ocorr: new Date().toISOString().split('T')[0],
           tratada: false,
@@ -3615,7 +3615,7 @@ function markFreqTransp(cpf, tipo, val, btn, rotaNome){
 function consolidarTransp(rotaNome, tipo){
   if(!transpConsolidado[rotaNome]) transpConsolidado[rotaNome]={};
   transpConsolidado[rotaNome][tipo]=true;
-  showToast('Frequência de '+tipo+' consolidada — '+rotaNome+' ✅','sucesso');
+  showToast('FrequÃªncia de '+tipo+' consolidada â€” '+rotaNome+' âœ…','sucesso');
   renderTransporte(); salvarDados();
 }
 
@@ -3647,16 +3647,16 @@ async function saveRota(){
 }
 
 async function excluirRota(id, nome){
-  if(!confirm('Excluir a rota "'+nome+'"? Esta ação é irreversível.')) return;
+  if(!confirm('Excluir a rota "'+nome+'"? Esta aÃ§Ã£o Ã© irreversÃ­vel.')) return;
   const {error} = await supabaseClient.from('rotas').delete().eq('id', id);
   if(error){ showToast('Erro ao excluir: '+error.message,'evasao'); return; }
   ROTAS_DATA = ROTAS_DATA.filter(r => r.id !== id);
-  showToast('Rota "'+nome+'" excluída!','alerta');
+  showToast('Rota "'+nome+'" excluÃ­da!','alerta');
   atualizarSelectTurmas();
   renderTransporte();
 }
 
-// ─── LIVROS ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ LIVROS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderLivros(){
   const g=document.getElementById('livros-grid'); if(!g)return;
   const turnoF=document.getElementById('livros-filtro-turno')?.value||'';
@@ -3679,8 +3679,8 @@ function renderLivros(){
       <div class="livro-icon">${l.icon}</div>
       <div class="livro-name">${l.nome}</div>
       <div class="livro-bar"><div class="livro-bar-fill" style="width:${pct}%;background:${color}"></div></div>
-      <div class="livro-info">${entregues}/${totalAlunos} entregues — <strong>${pct}%</strong></div>
-      <div style="font-size:11px;color:var(--blue-dark);margin-top:6px">▶ Ver lista de alunos</div>
+      <div class="livro-info">${entregues}/${totalAlunos} entregues â€” <strong>${pct}%</strong></div>
+      <div style="font-size:11px;color:var(--blue-dark);margin-top:6px">â–¶ Ver lista de alunos</div>
     </div>`;
   }).join('');
 }
@@ -3695,10 +3695,10 @@ function abrirLivroAlunos(liIdx, liNome){
     if(turmaF && a.turma!==turmaF) return false;
     return true;
   });
-  document.getElementById('livros-alunos-titulo').textContent='📚 '+liNome+' — Lista de Alunos';
+  document.getElementById('livros-alunos-titulo').textContent='ðŸ“š '+liNome+' â€” Lista de Alunos';
   const tbody=document.getElementById('livros-alunos-tbody');
   if(!tbody)return;
-  if(!alunos.length){tbody.innerHTML=emptyTr('👥','Nenhum aluno com os filtros aplicados','',5);
+  if(!alunos.length){tbody.innerHTML=emptyTr('ðŸ‘¥','Nenhum aluno com os filtros aplicados','',5);
   } else {
     tbody.innerHTML=alunos.map(a=>{
       const recebeu=(a.livros||{})[liIdx]==='sim';
@@ -3712,7 +3712,7 @@ function abrirLivroAlunos(liIdx, liNome){
             <input type="checkbox" ${recebeu?'checked':''} onchange="toggleLivroAluno('${a.cpf}',${liIdx},this)"
               style="width:16px;height:16px;cursor:pointer">
             <span style="font-size:13px;color:${recebeu?'var(--green-dark)':'var(--gray4)'}">
-              ${recebeu?'✓ Recebeu':'Não recebeu'}
+              ${recebeu?'âœ“ Recebeu':'NÃ£o recebeu'}
             </span>
           </label>
         </td>
@@ -3738,7 +3738,7 @@ async function toggleLivroAluno(cpf, liIdx, checkbox){
     delete a.livros[liIdx+'_data'];
   }
   const span=checkbox.nextElementSibling;
-  if(span){span.style.color=recebeu?'var(--green-dark)':'var(--gray4)';span.textContent=recebeu?'✓ Recebeu':'Não recebeu';}
+  if(span){span.style.color=recebeu?'var(--green-dark)':'var(--gray4)';span.textContent=recebeu?'âœ“ Recebeu':'NÃ£o recebeu';}
   const td=checkbox.closest('td').nextElementSibling;
   if(td) td.textContent=recebeu?new Date().toLocaleDateString('pt-BR'):'';
   
@@ -3761,7 +3761,7 @@ function fecharLivroAlunos(){
   livroAtualIdx=-1;
 }
 
-// ─── CHAT RVS (Removido por solicitação) ───────────────────────────────────────
+// â”€â”€â”€ CHAT RVS (Removido por solicitaÃ§Ã£o) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let chatSubscription = null;
 let currentChatMessages = [];
 function renderChatContacts() {}
@@ -3775,19 +3775,19 @@ function toggleAlertaFiltros() {}
 async function popularAlunosAlerta() {}
 async function enviarAlertaChat() {}
 
-// ─── PERFIL DO USUÁRIO ────────────────────────────────────────────────────────
+// â”€â”€â”€ PERFIL DO USUÃRIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DRIVE_FOTO_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _perfilFotoPendente = null;
 let _alunoFotoPendente = null;
 let _alunoFotoOrigem = 'cadastro';
 let _cameraStream = null; // guarda o stream ativo da webcam
 
-// Abre o modal com a câmera (getUserMedia — funciona em desktop e celular)
+// Abre o modal com a cÃ¢mera (getUserMedia â€” funciona em desktop e celular)
 async function abrirCameraPerfil() {
   const erroEl = document.getElementById('camera-perfil-erro');
   if (erroEl) erroEl.style.display = 'none';
 
-  // Em celular, prefere câmera frontal; em desktop, abre a webcam
+  // Em celular, prefere cÃ¢mera frontal; em desktop, abre a webcam
   const constraints = {
     video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
     audio: false
@@ -3800,11 +3800,11 @@ async function abrirCameraPerfil() {
     openModal('modal-camera-perfil');
   } catch (err) {
     console.error('[Camera] Erro:', err);
-    // Se câmera negada/indisponível, cai para o seletor de arquivo
+    // Se cÃ¢mera negada/indisponÃ­vel, cai para o seletor de arquivo
     if (err.name === 'NotAllowedError') {
-      showToast('Permissão de câmera negada. Selecione da galeria.', 'alerta');
+      showToast('PermissÃ£o de cÃ¢mera negada. Selecione da galeria.', 'alerta');
     } else if (err.name === 'NotFoundError') {
-      showToast('Nenhuma câmera encontrada. Use "Da Galeria".', 'alerta');
+      showToast('Nenhuma cÃ¢mera encontrada. Use "Da Galeria".', 'alerta');
     } else {
       // Fallback: abre o file picker com capture
       document.getElementById('perfil-foto-input')?.click();
@@ -3812,7 +3812,7 @@ async function abrirCameraPerfil() {
   }
 }
 
-// Fecha o modal e para o stream da câmera
+// Fecha o modal e para o stream da cÃ¢mera
 function fecharCameraPerfil() {
   if (_cameraStream) {
     _cameraStream.getTracks().forEach(t => t.stop());
@@ -3823,7 +3823,7 @@ function fecharCameraPerfil() {
   closeModal('modal-camera-perfil');
 }
 
-// Captura o frame atual do vídeo e converte em File
+// Captura o frame atual do vÃ­deo e converte em File
 function tirarFotoPerfil() {
   const video = document.getElementById('camera-perfil-video');
   const canvas = document.getElementById('camera-perfil-canvas');
@@ -3873,7 +3873,7 @@ function renderPerfil() {
     if(iniciaisEl) iniciaisEl.style.display = 'block';
   }
 
-  // Atualiza sidebar também
+  // Atualiza sidebar tambÃ©m
   const sideAvatar = document.getElementById('sidebar-user-avatar');
   if (sideAvatar) {
     if (user.foto_url) {
@@ -3888,7 +3888,7 @@ function perfilSelecionarFoto(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) {
-    showToast('Foto muito grande! Máximo 5MB.', 'alerta');
+    showToast('Foto muito grande! MÃ¡ximo 5MB.', 'alerta');
     input.value = '';
     return;
   }
@@ -3908,7 +3908,7 @@ function perfilSelecionarFoto(input) {
   if (status) {
     status.style.display = 'block';
     status.style.color = 'var(--blue-dark)';
-    status.textContent = '📎 Foto selecionada — clique em "Salvar Alterações" para enviar ao Drive.';
+    status.textContent = 'ðŸ“Ž Foto selecionada â€” clique em "Salvar AlteraÃ§Ãµes" para enviar ao Drive.';
   }
 }
 
@@ -3935,7 +3935,7 @@ async function localizarUsuarioPublicoPerfil(user) {
 
 async function salvarPerfil() {
   const user = getCurrentUser();
-  if (!user) { showToast('Sessão expirada. Faça login novamente.', 'alerta'); return; }
+  if (!user) { showToast('SessÃ£o expirada. FaÃ§a login novamente.', 'alerta'); return; }
 
   const nome     = (document.getElementById('perfil-nome')?.value     || '').trim() || user.nome;
   const formacao = (document.getElementById('perfil-formacao')?.value || '').trim();
@@ -3943,19 +3943,19 @@ async function salvarPerfil() {
   const whatsapp = (document.getElementById('perfil-whatsapp')?.value || '').trim();
 
   if (!user.email) {
-    showToast('Usuário sem e-mail na sessão. Faça logout e login novamente.', 'alerta');
+    showToast('UsuÃ¡rio sem e-mail na sessÃ£o. FaÃ§a logout e login novamente.', 'alerta');
     return;
   }
 
   const btn = document.querySelector('#page-perfil .btn-primary');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'â³ Salvandoâ€¦'; }
 
   let fotoUrl = user.foto_url || null;
 
-  // ── Upload da foto para o Google Drive (subpasta com nome da pessoa) ──
+  // â”€â”€ Upload da foto para o Google Drive (subpasta com nome da pessoa) â”€â”€
   if (_perfilFotoPendente) {
     const status = document.getElementById('perfil-foto-status');
-    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = '⏳ Enviando foto ao Google Drive…'; }
+    if (status) { status.style.color = 'var(--blue-dark)'; status.textContent = 'â³ Enviando foto ao Google Driveâ€¦'; }
 
     try {
       const base64 = await fileParaBase64(_perfilFotoPendente);
@@ -3977,7 +3977,7 @@ async function salvarPerfil() {
 
       fotoUrl = resultado.url;
       
-      // ── Corrige links do Google Drive para evitar bloqueio de imagem (CORS/Cookies) ──
+      // â”€â”€ Corrige links do Google Drive para evitar bloqueio de imagem (CORS/Cookies) â”€â”€
       if(fotoUrl.includes('drive.google.com')){
         const match = fotoUrl.match(/id=([^&]+)/) || fotoUrl.match(/d\/([a-zA-Z0-9_-]+)/);
         if(match && match[1]){
@@ -3986,17 +3986,17 @@ async function salvarPerfil() {
       }
 
       _perfilFotoPendente = null;
-      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = '✅ Foto salva no Google Drive!'; }
+      if (status) { status.style.color = 'var(--green-dark)'; status.textContent = 'âœ… Foto salva no Google Drive!'; }
 
     } catch(err) {
       console.error('[Foto Perfil] Erro:', err);
       showToast('Erro ao enviar foto: ' + err.message, 'evasao');
-      if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Salvar AlteraÃ§Ãµes'; }
       return;
     }
   }
 
-  // ── Salvar no banco usando update pelo ID ──
+  // â”€â”€ Salvar no banco usando update pelo ID â”€â”€
   const updateData = {
     nome,
     formacao,
@@ -4008,9 +4008,9 @@ async function salvarPerfil() {
   const { data: usuarioPublico, error: lookupError } = await localizarUsuarioPublicoPerfil(user);
 
   if (lookupError) {
-    if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Salvar AlteraÃ§Ãµes'; }
-    console.error('[salvarPerfil] Erro ao localizar registro pÃºblico:', lookupError);
-    showToast('Erro ao localizar perfil pÃºblico: ' + lookupError.message, 'evasao');
+    if (btn) { btn.disabled = false; btn.textContent = 'Ã°Å¸â€™Â¾ Salvar AlteraÃƒÂ§ÃƒÂµes'; }
+    console.error('[salvarPerfil] Erro ao localizar registro pÃƒÂºblico:', lookupError);
+    showToast('Erro ao localizar perfil pÃƒÂºblico: ' + lookupError.message, 'evasao');
     return;
   }
 
@@ -4041,7 +4041,7 @@ async function salvarPerfil() {
       .maybeSingle());
   }
 
-  if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; }
+  if (btn) { btn.disabled = false; btn.textContent = 'ðŸ’¾ Salvar AlteraÃ§Ãµes'; }
 
   if (dbError) {
     console.error('[salvarPerfil] Erro no banco:', dbError);
@@ -4050,12 +4050,12 @@ async function salvarPerfil() {
   }
 
   if (!savedUser) {
-    console.error('[salvarPerfil] Nenhum registro pÃºblico retornado apÃ³s salvar.', { user });
-    showToast('Perfil nÃ£o foi sincronizado no cadastro geral. Tente sair e entrar novamente.', 'alerta');
+    console.error('[salvarPerfil] Nenhum registro pÃƒÂºblico retornado apÃƒÂ³s salvar.', { user });
+    showToast('Perfil nÃƒÂ£o foi sincronizado no cadastro geral. Tente sair e entrar novamente.', 'alerta');
     return;
   }
 
-  // Atualiza sessão com dados devolvidos pelo banco (inclui id gerado)
+  // Atualiza sessÃ£o com dados devolvidos pelo banco (inclui id gerado)
   const userAtual = getCurrentUser();
   if (userAtual) {
     const merged = { ...userAtual, ...(savedUser || {}), nome, formacao, bio, whatsapp };
@@ -4070,10 +4070,10 @@ async function salvarPerfil() {
 
   renderPerfil();
   updateSidebarProfile();
-  showToast('Perfil atualizado! ✅', 'sucesso');
+  showToast('Perfil atualizado! âœ…', 'sucesso');
 }
 
-// ─── PERMISSÕES ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ PERMISSÃ•ES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderPermissoes(){
   const b=document.getElementById('perm-tbody'); if(!b)return;
   
@@ -4123,17 +4123,17 @@ async function togglePermissao(index, role) {
 
   if (error) {
     console.error('[togglePermissao] Erro:', error);
-    showToast('Erro ao salvar permissão: ' + error.message, 'alerta');
+    showToast('Erro ao salvar permissÃ£o: ' + error.message, 'alerta');
   } else {
-    showToast('Permissões atualizadas!', 'sucesso');
+    showToast('PermissÃµes atualizadas!', 'sucesso');
   }
 }
 
-// ─── SISTEMA DE PERMISSÕES (reescrito v7) ──────────────────────────────────────
+// â”€â”€â”€ SISTEMA DE PERMISSÃ•ES (reescrito v7) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Normaliza o string do perfil para comparação segura.
- * Converte 'Secretária', 'PROFESSOR', 'Coordenador' → lowercase sem acento.
+ * Normaliza o string do perfil para comparaÃ§Ã£o segura.
+ * Converte 'SecretÃ¡ria', 'PROFESSOR', 'Coordenador' â†’ lowercase sem acento.
  */
 function normalizeRole(role) {
   if (!role) return '';
@@ -4143,7 +4143,7 @@ function normalizeRole(role) {
 }
 
 /**
- * Retorna a chave do PERMS (coord/sec/prof/admin) para o perfil do usuário.
+ * Retorna a chave do PERMS (coord/sec/prof/admin) para o perfil do usuÃ¡rio.
  */
 function getRoleKey(role) {
   const n = normalizeRole(role);
@@ -4151,11 +4151,11 @@ function getRoleKey(role) {
   if (n === 'coordenador') return 'coord';
   if (n === 'secretaria' || n === 'secretario') return 'sec';
   if (n === 'professor') return 'prof';
-  return 'prof'; // default seguro: acesso mínimo
+  return 'prof'; // default seguro: acesso mÃ­nimo
 }
 
 /**
- * Verifica se o usuário atual pode VER uma página.
+ * Verifica se o usuÃ¡rio atual pode VER uma pÃ¡gina.
  */
 function podeVer(pageId) {
   const user = getCurrentUser();
@@ -4171,7 +4171,7 @@ function podeVer(pageId) {
 }
 
 /**
- * Verifica se o usuário atual pode EDITAR em uma página.
+ * Verifica se o usuÃ¡rio atual pode EDITAR em uma pÃ¡gina.
  */
 function podeEditar(pageId) {
   const user = getCurrentUser();
@@ -4185,7 +4185,7 @@ function podeEditar(pageId) {
 }
 
 /**
- * Aplica as permissões na UI: mostra/oculta itens do menu e redireciona se necessário.
+ * Aplica as permissÃµes na UI: mostra/oculta itens do menu e redireciona se necessÃ¡rio.
  * DEVE ser chamado DEPOIS que PERMS foi carregado do banco.
  */
 function aplicarPermissoesUI() {
@@ -4193,7 +4193,7 @@ function aplicarPermissoesUI() {
   if (!user) return;
 
   const rKey = getRoleKey(user.perfil);
-  console.log(`[aplicarPermissoesUI] perfil="${user.perfil}" → rKey="${rKey}" | PERMS.length=${PERMS.length}`);
+  console.log(`[aplicarPermissoesUI] perfil="${user.perfil}" â†’ rKey="${rKey}" | PERMS.length=${PERMS.length}`);
 
   const navItems = document.querySelectorAll('.nav-item[onclick]');
   let firstAllowedNav = null;
@@ -4204,7 +4204,7 @@ function aplicarPermissoesUI() {
     if (!match) return;
     const pID = match[1];
 
-    // 'perfil' sempre visível
+    // 'perfil' sempre visÃ­vel
     if (pID === 'perfil') {
       nav.style.display = '';
       return;
@@ -4229,25 +4229,25 @@ function aplicarPermissoesUI() {
         activePageIsAllowed = true;
       }
     } else {
-      // Garante que page oculta não fique active
+      // Garante que page oculta nÃ£o fique active
       if (nav.classList.contains('active')) {
         nav.classList.remove('active');
       }
     }
   });
 
-  // Se a página atual não é permitida → redireciona para a primeira permitida
+  // Se a pÃ¡gina atual nÃ£o Ã© permitida â†’ redireciona para a primeira permitida
   syncNavGroupVisibility();
 
   if (!activePageIsAllowed && firstAllowedNav) {
-    console.log(`[aplicarPermissoesUI] Página ativa não permitida. Redirecionando para: ${firstAllowedNav.getAttribute('onclick')}`);
+    console.log(`[aplicarPermissoesUI] PÃ¡gina ativa nÃ£o permitida. Redirecionando para: ${firstAllowedNav.getAttribute('onclick')}`);
     firstAllowedNav.click();
   } else {
     syncOpenNavGroupsFromActive();
   }
 }
 
-// ─── CONSELHO DE CLASSE ───────────────────────────────────────────────────────
+// â”€â”€â”€ CONSELHO DE CLASSE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function parseBrDateToDate(value) {
   if (!value || !value.includes('/')) return null;
   const [day, month, year] = value.split('/').map(Number);
@@ -4286,13 +4286,19 @@ function escapeHtml(value) {
 function getConselhoFilters() {
   const turmaCode = document.getElementById('conselho-turma-select')?.value || '';
   const turmaObj = TURMAS_DATA.find(t => t.code === turmaCode) || null;
+  const anoInput = document.getElementById('conselho-ano');
+  const periodoInput = document.getElementById('conselho-periodo');
+  const dataInput = document.getElementById('conselho-data');
+  const statusInput = document.getElementById('conselho-status');
+  const analiseInput = document.getElementById('conselho-analise-filtro');
   return {
-    ano: parseInt(document.getElementById('conselho-ano')?.value, 10) || new Date().getFullYear(),
-    periodo: document.getElementById('conselho-periodo')?.value || '1º Bimestre',
+    ano: parseInt(anoInput?.value, 10) || new Date().getFullYear(),
+    periodo: periodoInput?.value || '1Âº Bimestre',
     turmaCode,
     turmaObj,
-    dataReuniao: document.getElementById('conselho-data')?.value || '',
-    status: document.getElementById('conselho-status')?.value || 'Em preparação'
+    dataReuniao: dataInput?.value || '',
+    status: statusInput?.value || 'Em preparaÃ§Ã£o',
+    analiseFiltro: analiseInput?.value || 'todos'
   };
 }
 
@@ -4301,7 +4307,7 @@ function popularTurmasConselhoClasse() {
   if (!select) return;
   const previous = select.value;
   select.innerHTML = '<option value="">Selecione a turma</option>' +
-    TURMAS_DATA.map(t => `<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
+    TURMAS_DATA.map(t => `<option value="${t.code}">${t.code} â€” ${t.turno}</option>`).join('');
   if (previous && TURMAS_DATA.some(t => t.code === previous)) select.value = previous;
 }
 
@@ -4324,16 +4330,16 @@ function getConselhoPeriodoRange(ano, periodo) {
 
   if (!startDate || !endDate) {
     const fallback = {
-      '1º bimestre': [0, 2],
-      '2º bimestre': [3, 5],
-      '3º bimestre': [6, 8],
-      '4º bimestre': [9, 11]
+      '1Âº bimestre': [0, 2],
+      '2Âº bimestre': [3, 5],
+      '3Âº bimestre': [6, 8],
+      '4Âº bimestre': [9, 11]
     }[normalized];
 
     if (fallback) {
       startDate = new Date(ano, fallback[0], 1);
       endDate = new Date(ano, fallback[1] + 1, 0);
-      warning = 'Calendário sem início/fim de bimestre configurado. A frequência foi estimada por bloco mensal.';
+      warning = 'CalendÃ¡rio sem inÃ­cio/fim de bimestre configurado. A frequÃªncia foi estimada por bloco mensal.';
     }
   }
 
@@ -4379,31 +4385,31 @@ function getComponentesAbaixoDaMedia(componentes, mapaAluno) {
 
 function classificarSituacaoConselho({ mediaGeral, frequenciaPercentual, qtdAbaixo, qtdOcorrencias }) {
   if (mediaGeral == null) return 'Sem notas';
-  if (mediaGeral < 5 || qtdAbaixo >= 3 || (frequenciaPercentual != null && frequenciaPercentual < 75) || qtdOcorrencias >= 4) return 'Crítico';
-  if (mediaGeral < CONSELHO_MEDIA_MINIMA || qtdAbaixo >= 1 || (frequenciaPercentual != null && frequenciaPercentual < 85) || qtdOcorrencias >= 2) return 'Atenção';
+  if (mediaGeral < 5 || qtdAbaixo >= 3 || (frequenciaPercentual != null && frequenciaPercentual < 75) || qtdOcorrencias >= 4) return 'CrÃ­tico';
+  if (mediaGeral < CONSELHO_MEDIA_MINIMA || qtdAbaixo >= 1 || (frequenciaPercentual != null && frequenciaPercentual < 85) || qtdOcorrencias >= 2) return 'AtenÃ§Ã£o';
   return 'Adequado';
 }
 
 function gerarObservacaoAutomaticaConselho({ mediaGeral, frequenciaPercentual, componentesAbaixo, qtdOcorrencias }) {
   if (mediaGeral == null) {
-    return 'Sem notas estruturadas lançadas para este bimestre. Recomenda-se registrar os componentes antes do conselho.';
+    return 'Sem notas estruturadas lanÃ§adas para este bimestre. Recomenda-se registrar os componentes antes do conselho.';
   }
 
   const partes = [];
 
-  if (mediaGeral < 5) partes.push(`desempenho crítico com média geral ${mediaGeral.toFixed(1)}`);
-  else if (mediaGeral < CONSELHO_MEDIA_MINIMA) partes.push(`média geral abaixo do esperado (${mediaGeral.toFixed(1)})`);
-  else partes.push(`desempenho geral satisfatório (${mediaGeral.toFixed(1)})`);
+  if (mediaGeral < 5) partes.push(`desempenho crÃ­tico com mÃ©dia geral ${mediaGeral.toFixed(1)}`);
+  else if (mediaGeral < CONSELHO_MEDIA_MINIMA) partes.push(`mÃ©dia geral abaixo do esperado (${mediaGeral.toFixed(1)})`);
+  else partes.push(`desempenho geral satisfatÃ³rio (${mediaGeral.toFixed(1)})`);
 
   if (componentesAbaixo.length) {
-    partes.push(`necessita atenção em ${componentesAbaixo.join(', ')}`);
+    partes.push(`necessita atenÃ§Ã£o em ${componentesAbaixo.join(', ')}`);
   }
 
-  if (frequenciaPercentual != null && frequenciaPercentual < 75) partes.push(`frequência crítica (${frequenciaPercentual.toFixed(0)}%)`);
-  else if (frequenciaPercentual != null && frequenciaPercentual < 85) partes.push(`frequência em atenção (${frequenciaPercentual.toFixed(0)}%)`);
+  if (frequenciaPercentual != null && frequenciaPercentual < 75) partes.push(`frequÃªncia crÃ­tica (${frequenciaPercentual.toFixed(0)}%)`);
+  else if (frequenciaPercentual != null && frequenciaPercentual < 85) partes.push(`frequÃªncia em atenÃ§Ã£o (${frequenciaPercentual.toFixed(0)}%)`);
 
-  if (qtdOcorrencias >= 3) partes.push(`recorrência disciplinar com ${qtdOcorrencias} ocorrência(s)`);
-  else if (qtdOcorrencias > 0) partes.push(`${qtdOcorrencias} ocorrência(s) registrada(s) no período`);
+  if (qtdOcorrencias >= 3) partes.push(`recorrÃªncia disciplinar com ${qtdOcorrencias} ocorrÃªncia(s)`);
+  else if (qtdOcorrencias > 0) partes.push(`${qtdOcorrencias} ocorrÃªncia(s) registrada(s) no perÃ­odo`);
 
   return partes.join('; ') + '.';
 }
@@ -4438,7 +4444,7 @@ function calcularFrequenciaAlunoConselho(alunoId, dias, mapaFrequencia) {
   dias.forEach(dia => {
     const entrada = mapaFrequencia[alunoId]?.[dia]?.entrada || null;
     const saida = mapaFrequencia[alunoId]?.[dia]?.saida || null;
-    let status = '—';
+    let status = 'â€”';
 
     if (entrada || saida) {
       const evasao = entrada === 'P' && saida === 'F';
@@ -4469,8 +4475,8 @@ function contarOcorrenciasConselho(alunoId, startDate, endDate) {
 }
 
 function getSituacaoBadgeClass(situacao) {
-  if (situacao === 'Crítico') return 'badge-red';
-  if (situacao === 'Atenção' || situacao === 'Sem notas') return 'badge-yellow';
+  if (situacao === 'CrÃ­tico') return 'badge-red';
+  if (situacao === 'AtenÃ§Ã£o' || situacao === 'Sem notas') return 'badge-yellow';
   return 'badge-green';
 }
 
@@ -4502,8 +4508,8 @@ function gerarAtaConselhoClasse() {
     return;
   }
 
-  const criticos = conselhoClasseLinhas.filter(item => item.situacao === 'Crítico');
-  const atencao = conselhoClasseLinhas.filter(item => item.situacao === 'Atenção' || item.situacao === 'Sem notas');
+  const criticos = conselhoClasseLinhas.filter(item => item.situacao === 'CrÃ­tico');
+  const atencao = conselhoClasseLinhas.filter(item => item.situacao === 'AtenÃ§Ã£o' || item.situacao === 'Sem notas');
   const mediaTurma = conselhoClasseLinhas
     .map(item => item.mediaGeral)
     .filter(value => typeof value === 'number');
@@ -4512,13 +4518,13 @@ function gerarAtaConselhoClasse() {
     : 'sem notas';
 
   const texto = [
-    `Ata prévia do Conselho de Classe - Turma ${conselhoClasseAtual.turmaCode} - ${conselhoClasseAtual.periodo}/${conselhoClasseAtual.ano}.`,
-    `Reunião prevista para ${conselhoClasseAtual.dataReuniao ? new Date(conselhoClasseAtual.dataReuniao + 'T12:00:00').toLocaleDateString('pt-BR') : 'data não informada'}.`,
-    `A turma possui ${conselhoClasseLinhas.length} aluno(s) analisado(s), com média geral consolidada de ${mediaConsolidada}.`,
-    `${criticos.length} aluno(s) foram classificados em situação crítica e ${atencao.length} em situação de atenção.`,
-    criticos.length ? `Alunos em situação crítica: ${criticos.map(item => item.nome).join(', ')}.` : 'Não houve alunos em situação crítica nesta consolidação.',
-    atencao.length ? `Alunos em atenção: ${atencao.map(item => item.nome).join(', ')}.` : 'Não houve alunos em situação de atenção nesta consolidação.',
-    'Deliberações: registrar pareceres individuais, definir encaminhamentos pedagógicos e pactuar devolutiva às famílias quando necessário.'
+    `Ata prÃ©via do Conselho de Classe - Turma ${conselhoClasseAtual.turmaCode} - ${conselhoClasseAtual.periodo}/${conselhoClasseAtual.ano}.`,
+    `ReuniÃ£o prevista para ${conselhoClasseAtual.dataReuniao ? new Date(conselhoClasseAtual.dataReuniao + 'T12:00:00').toLocaleDateString('pt-BR') : 'data nÃ£o informada'}.`,
+    `A turma possui ${conselhoClasseLinhas.length} aluno(s) analisado(s), com mÃ©dia geral consolidada de ${mediaConsolidada}.`,
+    `${criticos.length} aluno(s) foram classificados em situaÃ§Ã£o crÃ­tica e ${atencao.length} em situaÃ§Ã£o de atenÃ§Ã£o.`,
+    criticos.length ? `Alunos em situaÃ§Ã£o crÃ­tica: ${criticos.map(item => item.nome).join(', ')}.` : 'NÃ£o houve alunos em situaÃ§Ã£o crÃ­tica nesta consolidaÃ§Ã£o.',
+    atencao.length ? `Alunos em atenÃ§Ã£o: ${atencao.map(item => item.nome).join(', ')}.` : 'NÃ£o houve alunos em situaÃ§Ã£o de atenÃ§Ã£o nesta consolidaÃ§Ã£o.',
+    'DeliberaÃ§Ãµes: registrar pareceres individuais, definir encaminhamentos pedagÃ³gicos e pactuar devolutiva Ã s famÃ­lias quando necessÃ¡rio.'
   ].join('\n');
 
   const textarea = document.getElementById('conselho-ata-texto');
@@ -4537,38 +4543,38 @@ function renderConselhoClasseIdentificacao({ turmaObj, ano, periodo, alunosTurma
   });
 
   const origemLabels = {
-    manual: 'Lançamento manual',
+    manual: 'LanÃ§amento manual',
     boletim_pdf_upload: 'Upload do boletim',
     boletim_pdf_manual: 'Mapeamento do boletim',
     boletim_compilado: 'Pacote compilado'
   };
 
   const fontesNotas = Object.entries(origens).length
-    ? Object.entries(origens).map(([origem, total]) => `${origemLabels[origem] || origem}: ${total}`).join(' • ')
+    ? Object.entries(origens).map(([origem, total]) => `${origemLabels[origem] || origem}: ${total}`).join(' â€¢ ')
     : 'Nenhuma nota estruturada identificada ainda';
 
   const statusNotas = !notasTurma.length
     ? 'Nenhuma nota estruturada encontrada para esta turma e bimestre.'
     : alunosComNotas.size < alunosTurma.length
-      ? `Análise parcial: ${alunosComNotas.size} de ${alunosTurma.length} aluno(s) já possuem notas.`
-      : 'Análise pronta: todos os alunos da turma possuem notas estruturadas.';
+      ? `AnÃ¡lise parcial: ${alunosComNotas.size} de ${alunosTurma.length} aluno(s) jÃ¡ possuem notas.`
+      : 'AnÃ¡lise pronta: todos os alunos da turma possuem notas estruturadas.';
 
   return `
     <div class="conselho-ident-grid">
       <div class="conselho-ident-card">
         <span>Turma identificada</span>
-        <strong>${escapeHtml(turmaObj?.code || '—')}</strong>
-        <small>${escapeHtml(turmaObj?.serie || '')} • ${escapeHtml(turmaObj?.turno || '')} • ${escapeHtml(periodo || '')}/${escapeHtml(String(ano || ''))}</small>
+        <strong>${escapeHtml(turmaObj?.code || 'â€”')}</strong>
+        <small>${escapeHtml(turmaObj?.serie || '')} â€¢ ${escapeHtml(turmaObj?.turno || '')} â€¢ ${escapeHtml(periodo || '')}/${escapeHtml(String(ano || ''))}</small>
       </div>
       <div class="conselho-ident-card">
         <span>Alunos encontrados</span>
         <strong>${alunosTurma.length}</strong>
-        <small>${alunosComNotas.size} com notas estruturadas para análise</small>
+        <small>${alunosComNotas.size} com notas estruturadas para anÃ¡lise</small>
       </div>
       <div class="conselho-ident-card">
         <span>Disciplinas identificadas</span>
         <strong>${componentesNotas.length}</strong>
-        <small>${escapeHtml(componentesNotas.join(', ') || 'Aguardando identificação pelas notas estruturadas')}</small>
+        <small>${escapeHtml(componentesNotas.join(', ') || 'Aguardando identificaÃ§Ã£o pelas notas estruturadas')}</small>
       </div>
       <div class="conselho-ident-card">
         <span>Notas reconhecidas</span>
@@ -4582,21 +4588,47 @@ function renderConselhoClasseIdentificacao({ turmaObj, ano, periodo, alunosTurma
   `;
 }
 
+function getConselhoAnaliseStatus(linha, totalComponentes) {
+  const notasRegistradas = Object.values(linha?.notas || {}).filter(item => typeof item?.nota === 'number').length;
+  if (!notasRegistradas) return 'sem_notas';
+  if (totalComponentes > 0 && notasRegistradas < totalComponentes) return 'parcial';
+  return 'completa';
+}
+
+function filtrarConselhoClasseLinhas(linhas, analiseFiltro, totalComponentes) {
+  if (!analiseFiltro || analiseFiltro === 'todos') return linhas;
+  return linhas.filter(linha => getConselhoAnaliseStatus(linha, totalComponentes) === analiseFiltro);
+}
+
+function renderConselhoClasseFiltroResumo(linhasFiltradas, totalLinhas, analiseFiltro) {
+  const labels = {
+    todos: 'Todos os alunos',
+    sem_notas: 'Sem notas',
+    parcial: 'Notas parciais',
+    completa: 'Análise completa'
+  };
+  return `
+    <div class="conselho-filter-summary">
+      <strong>Filtro ativo:</strong> ${labels[analiseFiltro] || labels.todos} • exibindo ${linhasFiltradas.length} de ${totalLinhas} aluno(s)
+    </div>
+  `;
+}
+
 function renderConselhoClasseResumo(linhas, dias, periodoInfo) {
   const comNotas = linhas.filter(item => item.mediaGeral != null);
   const mediaTurma = comNotas.length
     ? (comNotas.reduce((sum, item) => sum + item.mediaGeral, 0) / comNotas.length).toFixed(1)
-    : '—';
-  const criticos = linhas.filter(item => item.situacao === 'Crítico').length;
-  const atencao = linhas.filter(item => item.situacao === 'Atenção' || item.situacao === 'Sem notas').length;
+    : 'â€”';
+  const criticos = linhas.filter(item => item.situacao === 'CrÃ­tico').length;
+  const atencao = linhas.filter(item => item.situacao === 'AtenÃ§Ã£o' || item.situacao === 'Sem notas').length;
   const baixaFreq = linhas.filter(item => item.frequenciaPercentual != null && item.frequenciaPercentual < 75).length;
   const comOcorr = linhas.filter(item => item.qtdOcorrencias > 0).length;
 
   return `
     <div class="conselho-meta">
       <div>
-        <strong>Período analisado</strong>
-        <span>${dias.length ? `${formatarDataKey(dias[0])} até ${formatarDataKey(dias[dias.length - 1])}` : 'Sem dias letivos configurados no calendário'}</span>
+        <strong>PerÃ­odo analisado</strong>
+        <span>${dias.length ? `${formatarDataKey(dias[0])} atÃ© ${formatarDataKey(dias[dias.length - 1])}` : 'Sem dias letivos configurados no calendÃ¡rio'}</span>
       </div>
       <div>
         <strong>Componentes considerados</strong>
@@ -4611,27 +4643,27 @@ function renderConselhoClasseResumo(linhas, dias, periodoInfo) {
         <small>Participantes da turma neste conselho</small>
       </div>
       <div class="conselho-summary-card">
-        <span>Média da turma</span>
+        <span>MÃ©dia da turma</span>
         <strong>${mediaTurma}</strong>
         <small>Calculada com as notas estruturadas</small>
       </div>
       <div class="conselho-summary-card is-warning">
-        <span>Em atenção</span>
+        <span>Em atenÃ§Ã£o</span>
         <strong>${atencao}</strong>
-        <small>Inclui sem notas lançadas</small>
+        <small>Inclui sem notas lanÃ§adas</small>
       </div>
       <div class="conselho-summary-card is-danger">
-        <span>Críticos</span>
+        <span>CrÃ­ticos</span>
         <strong>${criticos}</strong>
-        <small>Demandam encaminhamento prioritário</small>
+        <small>Demandam encaminhamento prioritÃ¡rio</small>
       </div>
       <div class="conselho-summary-card">
-        <span>Baixa frequência</span>
+        <span>Baixa frequÃªncia</span>
         <strong>${baixaFreq}</strong>
-        <small>Alunos abaixo de 75% no período</small>
+        <small>Alunos abaixo de 75% no perÃ­odo</small>
       </div>
       <div class="conselho-summary-card">
-        <span>Com ocorrências</span>
+        <span>Com ocorrÃªncias</span>
         <strong>${comOcorr}</strong>
         <small>Registros disciplinares no bimestre</small>
       </div>
@@ -4640,39 +4672,40 @@ function renderConselhoClasseResumo(linhas, dias, periodoInfo) {
 }
 
 function renderConselhoClasseTabela(linhas) {
-  const rows = linhas.map((item, index) => {
+  const rows = linhas.map(item => {
+    const sourceIndex = conselhoClasseLinhas.findIndex(row => String(row.aluno_id) === String(item.aluno_id));
     const notasHtml = conselhoClasseAtual.componentes.map(comp => {
       const nota = item.notas?.[comp]?.nota;
-      return `<span class="conselho-chip ${typeof nota === 'number' && nota < CONSELHO_MEDIA_MINIMA ? 'is-danger' : ''}">${escapeHtml(comp)}: ${typeof nota === 'number' ? nota.toFixed(1) : '—'}</span>`;
+      return `<span class="conselho-chip ${typeof nota === 'number' && nota < CONSELHO_MEDIA_MINIMA ? 'is-danger' : ''}">${escapeHtml(comp)}: ${typeof nota === 'number' ? nota.toFixed(1) : 'â€”'}</span>`;
     }).join('');
 
     return `
       <tr>
         <td>
           <div class="conselho-student-name">${escapeHtml(item.nome)}</div>
-          <div class="conselho-student-meta">${escapeHtml(item.turma || '')} • ${escapeHtml(item.turno || '')}</div>
+          <div class="conselho-student-meta">${escapeHtml(item.turma || '')} â€¢ ${escapeHtml(item.turno || '')}</div>
         </td>
-        <td><span class="metric-badge badge-blue">${item.mediaGeral != null ? item.mediaGeral.toFixed(1) : '—'}</span></td>
+        <td><span class="metric-badge badge-blue">${item.mediaGeral != null ? item.mediaGeral.toFixed(1) : 'â€”'}</span></td>
         <td>${notasHtml}</td>
-        <td><span class="metric-badge ${item.frequenciaPercentual == null ? 'badge-blue' : item.frequenciaPercentual < 75 ? 'badge-red' : item.frequenciaPercentual < 85 ? 'badge-yellow' : 'badge-green'}">${item.frequenciaPercentual == null ? '—' : `${item.frequenciaPercentual.toFixed(1)}%`}</span></td>
+        <td><span class="metric-badge ${item.frequenciaPercentual == null ? 'badge-blue' : item.frequenciaPercentual < 75 ? 'badge-red' : item.frequenciaPercentual < 85 ? 'badge-yellow' : 'badge-green'}">${item.frequenciaPercentual == null ? 'â€”' : `${item.frequenciaPercentual.toFixed(1)}%`}</span></td>
         <td style="text-align:center">${item.qtdOcorrencias}</td>
         <td>
-          <select class="form-input form-select conselho-inline-select" onchange="updateConselhoLinhaField(${index}, 'situacao', this.value)">
-            ${['Adequado', 'Atenção', 'Crítico', 'Sem notas'].map(op =>
+          <select class="form-input form-select conselho-inline-select" onchange="updateConselhoLinhaField(${sourceIndex}, 'situacao', this.value)">
+            ${['Adequado', 'AtenÃ§Ã£o', 'CrÃ­tico', 'Sem notas'].map(op =>
               `<option value="${op}" ${item.situacao === op ? 'selected' : ''}>${op}</option>`
             ).join('')}
           </select>
         </td>
         <td class="conselho-auto-text">${escapeHtml(item.observacaoAutomatica)}</td>
-        <td><textarea class="form-input conselho-inline-textarea" oninput="updateConselhoLinhaField(${index}, 'observacaoPedagogica', this.value)">${escapeHtml(item.observacaoPedagogica || '')}</textarea></td>
+        <td><textarea class="form-input conselho-inline-textarea" oninput="updateConselhoLinhaField(${sourceIndex}, 'observacaoPedagogica', this.value)">${escapeHtml(item.observacaoPedagogica || '')}</textarea></td>
         <td>
-          <select class="form-input form-select conselho-inline-select" onchange="updateConselhoLinhaField(${index}, 'parecerFinal', this.value)">
-            ${['', 'Manter acompanhamento', 'Reforço', 'Recuperação paralela', 'Contato com responsável', 'Encaminhar orientação', 'Sem encaminhamento'].map(op =>
+          <select class="form-input form-select conselho-inline-select" onchange="updateConselhoLinhaField(${sourceIndex}, 'parecerFinal', this.value)">
+            ${['', 'Manter acompanhamento', 'ReforÃ§o', 'RecuperaÃ§Ã£o paralela', 'Contato com responsÃ¡vel', 'Encaminhar orientaÃ§Ã£o', 'Sem encaminhamento'].map(op =>
               `<option value="${op}" ${item.parecerFinal === op ? 'selected' : ''}>${op || 'Selecione'}</option>`
             ).join('')}
           </select>
         </td>
-        <td><textarea class="form-input conselho-inline-textarea" oninput="updateConselhoLinhaField(${index}, 'encaminhamento', this.value)">${escapeHtml(item.encaminhamento || '')}</textarea></td>
+        <td><textarea class="form-input conselho-inline-textarea" oninput="updateConselhoLinhaField(${sourceIndex}, 'encaminhamento', this.value)">${escapeHtml(item.encaminhamento || '')}</textarea></td>
       </tr>
     `;
   }).join('');
@@ -4684,13 +4717,13 @@ function renderConselhoClasseTabela(linhas) {
           <thead>
             <tr>
               <th>Aluno</th>
-              <th>Média</th>
+              <th>MÃ©dia</th>
               <th>Notas por componente</th>
-              <th>Frequência</th>
+              <th>FrequÃªncia</th>
               <th>Ocorr.</th>
-              <th>Situação</th>
-              <th>Observação automática</th>
-              <th>Observação pedagógica</th>
+              <th>SituaÃ§Ã£o</th>
+              <th>ObservaÃ§Ã£o automÃ¡tica</th>
+              <th>ObservaÃ§Ã£o pedagÃ³gica</th>
               <th>Parecer</th>
               <th>Encaminhamento</th>
             </tr>
@@ -4711,9 +4744,9 @@ async function renderConselhoClassePage(forceReload = false) {
   if (!CONSELHO_SCHEMA_STATUS.ready) {
     content.innerHTML = `
       <div class="conselho-empty-card">
-        <h3>Estrutura do Conselho ainda não ativada no banco</h3>
-        <p>Execute a migração <code>supabase_migration_v24_conselho_classe.sql</code> para liberar notas estruturadas, ata do conselho e pareceres individuais.</p>
-        <p>Tabelas pendentes: ${CONSELHO_SCHEMA_STATUS.missingTables.join(', ') || 'não identificadas'}.</p>
+        <h3>Estrutura do Conselho ainda nÃ£o ativada no banco</h3>
+        <p>Execute a migraÃ§Ã£o <code>supabase_migration_v24_conselho_classe.sql</code> para liberar notas estruturadas, ata do conselho e pareceres individuais.</p>
+        <p>Tabelas pendentes: ${CONSELHO_SCHEMA_STATUS.missingTables.join(', ') || 'nÃ£o identificadas'}.</p>
       </div>
     `;
     return;
@@ -4724,7 +4757,7 @@ async function renderConselhoClassePage(forceReload = false) {
     content.innerHTML = `
       <div class="conselho-empty-card">
         <h3>Selecione a turma e o bimestre</h3>
-        <p>O sistema vai cruzar notas estruturadas, frequência consolidada e ocorrências do período para montar o Conselho de Classe.</p>
+        <p>O sistema vai cruzar notas estruturadas, frequÃªncia consolidada e ocorrÃªncias do perÃ­odo para montar o Conselho de Classe.</p>
       </div>
     `;
     return;
@@ -4732,8 +4765,8 @@ async function renderConselhoClassePage(forceReload = false) {
 
   content.innerHTML = `
     <div class="conselho-empty-card">
-      <h3>Preparando análise do conselho...</h3>
-      <p>Consolidando notas, frequência e ocorrências do período selecionado.</p>
+      <h3>Preparando anÃ¡lise do conselho...</h3>
+      <p>Consolidando notas, frequÃªncia e ocorrÃªncias do perÃ­odo selecionado.</p>
     </div>
   `;
 
@@ -4745,7 +4778,7 @@ async function renderConselhoClassePage(forceReload = false) {
     content.innerHTML = `
       <div class="conselho-empty-card">
         <h3>Sem alunos nesta turma</h3>
-        <p>Cadastre ou vincule alunos à turma selecionada antes de preparar o Conselho de Classe.</p>
+        <p>Cadastre ou vincule alunos Ã  turma selecionada antes de preparar o Conselho de Classe.</p>
       </div>
     `;
     return;
@@ -4757,9 +4790,9 @@ async function renderConselhoClassePage(forceReload = false) {
     Number(item.ano) === Number(filters.ano) &&
     item.periodo === filters.periodo
   );
-  const statusAtual = (filters.status && (filters.status !== 'Em preparação' || !conselhoSalvo?.status))
+  const statusAtual = (filters.status && (filters.status !== 'Em preparaÃ§Ã£o' || !conselhoSalvo?.status))
     ? filters.status
-    : (conselhoSalvo?.status || 'Em preparação');
+    : (conselhoSalvo?.status || 'Em preparaÃ§Ã£o');
   const dataAtual = filters.dataReuniao || conselhoSalvo?.data_reuniao || '';
 
   const componentes = getConselhoComponentesAtual(conselhoSalvo, notasTurma);
@@ -4831,6 +4864,12 @@ async function renderConselhoClassePage(forceReload = false) {
     };
   });
 
+  const linhasFiltradas = filtrarConselhoClasseLinhas(
+    conselhoClasseLinhas,
+    filters.analiseFiltro,
+    conselhoClasseAtual.componentes.length
+  );
+
   content.innerHTML = `
     ${renderConselhoClasseIdentificacao({
       turmaObj: filters.turmaObj,
@@ -4840,21 +4879,24 @@ async function renderConselhoClassePage(forceReload = false) {
       componentes,
       notasTurma
     })}
-    ${renderConselhoClasseResumo(conselhoClasseLinhas, periodoInfo.dias, periodoInfo)}
-    ${renderConselhoClasseTabela(conselhoClasseLinhas)}
+    ${renderConselhoClasseFiltroResumo(linhasFiltradas, conselhoClasseLinhas.length, filters.analiseFiltro)}
+    ${renderConselhoClasseResumo(linhasFiltradas, periodoInfo.dias, periodoInfo)}
+    ${linhasFiltradas.length
+      ? renderConselhoClasseTabela(linhasFiltradas)
+      : `<div class="conselho-empty-card"><h3>Nenhum aluno neste filtro</h3><p>Altere o filtro da análise para visualizar outros grupos da turma neste bimestre.</p></div>`}
     <div class="table-card conselho-ata-card">
       <div class="section-header" style="margin-bottom:12px">
         <div class="section-title" style="font-size:18px">Ata e Resumo do Conselho</div>
         <button class="btn btn-outline btn-sm" onclick="gerarAtaConselhoClasse()">Gerar Texto Base</button>
       </div>
-      <textarea id="conselho-ata-texto" class="form-input conselho-ata-textarea" placeholder="Registre aqui a síntese do conselho, os principais pontos discutidos e os encaminhamentos gerais.">${escapeHtml(conselhoClasseAtual.ata_texto || '')}</textarea>
+      <textarea id="conselho-ata-texto" class="form-input conselho-ata-textarea" placeholder="Registre aqui a sÃ­ntese do conselho, os principais pontos discutidos e os encaminhamentos gerais.">${escapeHtml(conselhoClasseAtual.ata_texto || '')}</textarea>
     </div>
   `;
 }
 
 async function saveConselhoClasseCabecalho(silent = false) {
   if (!CONSELHO_SCHEMA_STATUS.ready) {
-    if (!silent) showToast('Execute a migração do Conselho de Classe no banco antes de salvar.', 'alerta');
+    if (!silent) showToast('Execute a migraÃ§Ã£o do Conselho de Classe no banco antes de salvar.', 'alerta');
     return null;
   }
 
@@ -4874,7 +4916,7 @@ async function saveConselhoClasseCabecalho(silent = false) {
     ano: filters.ano,
     periodo: filters.periodo,
     data_reuniao: filters.dataReuniao || null,
-    status: filters.status || 'Em preparação',
+    status: filters.status || 'Em preparaÃ§Ã£o',
     componentes: (conselhoClasseAtual?.componentes || CONSELHO_COMPONENTES_PADRAO).map(item => canonicalizarComponenteCurricular(item)),
     ata_texto: ataTexto,
     criado_por: getCurrentUser()?.nome || 'Sistema'
@@ -4888,7 +4930,7 @@ async function saveConselhoClasseCabecalho(silent = false) {
 
   if (error) {
     console.error('[saveConselhoClasseCabecalho] Erro:', error);
-    if (!silent) showToast('Erro ao salvar o cabeçalho do conselho: ' + error.message, 'erro');
+    if (!silent) showToast('Erro ao salvar o cabeÃ§alho do conselho: ' + error.message, 'erro');
     return null;
   }
 
@@ -4898,7 +4940,7 @@ async function saveConselhoClasseCabecalho(silent = false) {
     ano: data.ano,
     periodo: data.periodo,
     data_reuniao: data.data_reuniao || '',
-    status: data.status || 'Em preparação',
+    status: data.status || 'Em preparaÃ§Ã£o',
     componentes: Array.isArray(data.componentes) ? data.componentes : [],
     ata_texto: data.ata_texto || '',
     criado_por: data.criado_por || ''
@@ -4911,7 +4953,7 @@ async function saveConselhoClasseCabecalho(silent = false) {
   if (idx >= 0) CONSELHOS_CLASSE_DATA[idx] = { ...CONSELHOS_CLASSE_DATA[idx], ...normalized };
   else CONSELHOS_CLASSE_DATA.push(normalized);
 
-  if (!silent) showToast('Cabeçalho do conselho salvo.', 'sucesso');
+  if (!silent) showToast('CabeÃ§alho do conselho salvo.', 'sucesso');
   return normalized;
 }
 
@@ -5038,14 +5080,14 @@ function atualizarGradeConselhoNotas() {
 
 async function abrirModalNotasConselho() {
   if (!CONSELHO_SCHEMA_STATUS.ready) {
-    showToast('Execute a migração do Conselho de Classe no banco antes de lançar notas.', 'alerta');
+    showToast('Execute a migraÃ§Ã£o do Conselho de Classe no banco antes de lanÃ§ar notas.', 'alerta');
     return;
   }
 
   if (!conselhoClasseLinhas.length) {
     const filters = getConselhoFilters();
     if (!filters.turmaObj) {
-      showToast('Selecione uma turma antes de lançar notas.', 'alerta');
+      showToast('Selecione uma turma antes de lanÃ§ar notas.', 'alerta');
       return;
     }
     await renderConselhoClassePage(true);
@@ -5062,9 +5104,9 @@ async function abrirModalNotasConselho() {
       <div class="modal-header">
         <div>
           <div class="modal-title">Notas Estruturadas do Bimestre</div>
-          <p class="conselho-modal-subtitle">Defina os componentes e registre as notas para alimentar a análise automática do Conselho de Classe.</p>
+          <p class="conselho-modal-subtitle">Defina os componentes e registre as notas para alimentar a anÃ¡lise automÃ¡tica do Conselho de Classe.</p>
         </div>
-        <button class="modal-close" type="button" onclick="fecharConselhoNotasModal()">×</button>
+        <button class="modal-close" type="button" onclick="fecharConselhoNotasModal()">Ã—</button>
       </div>
       <div class="form-group">
         <label class="form-label">Componentes curriculares</label>
@@ -5145,7 +5187,7 @@ function prepararConselhoClasse() {
   renderConselhoClassePage(true);
 }
 
-// ─── RELATÓRIOS ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ RELATÃ“RIOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let relDadosCache = {};
 
 function setRelTab(tab, el){
@@ -5169,7 +5211,7 @@ function filtrarTurmasRel(tipo){
   const turnoNorm=normalizeTurno(turno);
   const turmas=turnoNorm?TURMAS_DATA.filter(t=>normalizeTurno(t.turno)===turnoNorm):TURMAS_DATA;
   const base=tipo==='livros'?'<option value="">Todas as turmas</option>':'<option value="">Selecione a turma</option>';
-  sel.innerHTML=base+turmas.map(t=>`<option value="${t.code}">${t.code} — ${t.turno}</option>`).join('');
+  sel.innerHTML=base+turmas.map(t=>`<option value="${t.code}">${t.code} â€” ${t.turno}</option>`).join('');
 }
 
 function getDiasLetivos(periodo, prefixo){
@@ -5226,11 +5268,11 @@ async function gerarRelFreq(){
   // Feedback visual de carregamento
   const resultado = document.getElementById('rel-freq-resultado');
   resultado.innerHTML = `<div style="text-align:center;padding:32px;color:var(--gray5)">
-    <div style="font-size:28px;margin-bottom:10px">⏳</div>
+    <div style="font-size:28px;margin-bottom:10px">â³</div>
     <div style="font-size:14px;font-weight:600">Buscando dados consolidados do banco...</div>
   </div>`;
 
-  // Garante ordem cronológica para pegar o início e fim reais
+  // Garante ordem cronolÃ³gica para pegar o inÃ­cio e fim reais
   const diasChronological = [...dias].sort((a, b) => {
     const [yA, mA, dA] = a.split('-').map(Number);
     const [yB, mB, dB] = b.split('-').map(Number);
@@ -5255,14 +5297,14 @@ async function gerarRelFreq(){
     diasFimDb = `${yF}-${pad(mF)}-${pad(dF)}`;
   }
 
-  // Busca TODOS os registros de frequência consolidados da turma no período
+  // Busca TODOS os registros de frequÃªncia consolidados da turma no perÃ­odo
   let freqDB = {};
   let numRegistrosBanco = 0; // Para debug
 
   try {
     if(turmaObj) {
-      // Usando fetchAllRows para não esbarrar no limite de 1000 da API
-      // IMPORTANTE: datas são salvas COM zero-padding (ex: '2026-05-19') no banco agora, usamos os dias normalmente.
+      // Usando fetchAllRows para nÃ£o esbarrar no limite de 1000 da API
+      // IMPORTANTE: datas sÃ£o salvas COM zero-padding (ex: '2026-05-19') no banco agora, usamos os dias normalmente.
       const { data: fqRows, error } = await fetchAllRows('frequencia', 'aluno_id, data, tipo, status, consolidado', q => {
         let qFilter = q.eq('turma_id', turmaObj.id).eq('consolidado', true);
         if(dias && dias.length > 0) {
@@ -5275,7 +5317,7 @@ async function gerarRelFreq(){
       
       numRegistrosBanco = fqRows ? fqRows.length : 0;
 
-      // Monta índice: freqDB[aluno_id][data_unpadded][tipo] = status
+      // Monta Ã­ndice: freqDB[aluno_id][data_unpadded][tipo] = status
       (fqRows || []).forEach(f => {
         // Remove padding do Supabase (YYYY-MM-DD -> YYYY-M-D) para bater com 'dias'
         const [y, m, d] = f.data.split('-');
@@ -5299,16 +5341,16 @@ async function gerarRelFreq(){
       const ent = freqDB[al.id]?.[dia]?.['entrada'] || null;
       const sai = freqDB[al.id]?.[dia]?.['saida'] || null;
 
-      let status = '—';
+      let status = 'â€”';
 
       if(ent || sai) {
-        // Regra de negócio: P = presente nos dois; F = falta em algum; FJ = falta justificada
+        // Regra de negÃ³cio: P = presente nos dois; F = falta em algum; FJ = falta justificada
         const evasao = ent === 'P' && sai === 'F';
         if(ent?.startsWith('FJ') || sai?.startsWith('FJ')) status = 'FJ';
         else if(ent === 'F' || evasao) status = 'F';
         else if(ent === 'P' && (sai === 'P' || sai === null)) status = 'P';
         else if(ent === 'P') status = 'P';
-        else status = ent || sai || '—';
+        else status = ent || sai || 'â€”';
       }
 
       porDia[dia] = status;
@@ -5325,22 +5367,22 @@ async function gerarRelFreq(){
 
   relDadosCache.freq = { alunos: dados, dias, turma, periodo };
 
-  // Verifica se há dados consolidados
-  const totalRegistros = dados.reduce((s, d) => s + Object.values(d.porDia).filter(v => v !== '—').length, 0);
+  // Verifica se hÃ¡ dados consolidados
+  const totalRegistros = dados.reduce((s, d) => s + Object.values(d.porDia).filter(v => v !== 'â€”').length, 0);
 
   if(totalRegistros === 0) {
     resultado.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray5)">
-      <div style="font-size:36px;margin-bottom:12px">📭</div>
-      <div style="font-size:15px;font-weight:700;color:var(--gray6)">Nenhuma frequência consolidada encontrada</div>
-      <div style="font-size:12px;margin-top:8px">Certifique-se de que a chamada foi <strong>consolidada</strong> na aba Frequência.</div>
+      <div style="font-size:36px;margin-bottom:12px">ðŸ“­</div>
+      <div style="font-size:15px;font-weight:700;color:var(--gray6)">Nenhuma frequÃªncia consolidada encontrada</div>
+      <div style="font-size:12px;margin-top:8px">Certifique-se de que a chamada foi <strong>consolidada</strong> na aba FrequÃªncia.</div>
       <div style="margin-top:20px;padding:15px;background:#fff3cd;color:#856404;border-radius:6px;font-size:12px;text-align:left;border:1px solid #ffeeba">
-        <strong>Debug Técnico:</strong><br>
+        <strong>Debug TÃ©cnico:</strong><br>
         Turma Code: ${turma}<br>
         Turma ID: ${turmaObj?.id}<br>
         Dias Buscados: ${dias.join(', ')}<br>
         DiasIni: ${diasIni || 'null'}, DiasFim: ${diasFim || 'null'}<br>
         Alunos na Turma: ${alunos.length}<br>
-        Dias letivos encontrados para este período: ${dias.length}<br>
+        Dias letivos encontrados para este perÃ­odo: ${dias.length}<br>
         Registros retornados do Banco: ${numRegistrosBanco} (cru) / ${dados.reduce((s, d) => s + Object.keys(d.porDia).length, 0)} (processados)<br>
         FreqDB Keys (Alunos c/ Freq): ${Object.keys(freqDB).length}<br>
       </div>
@@ -5350,14 +5392,14 @@ async function gerarRelFreq(){
   }
 
   // Renderiza tabela
-  const tHead = `<tr><th>Aluno</th>${dias.map(d => `<th style="font-size:10px;white-space:nowrap">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%P</th><th>%F</th><th>✅ Pres.</th><th>❌ Falt.</th><th>📝 FJ</th></tr>`;
+  const tHead = `<tr><th>Aluno</th>${dias.map(d => `<th style="font-size:10px;white-space:nowrap">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%P</th><th>%F</th><th>âœ… Pres.</th><th>âŒ Falt.</th><th>ðŸ“ FJ</th></tr>`;
   const tBody = dados.map(d => `<tr>
     <td style="font-size:12px;font-weight:600;white-space:nowrap">${d.nome}</td>
     ${dias.map(dia => {
       const v = d.porDia[dia];
       const bg = v === 'P' ? 'var(--green-light)' : v === 'F' ? 'var(--red-light)' : v?.startsWith('FJ') ? 'var(--yellow-light)' : 'var(--gray2)';
       const color = v === 'P' ? 'var(--green-dark)' : v === 'F' ? 'var(--red-dark)' : v?.startsWith('FJ') ? 'var(--yellow-dark)' : 'var(--gray5)';
-      return `<td style="text-align:center;background:${bg};color:${color};font-size:11px;font-weight:700">${v || '—'}</td>`;
+      return `<td style="text-align:center;background:${bg};color:${color};font-size:11px;font-weight:700">${v || 'â€”'}</td>`;
     }).join('')}
     <td style="text-align:center"><span class="metric-badge badge-green">${d.pctP}%</span></td>
     <td style="text-align:center"><span class="metric-badge badge-red">${d.pctF}%</span></td>
@@ -5367,8 +5409,8 @@ async function gerarRelFreq(){
   </tr>`).join('');
 
   const html = `<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:4px">📊 Relatório de Frequência — Turma ${turma}</div>
-    <div style="font-size:12px;color:var(--gray5);margin-bottom:12px">Período: ${periodo.charAt(0).toUpperCase()+periodo.slice(1)} · ${totalRegistros} registro(s) consolidado(s)</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">ðŸ“Š RelatÃ³rio de FrequÃªncia â€” Turma ${turma}</div>
+    <div style="font-size:12px;color:var(--gray5);margin-bottom:12px">PerÃ­odo: ${periodo.charAt(0).toUpperCase()+periodo.slice(1)} Â· ${totalRegistros} registro(s) consolidado(s)</div>
     <div style="overflow:auto">
       <table style="min-width:600px"><thead style="background:var(--gray2)">${tHead}</thead><tbody>${tBody}</tbody></table>
     </div>
@@ -5392,32 +5434,32 @@ function gerarRelTransp(){
     let presencas=0,faltas=0;
     const porDia={};
     dias.forEach(dia=>{
-      // Histórico salvo ou dados atuais
+      // HistÃ³rico salvo ou dados atuais
       const hist=transpHist[al.cpf]?.[dia]||null;
-      let v='—';
+      let v='â€”';
       if(hist){ v=hist; }
       else {
         const ft=freqTransp[al.cpf]||{};
         const diaAtual=document.getElementById('filtro-transp-dia')?.value||'';
-        if(diaAtual===dia) v=(ft.vinda==='P'&&ft.ida==='P')?'P':ft.vinda==='F'||ft.ida==='F'?'F':'—';
-        // Verifica ocorrência de evasão no transporte
+        if(diaAtual===dia) v=(ft.vinda==='P'&&ft.ida==='P')?'P':ft.vinda==='F'||ft.ida==='F'?'F':'â€”';
+        // Verifica ocorrÃªncia de evasÃ£o no transporte
         const dataFmt=formatarDataKey(dia);
-        if(OCORR_DATA.find(o=>o.origem==='transporte'&&o.aluno===al.nome&&o.data===dataFmt)) v='Evasão';
+        if(OCORR_DATA.find(o=>o.origem==='transporte'&&o.aluno===al.nome&&o.data===dataFmt)) v='EvasÃ£o';
       }
       porDia[dia]=v;
-      if(v==='P') presencas++; else if(v==='F'||v==='Evasão') faltas++;
+      if(v==='P') presencas++; else if(v==='F'||v==='EvasÃ£o') faltas++;
     });
     const total=Math.max(presencas+faltas,1);
     const pct=Math.round(presencas/total*100);
     return{nome:al.nome,rota:al.rota,porDia,presencas,faltas,pct};
   });
-  // Inclui evasões de transporte nos dados
+  // Inclui evasÃµes de transporte nos dados
   dados.forEach(d=>{
     const al=ALUNOS_DATA.find(a=>a.nome===d.nome);
     d.evasoesTransp=OCORR_DATA.filter(o=>o.origem==='transporte'&&(o.aluno===d.nome||(al&&o.cpf===al.cpf))).length;
   });
   relDadosCache.transp={alunos:dados,dias,rota,periodo};
-  const tHead=`<tr><th>Aluno</th><th>Rota</th>${dias.map(d=>`<th style="font-size:10px">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%Uso</th><th>Presenças</th><th>Faltas</th></tr>`;
+  const tHead=`<tr><th>Aluno</th><th>Rota</th>${dias.map(d=>`<th style="font-size:10px">${formatarDataKey(d).slice(0,5)}</th>`).join('')}<th>%Uso</th><th>PresenÃ§as</th><th>Faltas</th></tr>`;
   const tBody=dados.map(d=>`<tr>
     <td style="font-size:12px;font-weight:600">${d.nome}</td>
     <td style="font-size:11px">${d.rota}</td>
@@ -5427,7 +5469,7 @@ function gerarRelTransp(){
     <td style="text-align:center;font-weight:700;color:var(--red)">${d.faltas}</td>
   </tr>`).join('');
   const html=`<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Relatório de Transporte${rota?' — '+rota:''} — ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">RelatÃ³rio de Transporte${rota?' â€” '+rota:''} â€” ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
     <table style="min-width:500px"><thead style="background:var(--gray2)">${tHead}</thead><tbody>${tBody}</tbody></table>
   </div>`;
   document.getElementById('rel-transp-resultado').innerHTML=html;
@@ -5442,18 +5484,18 @@ function gerarRelOcorr(){
   let ocorrs=[...OCORR_DATA];
   if(turno){ const als=ALUNOS_DATA.filter(a=>a.turno===turno).map(a=>a.nome); ocorrs=ocorrs.filter(o=>als.includes(o.aluno)); }
   if(tipo){ ocorrs=ocorrs.filter(o=>o.tipo===tipo); }
-  // Filtra pelo período
+  // Filtra pelo perÃ­odo
   if(dias.length){
     const datas=new Set(dias.map(k=>{ const[y,m,d]=k.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('pt-BR'); }));
     ocorrs=ocorrs.filter(o=>datas.has(o.data));
   }
   relDadosCache.ocorr={ocorrs,turno,periodo};
   if(!ocorrs.length){
-    document.getElementById('rel-ocorr-resultado').innerHTML=emptyState('✅','Nenhuma ocorrência no período','');
+    document.getElementById('rel-ocorr-resultado').innerHTML=emptyState('âœ…','Nenhuma ocorrÃªncia no perÃ­odo','');
     document.getElementById('rel-ocorr-actions').classList.remove('hidden');
     return;
   }
-  const labels={evasao:'Evasão',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'Agressão',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'Suspensão Uso Celular'};
+  const labels={evasao:'EvasÃ£o',indisciplina:'Indisciplina',bullying:'Bullying',agressao:'AgressÃ£o',atraso:'Atraso',liberado_coord:'Liberado pela Coord.',suspensao_celular:'SuspensÃ£o Uso Celular'};
   const rows=ocorrs.map(o=>`<tr>
     <td style="font-size:12px;font-weight:600">${o.aluno}</td>
     <td><span class="metric-badge ${o.tratada?'badge-green':'badge-red'}">${labels[o.tipo]||o.tipo}</span></td>
@@ -5463,8 +5505,8 @@ function gerarRelOcorr(){
     <td><span class="metric-badge ${o.tratada?'badge-green':'badge-red'}">${o.tratada?'Tratada':'Pendente'}</span></td>
   </tr>`).join('');
   const html=`<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Relatório de Ocorrências${turno?' — '+turno:''} — ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
-    <table><thead style="background:var(--gray2)"><tr><th>Aluno</th><th>Tipo</th><th>Turma</th><th>Data/Hora</th><th>Descrição</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">RelatÃ³rio de OcorrÃªncias${turno?' â€” '+turno:''} â€” ${periodo.charAt(0).toUpperCase()+periodo.slice(1)}</div>
+    <table><thead style="background:var(--gray2)"><tr><th>Aluno</th><th>Tipo</th><th>Turma</th><th>Data/Hora</th><th>DescriÃ§Ã£o</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
   </div>`;
   document.getElementById('rel-ocorr-resultado').innerHTML=html;
   document.getElementById('rel-ocorr-actions').classList.remove('hidden');
@@ -5482,13 +5524,13 @@ function gerarRelLivros(){
   const rows=alunos.map(a=>{
     const cells=LIVROS.map((_,li)=>{
       const rec=(a.livros||{})[li]==='sim';
-      return`<td style="text-align:center;background:${rec?'var(--green-light)':'var(--red-light)'}"><span style="font-size:12px">${rec?'✓':'✗'}</span></td>`;
+      return`<td style="text-align:center;background:${rec?'var(--green-light)':'var(--red-light)'}"><span style="font-size:12px">${rec?'âœ“':'âœ—'}</span></td>`;
     }).join('');
     const total=LIVROS.filter((_,li)=>(a.livros||{})[li]==='sim').length;
     return`<tr><td style="font-weight:600;font-size:12px">${a.nome}</td><td><span class="metric-badge badge-blue">${a.turma}</span></td>${cells}<td style="text-align:center;font-weight:700">${total}/${LIVROS.length}</td></tr>`;
   }).join('');
   const html=`<div style="background:white;border-radius:var(--radius2);border:1px solid var(--gray3);overflow:auto;padding:16px">
-    <div style="font-size:14px;font-weight:700;margin-bottom:12px">Relatório de Livros${turma?' — '+turma:''}${turno?' ('+turno+')':''}</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">RelatÃ³rio de Livros${turma?' â€” '+turma:''}${turno?' ('+turno+')':''}</div>
     <table style="min-width:600px"><thead style="background:var(--gray2)">${head}</thead><tbody>${rows}</tbody></table>
   </div>`;
   document.getElementById('rel-livros-resultado').innerHTML=html;
@@ -5498,7 +5540,7 @@ function gerarRelLivros(){
 // Downloads
 function downloadRelPDF(divId, filename){
   const el=document.getElementById(divId);
-  if(!el||!el.innerHTML.trim()){showToast('Gere o relatório primeiro','alerta');return;}
+  if(!el||!el.innerHTML.trim()){showToast('Gere o relatÃ³rio primeiro','alerta');return;}
   const conteudo=el.innerHTML;
   const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+filename+'</title>'
     +'<style>'
@@ -5529,8 +5571,8 @@ async function salvarAtividade(){
   const turmas=selT?Array.from(selT.selectedOptions).map(o=>o.value):[];
   if(!tipo||!data){showToast('Informe o tipo e a data','alerta');return;}
 
-  const tipoLabel = {evento:'Evento Especial',prova:'Prova / Avaliação',letivo:'Dia Letivo Especial',
-    feriado:'Feriado / Recesso',bimestre:'Início de Bimestre',fim_bimestre:'Fim de Bimestre'};
+  const tipoLabel = {evento:'Evento Especial',prova:'Prova / AvaliaÃ§Ã£o',letivo:'Dia Letivo Especial',
+    feriado:'Feriado / Recesso',bimestre:'InÃ­cio de Bimestre',fim_bimestre:'Fim de Bimestre'};
   const obsData = JSON.stringify({ hIni, hFim, turmas, desc });
 
   const {error} = await supabaseClient.from('eventos').insert({
@@ -5538,7 +5580,7 @@ async function salvarAtividade(){
      data: data,
      tipo: tipo,
      turno: turmas.length===1 ? turmas[0] : 'Geral',
-     responsavel: 'Coordenação',
+     responsavel: 'CoordenaÃ§Ã£o',
      observacoes: obsData
   });
 
@@ -5547,7 +5589,7 @@ async function salvarAtividade(){
      showToast('Erro ao salvar: '+error.message, 'alerta');
   } else {
      closeModal('modal-nova-atividade');
-     showToast('Atividade incluída na agenda!','sucesso');
+     showToast('Atividade incluÃ­da na agenda!','sucesso');
      await carregarDados();
      renderCalendar();
      renderAgendaMural();
@@ -5571,7 +5613,7 @@ async function excluirAtividade(id){
   RVS_ATIVIDADES = RVS_ATIVIDADES.filter(a => a.id !== id);
   localStorage.setItem('rvs_atividades', JSON.stringify(RVS_ATIVIDADES));
   
-  showToast('Atividade excluída!', 'sucesso');
+  showToast('Atividade excluÃ­da!', 'sucesso');
   await carregarDados();
   renderCalendar();
   renderAgendaMural();
@@ -5611,19 +5653,19 @@ function carregarLinksHorario(){
     const divBotoes = inp.nextElementSibling;
     
     if (isAdm) {
-      // Visão de Admin
+      // VisÃ£o de Admin
       if(labelLink) labelLink.style.display = 'block';
       inp.style.display = 'block';
       if(divBotoes) divBotoes.style.display = 'flex';
       userView.style.display = 'none';
     } else {
-      // Visão de Usuário Comum
+      // VisÃ£o de UsuÃ¡rio Comum
       if(labelLink) labelLink.style.display = 'none';
       inp.style.display = 'none';
       if(divBotoes) divBotoes.style.display = 'none';
       
       const turno = chave.split('-')[1];
-      const emoji = turno === 'manha' ? '☀️' : turno === 'tarde' ? '🌤️' : '🌙';
+      const emoji = turno === 'manha' ? 'â˜€ï¸' : turno === 'tarde' ? 'ðŸŒ¤ï¸' : 'ðŸŒ™';
       
       if (url) {
         userView.innerHTML = `
@@ -5648,7 +5690,7 @@ async function salvarLink(chave){
   const val=inp.value.trim();
   if(!val){showToast('Cole um link antes de salvar','alerta');return;}
   
-  // Atualiza memória
+  // Atualiza memÃ³ria
   HORARIOS_LINKS[chave] = val;
   
   // Salva no banco
@@ -5677,7 +5719,7 @@ function abrirLink(chave){
 // --- WIPE SYSTEM ---
 async function zerarSistema() {
   confirmarSenhaAdmin(async () => {
-      const confirmacao = confirm("CUIDADO: Você está prestes a DELETAR permanentemente TODOS os Alunos, Turmas, Frequências e Ocorrências. O sistema ficará totalmente vazio. Tem certeza?");
+      const confirmacao = confirm("CUIDADO: VocÃª estÃ¡ prestes a DELETAR permanentemente TODOS os Alunos, Turmas, FrequÃªncias e OcorrÃªncias. O sistema ficarÃ¡ totalmente vazio. Tem certeza?");
       if(!confirmacao) return;
       
       showToast('Deletando banco de dados... Por favor, aguarde.', 'sucesso');
@@ -5689,23 +5731,23 @@ async function zerarSistema() {
           await supabaseClient.from('alunos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
           await supabaseClient.from('turmas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
           
-          alert("Sistema zerado com sucesso! A página será recarregada.");
+          alert("Sistema zerado com sucesso! A pÃ¡gina serÃ¡ recarregada.");
           window.location.reload();
       } catch (err) {
           console.error(err);
-          showToast('Erro crítico ao zerar o banco', 'evasao');
+          showToast('Erro crÃ­tico ao zerar o banco', 'evasao');
       }
   });
 }
 
 
-// ─── RVS AGENDA ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ RVS AGENDA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let RVS_ATIVIDADES = JSON.parse(localStorage.getItem('rvs_atividades')||'[]');
 
 function popularDatasAtividade(){
   const sel = document.getElementById('ativ-data');
   if(!sel) return;
-  // Popula com dias letivos do calendário
+  // Popula com dias letivos do calendÃ¡rio
   const hoje = new Date();
   const dias = Object.entries(CALENDARIO)
     .filter(([,ev]) => ev && TIPO_LETIVO_FLAG[ev.tipo])
@@ -5722,7 +5764,7 @@ function popularDatasAtividade(){
       const fmt = dt.toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'});
       return '<option value="'+iso+'">'+fmt+'</option>';
     }).join('');
-  // Alternativa: campo date livre se calendário vazio
+  // Alternativa: campo date livre se calendÃ¡rio vazio
   if(dias.length === 0){
     const parent = sel.parentElement;
     const input = document.createElement('input');
@@ -5735,7 +5777,7 @@ function popularTurmasAtividade(){
   const sel = document.getElementById('ativ-turmas');
   if(!sel) return;
   sel.innerHTML = TURMAS_DATA.map(t =>
-    '<option value="'+t.code+'">'+t.code+' — '+t.turno+'</option>'
+    '<option value="'+t.code+'">'+t.code+' â€” '+t.turno+'</option>'
   ).join('');
 }
 
@@ -5746,7 +5788,7 @@ function renderAgendaMural(){
   const filtroTurno = document.getElementById('filtro-agenda-turno')?.value ||
                       document.querySelector('#page-rvs-agenda .filter-btn.active')?.dataset?.turno || '';
 
-  // Buscar eventos do CALENDARIO que são tipo agenda ou evento
+  // Buscar eventos do CALENDARIO que sÃ£o tipo agenda ou evento
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   
   let eventos = Object.entries(CALENDARIO)
@@ -5757,7 +5799,7 @@ function renderAgendaMural(){
     })
     .sort((a,b) => a.date - b.date);
 
-  // Também incluir RVS_ATIVIDADES locais
+  // TambÃ©m incluir RVS_ATIVIDADES locais
   const atvsLocais = RVS_ATIVIDADES.map(a => ({
     ...a,
     date: a.data ? new Date(a.data+'T00:00:00') : new Date()
@@ -5769,14 +5811,14 @@ function renderAgendaMural(){
 
   if(todos.length === 0){
     mural.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af">'+
-      '<div style="font-size:48px;margin-bottom:12px">🗓️</div>'+
+      '<div style="font-size:48px;margin-bottom:12px">ðŸ—“ï¸</div>'+
       '<div style="font-size:16px;font-weight:700">Nenhuma atividade agendada</div>'+
-      '<div style="font-size:13px;margin-top:6px">Adicione eventos no Calendário ou clique em "+ Nova Atividade"</div></div>';
+      '<div style="font-size:13px;margin-top:6px">Adicione eventos no CalendÃ¡rio ou clique em "+ Nova Atividade"</div></div>';
     return;
   }
 
-  const tipoIcon = {evento:'🟠',prova:'🔵',bimestre:'⚫',fim_bimestre:'🟣',letivo:'🟢',ferias:'🏖️',feriado:'🔴'};
-  const tipoLabel = {evento:'Evento',prova:'Prova',bimestre:'Início de Bimestre',fim_bimestre:'Fim de Bimestre',letivo:'Dia Letivo',ferias:'Férias',feriado:'Feriado'};
+  const tipoIcon = {evento:'ðŸŸ ',prova:'ðŸ”µ',bimestre:'âš«',fim_bimestre:'ðŸŸ£',letivo:'ðŸŸ¢',ferias:'ðŸ–ï¸',feriado:'ðŸ”´'};
+  const tipoLabel = {evento:'Evento',prova:'Prova',bimestre:'InÃ­cio de Bimestre',fim_bimestre:'Fim de Bimestre',letivo:'Dia Letivo',ferias:'FÃ©rias',feriado:'Feriado'};
 
   let lastMonth = '';
   let html = '';
@@ -5792,13 +5834,13 @@ function renderAgendaMural(){
     html += '<div class="table-card" style="padding:14px 18px;margin-bottom:10px;border-left:4px solid '+(urgente?'#ef4444':'#3b82f6')+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
         '<div>'+
-          '<div style="font-size:14px;font-weight:700">'+(tipoIcon[ev.tipo]||'📅')+' '+(ev.label||ev.titulo||ev.tipo||'Evento')+'</div>'+
-          '<div style="font-size:12px;color:#6b7280;margin-top:3px">'+dtFmt+(ev.turmas?' · '+ev.turmas:'')+'</div>'+
+          '<div style="font-size:14px;font-weight:700">'+(tipoIcon[ev.tipo]||'ðŸ“…')+' '+(ev.label||ev.titulo||ev.tipo||'Evento')+'</div>'+
+          '<div style="font-size:12px;color:#6b7280;margin-top:3px">'+dtFmt+(ev.turmas?' Â· '+ev.turmas:'')+'</div>'+
           (ev.desc||ev.obs?'<div style="font-size:11.5px;color:#9ca3af;margin-top:3px">'+(ev.desc||ev.obs)+'</div>':'')+ 
         '</div>'+
         '<div style="display:flex;align-items:center;gap:8px">'+
           '<div style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;background:'+(urgente?'#fee2e2':'#dbeafe')+';color:'+(urgente?'#991b1b':'#1d4ed8')+'">'+
-            (diasRestantes===0?'Hoje':diasRestantes===1?'Amanhã':diasRestantes+' dias')+
+            (diasRestantes===0?'Hoje':diasRestantes===1?'AmanhÃ£':diasRestantes+' dias')+
           '</div>'+
           (ev.isRVS || (ev.id && !ev.id.includes('-')) ? `<button class="btn btn-outline btn-sm" style="margin:0;padding:2px 8px;font-size:11px;color:#ef4444;border-color:#ef4444" onclick="excluirAtividade('${ev.id}')">Excluir</button>` : '') +
         '</div>'+
@@ -5815,7 +5857,7 @@ function setAgendaTurno(el, turno){
   renderAgendaMural();
 }
 
-// ─── SOLICITAÇÕES PEDAGÓGICAS ────────────────────────────────────────────────
+// â”€â”€â”€ SOLICITAÃ‡Ã•ES PEDAGÃ“GICAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let SOLICIT_DATA = [];
 
 function popularTurmasSolicit(){
@@ -5824,10 +5866,10 @@ function popularTurmasSolicit(){
   if(!sel) return;
   const lista = (turno && turno !== 'Geral') ? TURMAS_DATA.filter(t => t.turno === turno) : TURMAS_DATA;
   const prefix = turno === 'Geral' ? '<option value="Geral">Todas as Turmas</option>' : '';
-  sel.innerHTML = prefix + lista.map(t => '<option value="' + t.code + '">' + t.code + ' — ' + t.serie + '</option>').join('');
+  sel.innerHTML = prefix + lista.map(t => '<option value="' + t.code + '">' + t.code + ' â€” ' + t.serie + '</option>').join('');
 }
 
-// ─── UPLOAD GOOGLE DRIVE via Apps Script ─────────────────────────────────────
+// â”€â”€â”€ UPLOAD GOOGLE DRIVE via Apps Script â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbxVz3gcJOntx68lHersXxdSqtIuBgmf36fawG3NAKToZxHAMOSFjtIewhV-3oGWC_k/exec';
 let _solicitArquivoPendente = null; // guarda o File selecionado
 
@@ -5835,7 +5877,7 @@ function solicitPreviewArquivo(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 10 * 1024 * 1024) {
-    showToast('Arquivo muito grande! Máximo 10MB.', 'alerta');
+    showToast('Arquivo muito grande! MÃ¡ximo 10MB.', 'alerta');
     input.value = '';
     return;
   }
@@ -5870,7 +5912,7 @@ function fileParaBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      // Remove o prefixo "data:...;base64," para enviar só o base64 puro
+      // Remove o prefixo "data:...;base64," para enviar sÃ³ o base64 puro
       const base64 = reader.result.split(',')[1];
       resolve(base64);
     };
@@ -5893,16 +5935,16 @@ async function salvarSolicitacao(){
   const user = getCurrentUser();
   let linkDrive = '';
 
-  // ── Upload para o Google Drive via Apps Script ──
+  // â”€â”€ Upload para o Google Drive via Apps Script â”€â”€
   if (_solicitArquivoPendente) {
     const file = _solicitArquivoPendente;
     
-    // Mudar botão para estado de carregamento
+    // Mudar botÃ£o para estado de carregamento
     const btnEnviar = document.querySelector('#modal-nova-solicit .btn-primary');
-    if(btnEnviar){ btnEnviar.disabled = true; btnEnviar.textContent = '⏳ Enviando arquivo…'; }
+    if(btnEnviar){ btnEnviar.disabled = true; btnEnviar.textContent = 'â³ Enviando arquivoâ€¦'; }
     
     try {
-      showToast('Enviando arquivo para o Google Drive… ⏳', 'alerta');
+      showToast('Enviando arquivo para o Google Driveâ€¦ â³', 'alerta');
       
       const base64 = await fileParaBase64(file);
       
@@ -5918,34 +5960,34 @@ async function salvarSolicitacao(){
       const resultado = await response.json();
       
       if (!resultado.ok) {
-        throw new Error(resultado.erro || 'Resposta inválida do servidor');
+        throw new Error(resultado.erro || 'Resposta invÃ¡lida do servidor');
       }
       
       linkDrive = resultado.url;
-      showToast('Arquivo enviado ao Drive! ✅', 'sucesso');
+      showToast('Arquivo enviado ao Drive! âœ…', 'sucesso');
       
     } catch(err) {
       console.error('[Drive Upload] Erro:', err);
       showToast('Erro ao enviar para o Drive: ' + err.message, 'evasao');
       const btnEnviar = document.querySelector('#modal-nova-solicit .btn-primary');
-      if(btnEnviar){ btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar Solicitação'; }
+      if(btnEnviar){ btnEnviar.disabled = false; btnEnviar.textContent = 'Enviar SolicitaÃ§Ã£o'; }
       return;
     }
     
     const btnEnviar2 = document.querySelector('#modal-nova-solicit .btn-primary');
-    if(btnEnviar2){ btnEnviar2.disabled = false; btnEnviar2.textContent = 'Enviar Solicitação'; }
+    if(btnEnviar2){ btnEnviar2.disabled = false; btnEnviar2.textContent = 'Enviar SolicitaÃ§Ã£o'; }
   }
 
-  // ── Salvar solicitação no banco (com link do Drive) ──
+  // â”€â”€ Salvar solicitaÃ§Ã£o no banco (com link do Drive) â”€â”€
   const { data: inserted, error } = await supabaseClient.from('solicitacoes').insert({
     tipo, turno, turmas, data, hora_ini: hIni, hora_fim: hFim,
     obs, link_drive: linkDrive, status: 'aceita',
-    responsavel: user?.nome || 'Usuário'
+    responsavel: user?.nome || 'UsuÃ¡rio'
   }).select().single();
   
   if (error) {
     console.error('[salvarSolicitacao] Erro:', error);
-    showToast('Erro ao salvar solicitação: ' + error.message, 'evasao');
+    showToast('Erro ao salvar solicitaÃ§Ã£o: ' + error.message, 'evasao');
     return;
   }
   
@@ -5954,13 +5996,13 @@ async function salvarSolicitacao(){
     id: inserted.id, tipo, turno, turmas, data, hIni, hFim, obs,
     linkDrive,
     status: 'aceita',
-    responsavel: user?.nome || 'Usuário',
+    responsavel: user?.nome || 'UsuÃ¡rio',
     criadoEm: new Date().toLocaleDateString('pt-BR')
   });
 
   solicitRemoverArquivo();
   closeModal('modal-nova-solicit');
-  showToast('Solicitação enviada! ✅','sucesso');
+  showToast('SolicitaÃ§Ã£o enviada! âœ…','sucesso');
   renderSolicitacoes();
 }
 
@@ -5979,39 +6021,39 @@ function renderSolicitacoes(){
 
   if(lista.length === 0){
     container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af">' +
-      '<div style="font-size:48px;margin-bottom:12px">📋</div>' +
-      '<div style="font-size:16px;font-weight:700">Nenhuma solicitação encontrada</div>' +
-      '<div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova Solicitação&quot; para criar</div></div>';
+      '<div style="font-size:48px;margin-bottom:12px">ðŸ“‹</div>' +
+      '<div style="font-size:16px;font-weight:700">Nenhuma solicitaÃ§Ã£o encontrada</div>' +
+      '<div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova SolicitaÃ§Ã£o&quot; para criar</div></div>';
     return;
   }
 
   var html = '';
   lista.forEach(function(s){
-    var dataFmt = s.data ? s.data.split('-').reverse().join('/') : '—';
-    var horario = s.hIni ? ' · ⏰ ' + s.hIni + (s.hFim ? ' – ' + s.hFim : '') : '';
+    var dataFmt = s.data ? s.data.split('-').reverse().join('/') : 'â€”';
+    var horario = s.hIni ? ' Â· â° ' + s.hIni + (s.hFim ? ' â€“ ' + s.hFim : '') : '';
     var borderColor = s.status === 'aceita' ? '#22c55e' : s.status === 'recusada' ? '#ef4444' : '#f97316';
     var badgeBg  = s.status === 'aceita' ? '#dcfce7' : s.status === 'recusada' ? '#fee2e2' : '#fff3cd';
     var badgeTxt = s.status === 'aceita' ? '#166534' : s.status === 'recusada' ? '#991b1b' : '#856404';
-    var badgeLabel = s.status === 'aceita' ? '✅ Aceita' : s.status === 'recusada' ? '🔴 Recusada' : '🟡 Pendente';
+    var badgeLabel = s.status === 'aceita' ? 'âœ… Aceita' : s.status === 'recusada' ? 'ðŸ”´ Recusada' : 'ðŸŸ¡ Pendente';
     var acoes = '';
     if(s.status === 'pendente'){
       acoes = '<button class="btn btn-green btn-xs" onclick="atualizarStatusSolicit(\'' + s.id + '\', \'aceita\')">&#9989; Aceitar</button>' +
               '<button class="btn btn-red btn-xs"   onclick="atualizarStatusSolicit(\'' + s.id + '\', \'recusada\')">&#10060; Recusar</button>';
     }
-    var linkBtn = s.linkDrive ? '<a href="' + s.linkDrive + '" target="_blank" class="btn btn-primary btn-xs" style="text-decoration:none">📂 Abrir Drive</a>' : '';
+    var linkBtn = s.linkDrive ? '<a href="' + s.linkDrive + '" target="_blank" class="btn btn-primary btn-xs" style="text-decoration:none">ðŸ“‚ Abrir Drive</a>' : '';
     html += '<div class="table-card" style="padding:16px;margin-bottom:12px;border-left:4px solid ' + borderColor + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">' +
       '<div>' +
         '<div style="font-size:15px;font-weight:700">' + s.tipo + '</div>' +
-        '<div style="font-size:12.5px;color:#6b7280;margin-top:3px">📅 ' + dataFmt + horario + ' · 🏫 ' + s.turno + (s.turmas ? ' · ' + s.turmas : '') + '</div>' +
+        '<div style="font-size:12.5px;color:#6b7280;margin-top:3px">ðŸ“… ' + dataFmt + horario + ' Â· ðŸ« ' + s.turno + (s.turmas ? ' Â· ' + s.turmas : '') + '</div>' +
         (s.obs ? '<div style="font-size:12px;color:#6b7280;margin-top:6px;font-style:italic">&quot;' + s.obs + '&quot;</div>' : '') +
-        '<div style="font-size:11px;color:#9ca3af;margin-top:4px">Por: ' + s.responsavel + ' · ' + s.criadoEm + '</div>' +
+        '<div style="font-size:11px;color:#9ca3af;margin-top:4px">Por: ' + s.responsavel + ' Â· ' + s.criadoEm + '</div>' +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
         linkBtn +
         '<span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:' + badgeBg + ';color:' + badgeTxt + '">' + badgeLabel + '</span>' +
         acoes +
-        '<button class="btn btn-gray btn-xs" onclick="excluirSolicit(\'' + s.id + '\')">🗑</button>' +
+        '<button class="btn btn-gray btn-xs" onclick="excluirSolicit(\'' + s.id + '\')">ðŸ—‘</button>' +
       '</div></div></div>';
   });
   container.innerHTML = html;
@@ -6033,28 +6075,28 @@ async function atualizarStatusSolicit(id, novoStatus){
 }
 
 async function excluirSolicit(id){
-  if(!confirm('Excluir esta solicitação?')) return;
+  if(!confirm('Excluir esta solicitaÃ§Ã£o?')) return;
   
   const { error } = await supabaseClient.from('solicitacoes').delete().eq('id', id);
   if(error) {
     console.error('[excluirSolicit] Erro:', error);
-    showToast('Erro ao excluir solicitação.', 'evasao');
+    showToast('Erro ao excluir solicitaÃ§Ã£o.', 'evasao');
     return;
   }
   SOLICIT_DATA = SOLICIT_DATA.filter(function(s){ return s.id !== id; });
   renderSolicitacoes();
-  showToast('Solicitação excluída','alerta');
+  showToast('SolicitaÃ§Ã£o excluÃ­da','alerta');
 }
 
 
-// ─── OLIMPÍADAS (TOPO DO SABER) ──────────────────────────────────────────────
+// â”€â”€â”€ OLIMPÃADAS (TOPO DO SABER) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let OLIMPIADAS_DATA = [];
 let olResultadosDadosPendente = [];
 
 async function carregarOlimpiadas(){
   try {
     const {data, error} = await supabaseClient.from('olimpiadas').select('*').order('dia_prova', {ascending: true});
-    if(error) { console.error('Erro ao carregar olimpíadas:', error); return; }
+    if(error) { console.error('Erro ao carregar olimpÃ­adas:', error); return; }
     OLIMPIADAS_DATA = data || [];
   } catch(e){ console.warn(e); }
 }
@@ -6072,9 +6114,9 @@ async function salvarOlimpiada(){
   const descricao = (document.getElementById('ol-descricao')?.value||'').trim();
   const resultados = (document.getElementById('ol-resultados')?.value||'').trim();
   const flyerData = (document.getElementById('ol-flyer-data')?.value||'').trim();
-  const colunasModelo = (document.getElementById('ol-colunas-modelo')?.value || 'Aluno, Escola, Olimpíada, Acertos, Classificação, Nível').trim();
+  const colunasModelo = (document.getElementById('ol-colunas-modelo')?.value || 'Aluno, Escola, OlimpÃ­ada, Acertos, ClassificaÃ§Ã£o, NÃ­vel').trim();
 
-  if(!nome || !area || !diaProva){ showToast('Preencha Nome, Área e Dia da Prova!','alerta'); return; }
+  if(!nome || !area || !diaProva){ showToast('Preencha Nome, Ãrea e Dia da Prova!','alerta'); return; }
 
   const payload = { nome, area, insc_inicio: inscIni, insc_fim: inscFim, dia_prova: diaProva,
                     qtd_alunos: qtdAlunos, link_edital: linkEdital, inscrita,
@@ -6104,19 +6146,19 @@ async function salvarOlimpiada(){
     try {
       await processarEUploadCartoesAcesso(olimpiadaId, olCartoesPdfBytesPendente);
     } catch (err) {
-      console.error('Erro ao processar cartões de acesso:', err);
-      showToast('Olimpíada salva, mas houve erro ao processar os cartões de acesso.', 'alerta');
+      console.error('Erro ao processar cartÃµes de acesso:', err);
+      showToast('OlimpÃ­ada salva, mas houve erro ao processar os cartÃµes de acesso.', 'alerta');
     }
     olCartoesPdfBytesPendente = null;
     const cartoesInput = document.getElementById('ol-cartoes-file');
     if (cartoesInput) cartoesInput.value = '';
     const statusEl = document.getElementById('ol-cartoes-status');
-    if (statusEl) statusEl.innerHTML = 'Nenhum arquivo de cartões selecionado.';
+    if (statusEl) statusEl.innerHTML = 'Nenhum arquivo de cartÃµes selecionado.';
   }
 
   await carregarOlimpiadas();
   closeModal('modal-olimpiada');
-  showToast('Olimpíada salva com sucesso!','sucesso');
+  showToast('OlimpÃ­ada salva com sucesso!','sucesso');
   renderTopoSaber();
 }
 
@@ -6152,7 +6194,7 @@ function importarPlanilhaResultados(input) {
       const rows = XLSX.utils.sheet_to_json(ws, {defval: ''});
       
       if (rows.length === 0) {
-        showToast('A planilha está vazia!', 'alerta');
+        showToast('A planilha estÃ¡ vazia!', 'alerta');
         input.value = '';
         return;
       }
@@ -6169,13 +6211,13 @@ function importarPlanilhaResultados(input) {
       const colunasFaltando = colunasEsperadas.filter(col => !firstRowKeys.includes(col));
       
       if (colunasFaltando.length > 0) {
-        showToast('A planilha não possui as seguintes colunas: ' + colunasFaltando.join(', '), 'evasao');
+        showToast('A planilha nÃ£o possui as seguintes colunas: ' + colunasFaltando.join(', '), 'evasao');
         input.value = '';
         return;
       }
       
       olResultadosDadosPendente = rows;
-      document.getElementById('ol-resultados-status').innerHTML = `<span style="color:#16a34a">✅ Planilha carregada: ${rows.length} alunos prontos para importar! Salve para confirmar.</span>`;
+      document.getElementById('ol-resultados-status').innerHTML = `<span style="color:#16a34a">âœ… Planilha carregada: ${rows.length} alunos prontos para importar! Salve para confirmar.</span>`;
       showToast(`Planilha carregada: ${rows.length} registros prontos!`, 'sucesso');
     } catch (err) {
       console.error('[importarPlanilhaResultados]', err);
@@ -6193,7 +6235,7 @@ function handleCartoesFileSelected(input) {
   const statusEl = document.getElementById('ol-cartoes-status');
   if (!file) {
     olCartoesPdfBytesPendente = null;
-    if (statusEl) statusEl.innerHTML = 'Nenhum arquivo de cartões selecionado.';
+    if (statusEl) statusEl.innerHTML = 'Nenhum arquivo de cartÃµes selecionado.';
     return;
   }
   
@@ -6201,20 +6243,20 @@ function handleCartoesFileSelected(input) {
   reader.onload = function(e) {
     olCartoesPdfBytesPendente = e.target.result;
     if (statusEl) {
-      statusEl.innerHTML = `<span style="color:#16a34a">✅ PDF de Cartões Carregado: "${file.name}" (salve para processar e migrar para os portais).</span>`;
+      statusEl.innerHTML = `<span style="color:#16a34a">âœ… PDF de CartÃµes Carregado: "${file.name}" (salve para processar e migrar para os portais).</span>`;
     }
-    showToast('PDF de cartões carregado com sucesso!', 'sucesso');
+    showToast('PDF de cartÃµes carregado com sucesso!', 'sucesso');
   };
   reader.onerror = function() {
     olCartoesPdfBytesPendente = null;
-    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">❌ Erro ao ler arquivo PDF.</span>';
-    showToast('Erro ao ler PDF de cartões.', 'erro');
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--red)">âŒ Erro ao ler arquivo PDF.</span>';
+    showToast('Erro ao ler PDF de cartÃµes.', 'erro');
   };
   reader.readAsArrayBuffer(file);
 }
 
 async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
-  showLoading('Buscando alunos ativos e analisando PDF de cartões...');
+  showLoading('Buscando alunos ativos e analisando PDF de cartÃµes...');
   
   let alunos = [];
   try {
@@ -6227,8 +6269,8 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
     alunos = data || [];
   } catch (err) {
     hideLoading();
-    console.error('Erro ao carregar alunos para cartões:', err);
-    showToast('Erro ao buscar alunos para associar os cartões.', 'erro');
+    console.error('Erro ao carregar alunos para cartÃµes:', err);
+    showToast('Erro ao buscar alunos para associar os cartÃµes.', 'erro');
     return;
   }
   
@@ -6241,7 +6283,7 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
   const lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
   if (!lib) {
     hideLoading();
-    showToast('Biblioteca PDF.js não carregada. Recarregue a página.', 'erro');
+    showToast('Biblioteca PDF.js nÃ£o carregada. Recarregue a pÃ¡gina.', 'erro');
     return;
   }
   
@@ -6260,7 +6302,7 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
     pdf = await pdfjsLib.getDocument({ data: new Uint8Array(fileBytes.slice(0)) }).promise;
   } catch (err) {
     hideLoading();
-    console.error('Erro ao ler PDF de cartões com PDF.js:', err);
+    console.error('Erro ao ler PDF de cartÃµes com PDF.js:', err);
     showToast('Erro ao analisar a estrutura do arquivo PDF.', 'erro');
     return;
   }
@@ -6276,7 +6318,7 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
     
     let matchedAluno = null;
     
-    // A) Busca por Matrícula
+    // A) Busca por MatrÃ­cula
     for (const al of alunos) {
       if (al.matricula && normalizedPageText.includes(normalizarTexto(al.matricula))) {
         matchedAluno = al;
@@ -6317,7 +6359,7 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
   hideLoading();
   
   if (matches.length === 0) {
-    showToast('Não foi possível associar nenhuma página aos alunos ativos.', 'alerta');
+    showToast('NÃ£o foi possÃ­vel associar nenhuma pÃ¡gina aos alunos ativos.', 'alerta');
     return;
   }
   
@@ -6327,8 +6369,8 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
   progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
   progressModal.innerHTML = `
     <div style="background:white; border:1px solid var(--gray3); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-      <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">💾 Gravando Cartões de Acesso...</h4>
-      <p style="font-size:12.5px; color:#000000 !important; font-weight:700; margin-bottom:20px;" id="cartao-progress-text">Codificando páginas...</p>
+      <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">ðŸ’¾ Gravando CartÃµes de Acesso...</h4>
+      <p style="font-size:12.5px; color:#000000 !important; font-weight:700; margin-bottom:20px;" id="cartao-progress-text">Codificando pÃ¡ginas...</p>
       
       <div style="width:100%; height:8px; background:var(--gray); border-radius:4px; overflow:hidden; margin-bottom:10px;">
         <div id="cartao-progress-bar" style="width:0%; height:100%; background:var(--blue); transition:width 0.1s ease;"></div>
@@ -6349,7 +6391,7 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
     document.getElementById('cartao-progress-text').textContent = `Salvando: ${match.matchedAluno.nome}`;
     const pct = Math.round((i / matches.length) * 100);
     document.getElementById('cartao-progress-bar').style.width = `${pct}%`;
-    document.getElementById('cartao-progress-counter').textContent = `${i} de ${matches.length} cartões salvos`;
+    document.getElementById('cartao-progress-counter').textContent = `${i} de ${matches.length} cartÃµes salvos`;
     
     try {
       const newDoc = await PDFDocument.create();
@@ -6377,17 +6419,17 @@ async function processarEUploadCartoesAcesso(olimpiadaId, fileBytes) {
       if (indErr) throw indErr;
       sucessos++;
     } catch (err) {
-      console.error(`Erro ao salvar cartão para ${match.matchedAluno.nome}:`, err);
+      console.error(`Erro ao salvar cartÃ£o para ${match.matchedAluno.nome}:`, err);
     }
   }
   
   progressModal.remove();
-  showToast(`Sucesso! ${sucessos} cartões de acesso vinculados aos alunos.`, 'sucesso');
+  showToast(`Sucesso! ${sucessos} cartÃµes de acesso vinculados aos alunos.`, 'sucesso');
 }
 
 function handleFlyerUpload(input){
   const file = input.files[0]; if(!file) return;
-  if(file.size > 2*1024*1024){ showToast('Imagem muito grande (máx 2MB)','alerta'); return; }
+  if(file.size > 2*1024*1024){ showToast('Imagem muito grande (mÃ¡x 2MB)','alerta'); return; }
   const reader = new FileReader();
   reader.onload = function(e){
     const b64 = e.target.result;
@@ -6400,12 +6442,12 @@ function handleFlyerUpload(input){
 }
 
 async function excluirOlimpiada(id){
-  if(!confirm('Excluir esta olimpíada?')) return;
+  if(!confirm('Excluir esta olimpÃ­ada?')) return;
   const {error} = await supabaseClient.from('olimpiadas').delete().eq('id', id);
   if(error){ showToast('Erro: '+error.message,'evasao'); return; }
   await carregarOlimpiadas();
   renderTopoSaber();
-  showToast('Olimpíada removida.','alerta');
+  showToast('OlimpÃ­ada removida.','alerta');
 }
 
 function abrirModalOlimpiada(id){
@@ -6428,16 +6470,16 @@ function abrirModalOlimpiada(id){
   
   document.getElementById('ol-descricao').value = '';
   document.getElementById('ol-resultados').value = '';
-  document.getElementById('ol-colunas-modelo').value = 'Aluno, Escola, Olimpíada, Acertos, Classificação, Nível';
+  document.getElementById('ol-colunas-modelo').value = 'Aluno, Escola, OlimpÃ­ada, Acertos, ClassificaÃ§Ã£o, NÃ­vel';
   
   olResultadosDadosPendente = [];
   document.getElementById('ol-resultados-status').innerHTML = '<span style="color:#6b7280">Nenhum resultado importado por planilha.</span>';
   
   olCartoesPdfBytesPendente = null;
   const cartoesFile = document.getElementById('ol-cartoes-file'); if (cartoesFile) cartoesFile.value = '';
-  const cartoesStatus = document.getElementById('ol-cartoes-status'); if (cartoesStatus) cartoesStatus.innerHTML = '<span style="color:#6b7280">Nenhum arquivo de cartões selecionado.</span>';
+  const cartoesStatus = document.getElementById('ol-cartoes-status'); if (cartoesStatus) cartoesStatus.innerHTML = '<span style="color:#6b7280">Nenhum arquivo de cartÃµes selecionado.</span>';
   
-  document.getElementById('modal-olimpiada-title').textContent = '+ Nova Olimpíada';
+  document.getElementById('modal-olimpiada-title').textContent = '+ Nova OlimpÃ­ada';
 
   if(id){
     const ol = OLIMPIADAS_DATA.find(o => o.id === id);
@@ -6453,7 +6495,7 @@ function abrirModalOlimpiada(id){
     document.getElementById('ol-inscrita').value    = ol.inscrita||'nao';
     document.getElementById('ol-descricao').value   = ol.descricao||'';
     document.getElementById('ol-resultados').value  = ol.resultados||'';
-    document.getElementById('ol-colunas-modelo').value = ol.colunas_modelo || 'Aluno, Escola, Olimpíada, Acertos, Classificação, Nível';
+    document.getElementById('ol-colunas-modelo').value = ol.colunas_modelo || 'Aluno, Escola, OlimpÃ­ada, Acertos, ClassificaÃ§Ã£o, NÃ­vel';
     
     // Carregar flyer preview se existir
     if(ol.flyer_url) {
@@ -6464,10 +6506,10 @@ function abrirModalOlimpiada(id){
     
     olResultadosDadosPendente = ol.resultados_dados || [];
     document.getElementById('ol-resultados-status').innerHTML = olResultadosDadosPendente.length > 0
-      ? `<span style="color:#16a34a">✅ Total de ${olResultadosDadosPendente.length} resultados importados da planilha.</span>`
+      ? `<span style="color:#16a34a">âœ… Total de ${olResultadosDadosPendente.length} resultados importados da planilha.</span>`
       : '<span style="color:#6b7280">Nenhum resultado importado por planilha.</span>';
     
-    document.getElementById('modal-olimpiada-title').textContent = '✏️ Editar Olimpíada';
+    document.getElementById('modal-olimpiada-title').textContent = 'âœï¸ Editar OlimpÃ­ada';
   }
   openModal('modal-olimpiada');
 }
@@ -6488,32 +6530,32 @@ function renderTopoSaber(){
   if(filtroInscr) lista = lista.filter(o => o.inscrita === filtroInscr);
 
   if(lista.length === 0){
-    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:56px;margin-bottom:12px">🏆</div><div style="font-size:17px;font-weight:700">Nenhuma olimpíada cadastrada</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova Olimpíada&quot; para adicionar</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:56px;margin-bottom:12px">ðŸ†</div><div style="font-size:17px;font-weight:700">Nenhuma olimpÃ­ada cadastrada</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Nova OlimpÃ­ada&quot; para adicionar</div></div>';
     return;
   }
 
-  const areaCor = { 'Linguagens':'#3b82f6', 'Natureza':'#22c55e', 'Matemática':'#f97316', 'Humanas':'#8b5cf6' };
-  const areaIcon = { 'Linguagens':'📖', 'Natureza':'🔬', 'Matemática':'📐', 'Humanas':'🌍' };
+  const areaCor = { 'Linguagens':'#3b82f6', 'Natureza':'#22c55e', 'MatemÃ¡tica':'#f97316', 'Humanas':'#8b5cf6' };
+  const areaIcon = { 'Linguagens':'ðŸ“–', 'Natureza':'ðŸ”¬', 'MatemÃ¡tica':'ðŸ“', 'Humanas':'ðŸŒ' };
 
   const hoje = new Date(); hoje.setHours(0,0,0,0);
 
   container.innerHTML = lista.map(ol => {
     const cor = areaCor[ol.area] || '#6b7280';
-    const icon = areaIcon[ol.area] || '🏆';
-    const fmtDate = d => d ? d.split('-').reverse().join('/') : '—';
+    const icon = areaIcon[ol.area] || 'ðŸ†';
+    const fmtDate = d => d ? d.split('-').reverse().join('/') : 'â€”';
     const diaProva = ol.dia_prova ? new Date(ol.dia_prova+'T00:00:00') : null;
     const diasRestantes = diaProva ? Math.ceil((diaProva - hoje)/(1000*60*60*24)) : null;
     const passou = diasRestantes !== null && diasRestantes < 0;
     const urgente = diasRestantes !== null && diasRestantes >= 0 && diasRestantes <= 30;
 
     let badge = '';
-    if(passou) badge = '<span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">✓ Realizada</span>';
-    else if(urgente) badge = '<span style="background:#fff3cd;color:#856404;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">⚡ '+diasRestantes+' dias</span>';
-    else if(diasRestantes !== null) badge = '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">📅 '+diasRestantes+' dias</span>';
+    if(passou) badge = '<span style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âœ“ Realizada</span>';
+    else if(urgente) badge = '<span style="background:#fff3cd;color:#856404;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âš¡ '+diasRestantes+' dias</span>';
+    else if(diasRestantes !== null) badge = '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">ðŸ“… '+diasRestantes+' dias</span>';
 
     const inscritaBadge = ol.inscrita === 'sim'
-      ? '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">✅ Inscrita</span>'
-      : '<span style="background:#f3f4f6;color:#6b7280;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">❌ Não inscrita</span>';
+      ? '<span style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âœ… Inscrita</span>'
+      : '<span style="background:#f3f4f6;color:#6b7280;font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px">âŒ NÃ£o inscrita</span>';
 
     return '<div class="table-card" style="padding:0;margin-bottom:16px;overflow:hidden;border-top:4px solid '+cor+';opacity:'+(passou?'0.7':'1')+'">' +
       '<div style="padding:16px 20px">' +
@@ -6528,15 +6570,15 @@ function renderTopoSaber(){
               inscritaBadge + badge +
             '</div>' +
             '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;font-size:12.5px;color:#6b7280">' +
-              '<div>📋 <b>Inscrições:</b><br>'+fmtDate(ol.insc_inicio)+' a '+fmtDate(ol.insc_fim)+'</div>' +
-              '<div>📅 <b>Dia da Prova:</b><br>'+fmtDate(ol.dia_prova)+'</div>' +
-              '<div>👥 <b>Alunos Inscritos:</b><br>'+( ol.qtd_alunos||0 )+'</div>' +
-              (ol.link_edital ? '<div>🔗 <a href="'+ol.link_edital+'" target="_blank" style="color:#3b82f6;font-weight:600">Ver Edital</a></div>' : '') +
+              '<div>ðŸ“‹ <b>InscriÃ§Ãµes:</b><br>'+fmtDate(ol.insc_inicio)+' a '+fmtDate(ol.insc_fim)+'</div>' +
+              '<div>ðŸ“… <b>Dia da Prova:</b><br>'+fmtDate(ol.dia_prova)+'</div>' +
+              '<div>ðŸ‘¥ <b>Alunos Inscritos:</b><br>'+( ol.qtd_alunos||0 )+'</div>' +
+              (ol.link_edital ? '<div>ðŸ”— <a href="'+ol.link_edital+'" target="_blank" style="color:#3b82f6;font-weight:600">Ver Edital</a></div>' : '') +
             '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px">' +
-            '<button class="btn btn-outline btn-xs" onclick="abrirModalOlimpiada(\'' + ol.id + '\')">✏️</button>' +
-            '<button class="btn btn-red btn-xs" onclick="excluirOlimpiada(\'' + ol.id + '\')">🗑</button>' +
+            '<button class="btn btn-outline btn-xs" onclick="abrirModalOlimpiada(\'' + ol.id + '\')">âœï¸</button>' +
+            '<button class="btn btn-red btn-xs" onclick="excluirOlimpiada(\'' + ol.id + '\')">ðŸ—‘</button>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -6545,7 +6587,7 @@ function renderTopoSaber(){
 }
 
 
-// ─── USUÁRIOS ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ USUÃRIOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let USUARIOS_DATA = [];
 
 function obterFotoUsuario(usuario){
@@ -6554,7 +6596,7 @@ function obterFotoUsuario(usuario){
 
 async function carregarUsuarios(){
   const {data, error} = await supabaseClient.from('usuarios').select('*').order('nome');
-  if(error){ console.error('Erro ao carregar usuários:', error); return; }
+  if(error){ console.error('Erro ao carregar usuÃ¡rios:', error); return; }
   USUARIOS_DATA = data || [];
   renderUsuarios();
 }
@@ -6574,17 +6616,17 @@ async function salvarUsuario(){
 
   if(!nome || !email){ showToast('Preencha Nome e E-mail!','alerta'); return; }
 
-  // Validação de senha
+  // ValidaÃ§Ã£o de senha
   if(!id){
-    if(!senha){ showToast('Defina uma senha para o novo usuário!','alerta'); return; }
+    if(!senha){ showToast('Defina uma senha para o novo usuÃ¡rio!','alerta'); return; }
     if(senha.length < 6){ showToast('A senha deve ter ao menos 6 caracteres.','alerta'); return; }
-    if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
+    if(senha !== senhaConfirm){ showToast('As senhas nÃ£o coincidem!','alerta'); return; }
   } else if(senha){
     if(senha.length < 6){ showToast('A nova senha deve ter ao menos 6 caracteres.','alerta'); return; }
-    if(senha !== senhaConfirm){ showToast('As senhas não coincidem!','alerta'); return; }
+    if(senha !== senhaConfirm){ showToast('As senhas nÃ£o coincidem!','alerta'); return; }
   }
 
-  // ── Se for NOVO USUÁRIO, usa o RPC seguro para Supabase Auth ─────────
+  // â”€â”€ Se for NOVO USUÃRIO, usa o RPC seguro para Supabase Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!id) {
     const { data: rpcResp, error: rpcErr } = await supabaseClient.rpc('admin_criar_usuario', {
       p_nome:   nome,
@@ -6596,19 +6638,19 @@ async function salvarUsuario(){
     });
 
     if(!rpcErr && rpcResp?.status === 'success'){
-      // Se usuário for criado como inativo, precisamos dar update logo após a criação
+      // Se usuÃ¡rio for criado como inativo, precisamos dar update logo apÃ³s a criaÃ§Ã£o
       if(!ativo && rpcResp.uid) {
         await supabaseClient.from('usuarios').update({ ativo: false }).eq('id', rpcResp.uid);
       }
       closeModal('modal-usuario');
-      showToast('Usuário cadastrado com segurança!','sucesso');
+      showToast('UsuÃ¡rio cadastrado com seguranÃ§a!','sucesso');
       await carregarUsuarios();
       return;
     }
     console.error('[RPC admin_criar_usuario]', rpcErr || rpcResp);
-    showToast('Erro ao criar usuário: ' + (rpcErr?.message || rpcResp?.message || 'Verifique o console.'), 'evasao');
+    showToast('Erro ao criar usuÃ¡rio: ' + (rpcErr?.message || rpcResp?.message || 'Verifique o console.'), 'evasao');
   }
-  // ── Se for EDIÇÃO, atualiza a tabela pública normalmente ──────────────
+  // â”€â”€ Se for EDIÃ‡ÃƒO, atualiza a tabela pÃºblica normalmente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   else {
     const payload = {
       nome: nome,
@@ -6628,8 +6670,8 @@ async function salvarUsuario(){
       });
       if(passErr || passData?.status === 'error') {
         console.error('[Update Senha]', passErr || passData);
-        showToast('Erro ao atualizar senha no sistema de autenticação: ' + (passErr?.message || passData?.message), 'evasao');
-        return; // Interrompe se não conseguiu atualizar a senha no Auth
+        showToast('Erro ao atualizar senha no sistema de autenticaÃ§Ã£o: ' + (passErr?.message || passData?.message), 'evasao');
+        return; // Interrompe se nÃ£o conseguiu atualizar a senha no Auth
       }
       payload.senha = senha;
     }
@@ -6637,32 +6679,32 @@ async function salvarUsuario(){
     const { error } = await supabaseClient.from('usuarios').update(payload).eq('id', id);
     if (!error) {
       closeModal('modal-usuario');
-      showToast('Usuário atualizado com sucesso!','sucesso');
+      showToast('UsuÃ¡rio atualizado com sucesso!','sucesso');
       await carregarUsuarios();
     } else {
       console.error('[Update Usuario]', error);
-      showToast('Erro ao atualizar os dados do usuário: ' + error.message, 'evasao');
+      showToast('Erro ao atualizar os dados do usuÃ¡rio: ' + error.message, 'evasao');
     }
   }
 }
 
 async function excluirUsuario(id, nome){
-  if(!confirm('Excluir o usuário "'+nome+'"?')) return;
+  if(!confirm('Excluir o usuÃ¡rio "'+nome+'"?')) return;
   
-  // Chama o RPC seguro para deletar o usuário do Auth e da tabela pública
+  // Chama o RPC seguro para deletar o usuÃ¡rio do Auth e da tabela pÃºblica
   const { data, error } = await supabaseClient.rpc('admin_deletar_usuario', {
     p_user_id: id
   });
   
   if (error || data?.status === 'error') {
     console.error('[RPC admin_deletar_usuario]', error || data);
-    showToast('Erro ao excluir usuário: ' + (error?.message || data?.message), 'evasao');
+    showToast('Erro ao excluir usuÃ¡rio: ' + (error?.message || data?.message), 'evasao');
     return;
   }
   
   USUARIOS_DATA = USUARIOS_DATA.filter(u => u.id !== id);
   renderUsuarios();
-  showToast('Usuário excluído com sucesso do sistema e da autenticação.','sucesso');
+  showToast('UsuÃ¡rio excluÃ­do com sucesso do sistema e da autenticaÃ§Ã£o.','sucesso');
 }
 
 function abrirModalUsuario(id){
@@ -6682,7 +6724,7 @@ function abrirModalUsuario(id){
   if(senhaConfirmEl) senhaConfirmEl.value = '';
   const prev = document.getElementById('usr-avatar-preview');
   if(prev) prev.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%234f46e5'/%3E%3Ctext x='50' y='64' text-anchor='middle' font-size='40' fill='white'%3E%3F%3C/text%3E%3C/svg%3E";
-  document.getElementById('modal-usuario-title').textContent = '+ Novo Usuário';
+  document.getElementById('modal-usuario-title').textContent = '+ Novo UsuÃ¡rio';
   if(senhaInfoEl) senhaInfoEl.style.display = 'none'; // Hide hint for new users
   const ativoEl = document.getElementById('usr-ativo');
   if(ativoEl) ativoEl.checked = true;
@@ -6700,7 +6742,7 @@ function abrirModalUsuario(id){
     if(ativoEl) ativoEl.checked = u.ativo !== false;
     popularTurmasUsuario();
     document.getElementById('usr-turma').value   = u.turma_responsavel||'';
-    document.getElementById('modal-usuario-title').textContent = '✏️ Editar Usuário';
+    document.getElementById('modal-usuario-title').textContent = 'âœï¸ Editar UsuÃ¡rio';
     if(senhaInfoEl) senhaInfoEl.style.display = 'block'; // Show 'leave blank' hint when editing
     const fotoUsuario = obterFotoUsuario(u);
     if(fotoUsuario){
@@ -6715,7 +6757,7 @@ function popularTurmasUsuario(){
   const sel = document.getElementById('usr-turma');
   if(!sel) return;
   sel.innerHTML = '<option value="">Nenhuma (turma geral)</option>' +
-    TURMAS_DATA.map(t => '<option value="'+t.code+'">'+t.code+' — '+t.turno+'</option>').join('');
+    TURMAS_DATA.map(t => '<option value="'+t.code+'">'+t.code+' â€” '+t.turno+'</option>').join('');
 }
 
 function baixarModeloUsuarios(){
@@ -6796,7 +6838,7 @@ function importarPlanilhaUsuarios(input){
 function handleAvatarUpload(input){
   const file = input.files[0];
   if(!file) return;
-  if(file.size > 2*1024*1024){ showToast('Foto muito grande (máx. 2MB)','alerta'); return; }
+  if(file.size > 2*1024*1024){ showToast('Foto muito grande (mÃ¡x. 2MB)','alerta'); return; }
   const reader = new FileReader();
   reader.onload = function(e){
     const base64 = e.target.result;
@@ -6829,12 +6871,12 @@ function renderUsuarios(){
   if(busca)   lista = lista.filter(u => (u.nome||'').toLowerCase().includes(busca) || (u.email||'').toLowerCase().includes(busca));
 
   if(lista.length === 0){
-    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:48px;margin-bottom:12px">👥</div><div style="font-size:16px;font-weight:700">Nenhum usuário encontrado</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Novo Usuário&quot; para adicionar</div></div>';
+    container.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:48px;margin-bottom:12px">ðŸ‘¥</div><div style="font-size:16px;font-weight:700">Nenhum usuÃ¡rio encontrado</div><div style="font-size:13px;margin-top:6px">Clique em &quot;+ Novo UsuÃ¡rio&quot; para adicionar</div></div>';
     return;
   }
 
   const perfilCor  = {admin:'#7c3aed',coordenador:'#2563eb',secretaria:'#059669',professor:'#d97706'};
-  const perfilIcon = {admin:'👑',coordenador:'🎓',secretaria:'📋',professor:'📚'};
+  const perfilIcon = {admin:'ðŸ‘‘',coordenador:'ðŸŽ“',secretaria:'ðŸ“‹',professor:'ðŸ“š'};
   const perfilLabel= {admin:'Administrador',coordenador:'Coordenador',secretaria:'Secretaria',professor:'Professor'};
 
   container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">' +
@@ -6855,15 +6897,15 @@ function renderUsuarios(){
             '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u.nome+ativoBadge+'</div>'+
             '<div style="font-size:11.5px;color:#6b7280;margin-top:2px">'+u.email+'</div>'+
             '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+cor+'22;color:'+cor+';margin-top:4px;display:inline-block">'+
-              (perfilIcon[u.perfil]||'👤')+' '+(perfilLabel[u.perfil]||u.perfil)+
+              (perfilIcon[u.perfil]||'ðŸ‘¤')+' '+(perfilLabel[u.perfil]||u.perfil)+
             '</span>'+
           '</div>'+
         '</div>'+
         '<div style="font-size:11.5px;color:#6b7280;margin-bottom:10px">'+
-          (u.turno ? '🕐 '+u.turno : '')+(u.turma_responsavel ? ' · 🏫 '+u.turma_responsavel : '')+
+          (u.turno ? 'ðŸ• '+u.turno : '')+(u.turma_responsavel ? ' Â· ðŸ« '+u.turma_responsavel : '')+
         '</div>'+
         '<div style="display:flex;gap:6px;justify-content:flex-end">'+
-          '<button class="btn btn-outline btn-xs" onclick="abrirModalUsuario(\'' + u.id + '\')">✏️ Editar</button>'+
+          '<button class="btn btn-outline btn-xs" onclick="abrirModalUsuario(\'' + u.id + '\')">âœï¸ Editar</button>'+
           '<button class="btn btn-red btn-xs" onclick="excluirUsuario(\'' + u.id + '\',\'' + u.nome.replace(/'/g,'') + '\')">&#128465;</button>'+
         '</div>'+
       '</div>';
@@ -6895,7 +6937,7 @@ function importarPlanilhaUsuarios(input){
       if(error) erros++;
       else count++;
     }
-    showToast(count+' usuários importados'+(erros?' ('+erros+' erros)':''),'sucesso');
+    showToast(count+' usuÃ¡rios importados'+(erros?' ('+erros+' erros)':''),'sucesso');
     await carregarUsuarios();
   };
   reader.readAsText(file);
@@ -6933,11 +6975,11 @@ function buscarAlunoObafog(term){
 
 function addAlunoObafog(id, nome, turma){
   if(obafogAlunosSelecionados.length >= 3) {
-    showToast('Máximo de 3 alunos por equipe!', 'alerta');
+    showToast('MÃ¡ximo de 3 alunos por equipe!', 'alerta');
     return;
   }
   if(obafogAlunosSelecionados.some(a => a.id === id)){
-    showToast('Aluno já adicionado na equipe!', 'alerta');
+    showToast('Aluno jÃ¡ adicionado na equipe!', 'alerta');
     return;
   }
   
@@ -6965,7 +7007,7 @@ function renderObafogSelecionados(){
   div.innerHTML = obafogAlunosSelecionados.map(a => `
     <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:6px 10px; border-radius:4px; border:1px solid var(--gray3)">
       <div style="font-size:13px"><b>${a.nome}</b> <span class="badge">${a.turma}</span></div>
-      <button class="btn btn-sm" style="color:var(--red); padding:2px 6px" onclick="removeAlunoObafog('${a.id}')">✕</button>
+      <button class="btn btn-sm" style="color:var(--red); padding:2px 6px" onclick="removeAlunoObafog('${a.id}')">âœ•</button>
     </div>
   `).join('');
 }
@@ -7024,9 +7066,9 @@ async function renderObafog(){
     const numTag = eq.numero ? ` Eq. ${eq.numero} - ` : ' ';
     return `
     <div onclick="abrirMetragemObafog('${eq.id}')" style="cursor:pointer; background:var(--white); border:1px solid #fca5a5; border-radius:8px; padding:15px; box-shadow:0 2px 5px rgba(220,38,38,0.1); transition:transform 0.2s" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-      <div style="font-weight:700; color:var(--red); font-size:15px; margin-bottom:10px">🚀${numTag}${eq.nome}</div>
+      <div style="font-weight:700; color:var(--red); font-size:15px; margin-bottom:10px">ðŸš€${numTag}${eq.nome}</div>
       <div style="font-size:12px; color:var(--gray6); margin-bottom:12px">
-        ${(eq.alunos||[]).map(a => `<div>• ${a.nome.split(' ')[0]} (${a.turma})</div>`).join('')}
+        ${(eq.alunos||[]).map(a => `<div>â€¢ ${a.nome.split(' ')[0]} (${a.turma})</div>`).join('')}
       </div>
       <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--gray5)">
         <div>L1: <b>${l1}m</b></div>
@@ -7056,7 +7098,7 @@ function renderRankingObafog(){
   
   rankingDiv.innerHTML = rankeado.map((eq, i) => {
     const best = Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2);
-    let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)+'º';
+    let medal = i === 0 ? 'ðŸ¥‡' : i === 1 ? 'ðŸ¥ˆ' : i === 2 ? 'ðŸ¥‰' : (i+1)+'Âº';
     const numTag = eq.numero ? ` (Eq. ${eq.numero})` : '';
     return `
     <div style="display:flex; justify-content:space-between; align-items:center; background:var(--white); padding:10px 15px; border-radius:6px; border:1px solid #fde68a">
@@ -7096,7 +7138,7 @@ async function salvarMetragemObafog(){
     return;
   }
   
-  // Atualiza memória
+  // Atualiza memÃ³ria
   const eq = OBAFOG_DATA.find(e => e.id === id);
   if(eq) {
     eq.lancamento1 = l1;
@@ -7116,7 +7158,7 @@ function toggleMobileMenu() {
 // [OBAFOG] Download Excel
 function downloadObafogXLSX() {
   if (typeof XLSX === 'undefined') {
-    showToast('A biblioteca Excel ainda está carregando. Tente novamente em alguns segundos.', 'alerta');
+    showToast('A biblioteca Excel ainda estÃ¡ carregando. Tente novamente em alguns segundos.', 'alerta');
     return;
   }
   if (!OBAFOG_DATA || OBAFOG_DATA.length === 0) {
@@ -7124,7 +7166,7 @@ function downloadObafogXLSX() {
     return;
   }
 
-  // Ordena os dados pelo melhor lançamento
+  // Ordena os dados pelo melhor lanÃ§amento
   const rankeado = [...OBAFOG_DATA].sort((a,b) => {
     const bestA = Math.max(a.lancamento1||0, a.lancamento2||0);
     const bestB = Math.max(b.lancamento1||0, b.lancamento2||0);
@@ -7136,20 +7178,20 @@ function downloadObafogXLSX() {
     const al2 = eq.alunos[1] ? eq.alunos[1].nome : '';
     const al3 = eq.alunos[2] ? eq.alunos[2].nome : '';
     
-    // Obter as turmas únicas dos alunos envolvidos
+    // Obter as turmas Ãºnicas dos alunos envolvidos
     const turmasArray = eq.alunos.map(a => a.turma).filter(Boolean);
     const turmasUnicas = [...new Set(turmasArray)].join(', ');
 
     return {
-      "Colocação": (index + 1) + 'º',
+      "ColocaÃ§Ã£o": (index + 1) + 'Âº',
       "Nome da Equipe": eq.nome || '',
-      "Número da Equipe": eq.numero || '',
+      "NÃºmero da Equipe": eq.numero || '',
       "Turma(s)": turmasUnicas,
       "Aluno 1": al1,
       "Aluno 2": al2,
       "Aluno 3": al3,
-      "Lançamento 1 (m)": parseFloat(eq.lancamento1||0).toFixed(2).replace('.', ','),
-      "Lançamento 2 (m)": parseFloat(eq.lancamento2||0).toFixed(2).replace('.', ','),
+      "LanÃ§amento 1 (m)": parseFloat(eq.lancamento1||0).toFixed(2).replace('.', ','),
+      "LanÃ§amento 2 (m)": parseFloat(eq.lancamento2||0).toFixed(2).replace('.', ','),
       "Melhor Marca (m)": Math.max(eq.lancamento1||0, eq.lancamento2||0).toFixed(2).replace('.', ',')
     };
   });
@@ -7160,15 +7202,15 @@ function downloadObafogXLSX() {
 
   // Ajustar a largura das colunas
   const colWidths = [
-    { wch: 12 }, // Colocação
+    { wch: 12 }, // ColocaÃ§Ã£o
     { wch: 25 }, // Equipe
-    { wch: 18 }, // Número
+    { wch: 18 }, // NÃºmero
     { wch: 15 }, // Turma(s)
     { wch: 30 }, // Aluno 1
     { wch: 30 }, // Aluno 2
     { wch: 30 }, // Aluno 3
-    { wch: 18 }, // Lançamento 1
-    { wch: 18 }, // Lançamento 2
+    { wch: 18 }, // LanÃ§amento 1
+    { wch: 18 }, // LanÃ§amento 2
     { wch: 18 }  // Melhor Marca
   ];
   ws['!cols'] = colWidths;
@@ -7179,10 +7221,10 @@ function downloadObafogXLSX() {
 
 
 // PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
-//  CONSULTA DO ALUNO � Acesso ao e-mail e senha institucional via CPF + DN
+//  CONSULTA DO ALUNO ï¿½ Acesso ao e-mail e senha institucional via CPF + DN
 // PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 
-/** M�scara CPF: 000.000.000-00 */
+/** Mï¿½scara CPF: 000.000.000-00 */
 function normalizarCPF(value) {
   return String(value || '').replace(/\D/g, '').slice(0, 11);
 }
@@ -7201,7 +7243,7 @@ function mascaraCPF(input) {
   input.value = v;
 }
 
-/** M�scara Data de Nascimento: DD/MM/AAAA */
+/** Mï¿½scara Data de Nascimento: DD/MM/AAAA */
 function mascaraData(input) {
   let v = input.value.replace(/\D/g, '').slice(0, 8);
   if (v.length > 4)      v = v.replace(/^(\d{2})(\d{2})(\d{0,4})/, '$1/$2/$3');
@@ -7224,7 +7266,7 @@ function abrirConsultaAluno() {
   setTimeout(() => document.getElementById('cpf-consulta-input').focus(), 200);
 }
 
-/** Fecha o modal (s� ao clicar no overlay externo) */
+/** Fecha o modal (sï¿½ ao clicar no overlay externo) */
 function fecharConsultaAluno(event) {
   if (event && event.target !== document.getElementById('modal-consulta-aluno')) return;
   const overlay = document.getElementById('modal-consulta-aluno');
@@ -7246,7 +7288,7 @@ async function buscarAluno() {
   const cpf = (input.value || '').trim();
   const dn  = (dnInput ? dnInput.value : '').trim();
 
-  // Valida��o CPF
+  // Validaï¿½ï¿½o CPF
   if (cpf.replace(/\D/g, '').length < 11) {
     erroEl.textContent   = '\u26A0\uFE0F Preencha seu CPF completo (000.000.000-00).';
     erroEl.style.display = 'block';
@@ -7254,7 +7296,7 @@ async function buscarAluno() {
     return;
   }
 
-  // Valida��o Data de Nascimento (DD/MM/AAAA = 10 caracteres)
+  // Validaï¿½ï¿½o Data de Nascimento (DD/MM/AAAA = 10 caracteres)
   if (dn.replace(/\D/g, '').length < 8) {
     erroEl.textContent   = '\u26A0\uFE0F Preencha a Data de Nascimento completa (DD/MM/AAAA).';
     erroEl.style.display = 'block';
@@ -7293,7 +7335,7 @@ async function buscarAluno() {
   }
 }
 
-// Ficha de Ocorrência Individual em PDF
+// Ficha de OcorrÃªncia Individual em PDF
 function gerarPDFIndividual(oId) {
   let o = OCORR_DATA.find(item => String(item.id) === String(oId));
   
@@ -7319,19 +7361,19 @@ function gerarPDFIndividual(oId) {
     }
   }
 
-  if (!o) { showToast('Ocorrência não encontrada', 'alerta'); return; }
+  if (!o) { showToast('OcorrÃªncia nÃ£o encontrada', 'alerta'); return; }
 
   // Buscar dados completos do aluno
   const al = ALUNOS_DATA.find(a => a.id === o.aluno_id || a.cpf === o.cpf || a.nome === o.aluno);
   
   const label = {
-    evasao: 'Evasão Escolar',
+    evasao: 'EvasÃ£o Escolar',
     indisciplina: 'Indisciplina',
     bullying: 'Bullying',
-    agressao: 'Agressão Física',
+    agressao: 'AgressÃ£o FÃ­sica',
     atraso: 'Atraso',
-    liberado_coord: 'Liberado pela Coordenação',
-    suspensao_celular: 'Suspensão por Uso de Celular'
+    liberado_coord: 'Liberado pela CoordenaÃ§Ã£o',
+    suspensao_celular: 'SuspensÃ£o por Uso de Celular'
   }[o.tipo] || o.tipo;
 
   const statusTexto = o.tratada ? 'TRATADA' : 'PENDENTE';
@@ -7341,7 +7383,7 @@ function gerarPDFIndividual(oId) {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Ficha de Ocorrência Disciplinar - ${o.aluno}</title>
+      <title>Ficha de OcorrÃªncia Disciplinar - ${o.aluno}</title>
       <style>
         @page { size: portrait; margin: 15mm; margin-top: 8mm; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; font-size: 13px; }
@@ -7371,33 +7413,33 @@ function gerarPDFIndividual(oId) {
     <body>
       <div class="header">
         <img class="logo-escola" src="assets/marca_dagua.png" alt="Escola Dr. Romildo Veloso e Silva">
-        <h2>Ficha de Ocorrência Disciplinar</h2>
-        <div class="subtitle">Controle Interno de Ocorrências e Medidas Disciplinares</div>
+        <h2>Ficha de OcorrÃªncia Disciplinar</h2>
+        <div class="subtitle">Controle Interno de OcorrÃªncias e Medidas Disciplinares</div>
       </div>
       
       <div class="section-title">Dados do Aluno Envolvido</div>
       <div class="grid">
         <div class="field"><span class="label">Nome Completo</span><div class="value">${al ? al.nome : o.aluno}</div></div>
-        <div class="field"><span class="label">CPF / Matrícula</span><div class="value">${al ? al.cpf || '—' : o.cpf || '—'}</div></div>
+        <div class="field"><span class="label">CPF / MatrÃ­cula</span><div class="value">${al ? al.cpf || 'â€”' : o.cpf || 'â€”'}</div></div>
       </div>
       <div class="grid-3">
-        <div class="field"><span class="label">Turma</span><div class="value">${al ? al.turma || '—' : o.turma || '—'}</div></div>
-        <div class="field"><span class="label">Turno</span><div class="value">${al ? al.turno || '—' : '—'}</div></div>
-        <div class="field"><span class="label">Transporte / Rota</span><div class="value">${al ? al.rota || 'Sem transporte' : '—'}</div></div>
+        <div class="field"><span class="label">Turma</span><div class="value">${al ? al.turma || 'â€”' : o.turma || 'â€”'}</div></div>
+        <div class="field"><span class="label">Turno</span><div class="value">${al ? al.turno || 'â€”' : 'â€”'}</div></div>
+        <div class="field"><span class="label">Transporte / Rota</span><div class="value">${al ? al.rota || 'Sem transporte' : 'â€”'}</div></div>
       </div>
       <div class="grid">
-        <div class="field"><span class="label">Responsável Legal</span><div class="value">${al ? al.resp || '—' : '—'}</div></div>
-        <div class="field"><span class="label">Contato do Responsável</span><div class="value">${al ? al.contato || '—' : '—'}</div></div>
+        <div class="field"><span class="label">ResponsÃ¡vel Legal</span><div class="value">${al ? al.resp || 'â€”' : 'â€”'}</div></div>
+        <div class="field"><span class="label">Contato do ResponsÃ¡vel</span><div class="value">${al ? al.contato || 'â€”' : 'â€”'}</div></div>
       </div>
       
-      <div class="section-title">Informações do Registro</div>
+      <div class="section-title">InformaÃ§Ãµes do Registro</div>
       <div class="grid-3">
-        <div class="field"><span class="label">Tipo de Ocorrência</span><div class="value"><strong>${label}</strong></div></div>
-        <div class="field"><span class="label">Data / Hora</span><div class="value">${o.data} às ${o.hora}</div></div>
+        <div class="field"><span class="label">Tipo de OcorrÃªncia</span><div class="value"><strong>${label}</strong></div></div>
+        <div class="field"><span class="label">Data / Hora</span><div class="value">${o.data} Ã s ${o.hora}</div></div>
         <div class="field"><span class="label">Status do Registro</span><div class="value"><strong>${statusTexto}</strong></div></div>
       </div>
       
-      <div class="section-title">Descrição Detalhada do Ocorrido</div>
+      <div class="section-title">DescriÃ§Ã£o Detalhada do Ocorrido</div>
       <div class="description-box">${o.desc}</div>
       
       <div class="signatures">
@@ -7407,20 +7449,20 @@ function gerarPDFIndividual(oId) {
         </div>
         <div class="signature-line">
           <br><br>
-          <div>Assinatura do Responsável</div>
+          <div>Assinatura do ResponsÃ¡vel</div>
         </div>
       </div>
       
       <div class="signatures" style="margin-top: 30px;">
         <div class="signature-line" style="grid-column: span 2; max-width: 300px; margin: 0 auto;">
           <br><br>
-          <div>Assinatura da Coordenação / Direção</div>
+          <div>Assinatura da CoordenaÃ§Ã£o / DireÃ§Ã£o</div>
         </div>
       </div>
       
       <div class="footer">
-        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
-        <div>Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do ParÃ¡ - SEDUC">
+        <div>Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} Ã s ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
       </div>
     </body>
     </html>
@@ -7443,7 +7485,7 @@ function gerarPDFFichaAluno() {
   const a = ALUNOS_DATA.find(x => x.cpf === cpf);
   if (!a) return;
 
-  // Filtrar ocorrências deste aluno
+  // Filtrar ocorrÃªncias deste aluno
   const ocorrs = OCORR_DATA.filter(o => 
     o.aluno === a.nome || o.aluno === a.cpf ||
     o.aluno.includes(a.nome) || (a.cpf && o.cpf === a.cpf)
@@ -7452,23 +7494,23 @@ function gerarPDFFichaAluno() {
   const numFaltas = (a.historico || []).filter(h => h.tipo === 'falta').length;
 
   const ocorrsHtml = ocorrs.length === 0 
-    ? '<p style="color:#666; font-style:italic; font-size:12px;">Nenhuma ocorrência registrada para este aluno.</p>'
+    ? '<p style="color:#666; font-style:italic; font-size:12px;">Nenhuma ocorrÃªncia registrada para este aluno.</p>'
     : ocorrs.map(o => {
         const label = {
-          evasao: 'Evasão Escolar',
+          evasao: 'EvasÃ£o Escolar',
           indisciplina: 'Indisciplina',
           bullying: 'Bullying',
-          agressao: 'Agressão Física',
+          agressao: 'AgressÃ£o FÃ­sica',
           atraso: 'Atraso',
-          liberado_coord: 'Liberado pela Coordenação',
-          suspensao_celular: 'Suspensão por Uso de Celular'
+          liberado_coord: 'Liberado pela CoordenaÃ§Ã£o',
+          suspensao_celular: 'SuspensÃ£o por Uso de Celular'
         }[o.tipo] || o.tipo;
         const status = o.tratada ? 'Tratada' : 'Pendente';
         return `
           <div style="background:#fafafa; border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:8px; page-break-inside:avoid;">
             <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:11.5px;">
               <strong>${label}</strong>
-              <span style="color:#555;">${o.data} às ${o.hora} | Status: <strong>${status}</strong></span>
+              <span style="color:#555;">${o.data} Ã s ${o.hora} | Status: <strong>${status}</strong></span>
             </div>
             <div style="font-size:12px; color:#444;">${o.desc}</div>
           </div>
@@ -7509,30 +7551,30 @@ function gerarPDFFichaAluno() {
       <div class="header">
         <img class="logo-escola" src="assets/marca_dagua.png" alt="Escola Dr. Romildo Veloso e Silva">
         <h2>Ficha Individual do Aluno</h2>
-        <div class="subtitle">Dossiê Escolar e Histórico Disciplinar</div>
+        <div class="subtitle">DossiÃª Escolar e HistÃ³rico Disciplinar</div>
       </div>
       
-      <div class="section-title">Dados de Identificação</div>
+      <div class="section-title">Dados de IdentificaÃ§Ã£o</div>
       <div class="grid">
         <div class="field"><span class="label">Nome Completo</span><div class="value"><strong>${a.nome}</strong></div></div>
-        <div class="field"><span class="label">CPF / Matrícula</span><div class="value">${a.cpf || '—'}</div></div>
+        <div class="field"><span class="label">CPF / MatrÃ­cula</span><div class="value">${a.cpf || 'â€”'}</div></div>
       </div>
       <div class="grid-3">
-        <div class="field"><span class="label">Turma</span><div class="value">${a.turma || '—'}</div></div>
-        <div class="field"><span class="label">Turno</span><div class="value">${a.turno || '—'}</div></div>
+        <div class="field"><span class="label">Turma</span><div class="value">${a.turma || 'â€”'}</div></div>
+        <div class="field"><span class="label">Turno</span><div class="value">${a.turno || 'â€”'}</div></div>
         <div class="field"><span class="label">Transporte / Rota</span><div class="value">${a.rota || 'Sem transporte'}</div></div>
       </div>
       <div class="grid-3">
-        <div class="field"><span class="label">Data de Nascimento</span><div class="value">${a.nasc ? new Date(a.nasc).toLocaleDateString('pt-BR') : '—'}</div></div>
-        <div class="field"><span class="label">Idade</span><div class="value">${a.idade ? a.idade + ' anos' : '—'}</div></div>
+        <div class="field"><span class="label">Data de Nascimento</span><div class="value">${a.nasc ? new Date(a.nasc).toLocaleDateString('pt-BR') : 'â€”'}</div></div>
+        <div class="field"><span class="label">Idade</span><div class="value">${a.idade ? a.idade + ' anos' : 'â€”'}</div></div>
         <div class="field"><span class="label">Total de Faltas</span><div class="value" style="color:#b91c1c; font-weight:bold;">${numFaltas} faltas</div></div>
       </div>
       <div class="grid">
-        <div class="field"><span class="label">Responsável Legal</span><div class="value">${a.resp || '—'}</div></div>
-        <div class="field"><span class="label">Contato do Responsável</span><div class="value">${a.contato || '—'}</div></div>
+        <div class="field"><span class="label">ResponsÃ¡vel Legal</span><div class="value">${a.resp || 'â€”'}</div></div>
+        <div class="field"><span class="label">Contato do ResponsÃ¡vel</span><div class="value">${a.contato || 'â€”'}</div></div>
       </div>
       
-      <div class="section-title">Histórico de Ocorrências Disciplinares</div>
+      <div class="section-title">HistÃ³rico de OcorrÃªncias Disciplinares</div>
       <div style="margin-top: 10px;">
         ${ocorrsHtml}
       </div>
@@ -7544,20 +7586,20 @@ function gerarPDFFichaAluno() {
         </div>
         <div class="signature-line">
           <br><br>
-          <div>Assinatura do Responsável</div>
+          <div>Assinatura do ResponsÃ¡vel</div>
         </div>
       </div>
       
       <div class="signatures" style="margin-top: 20px;">
         <div class="signature-line" style="grid-column: span 2; max-width: 300px; margin: 0 auto;">
           <br><br>
-          <div>Assinatura da Coordenação / Direção</div>
+          <div>Assinatura da CoordenaÃ§Ã£o / DireÃ§Ã£o</div>
         </div>
       </div>
       
       <div class="footer">
-        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
-        <div>Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do ParÃ¡ - SEDUC">
+        <div>Ficha gerada eletronicamente pelo Sistema RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} Ã s ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
       </div>
     </body>
     </html>
@@ -7652,7 +7694,7 @@ async function retryFailedNotifications() {
     }
   } catch (err) {
     console.error('[retryFailedNotifications] Error:', err);
-    showToast('Falha de conexão com o servidor WhatsApp.', 'erro');
+    showToast('Falha de conexÃ£o com o servidor WhatsApp.', 'erro');
   }
 }
 
@@ -7660,7 +7702,7 @@ async function loadResponsaveisWa() {
   const { data, error } = await supabaseClient.from('responsaveis').select('*').order('created_at', { ascending: false });
   if (error) {
     console.error('[loadResponsaveisWa] Error:', error);
-    showToast('Erro ao carregar responsáveis.', 'erro');
+    showToast('Erro ao carregar responsÃ¡veis.', 'erro');
     return;
   }
   WA_RESPONSAIVEIS = data || [];
@@ -7671,12 +7713,12 @@ function renderResponsaveisWa() {
   const tbody = document.getElementById('wa-responsaveis-tbody');
   if (!tbody) return;
   if (WA_RESPONSAIVEIS.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--gray5)">Nenhum responsável cadastrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--gray5)">Nenhum responsÃ¡vel cadastrado.</td></tr>`;
     return;
   }
   tbody.innerHTML = WA_RESPONSAIVEIS.map(r => {
     const aluno = ALUNOS_DATA.find(a => a.id === r.aluno_id);
-    const alunoNome = aluno ? aluno.nome : 'Aluno não localizado';
+    const alunoNome = aluno ? aluno.nome : 'Aluno nÃ£o localizado';
     const activeChecked = r.notificacoes_ativas ? 'checked' : '';
     return `
       <tr>
@@ -7685,7 +7727,7 @@ function renderResponsaveisWa() {
         <td><a href="https://wa.me/${r.whatsapp}" target="_blank" style="color:var(--green); text-decoration:none; display:inline-flex; align-items:center; gap:4px">
           <i data-lucide="phone" style="width:12px; height:12px"></i> ${r.whatsapp}
         </a></td>
-        <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${r.parentesco || 'Responsável'}</span></td>
+        <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${r.parentesco || 'ResponsÃ¡vel'}</span></td>
         <td>
           <label class="switch">
             <input type="checkbox" ${activeChecked} onchange="toggleWaNotif('${r.id}', this.checked)">
@@ -7713,7 +7755,7 @@ function filtrarWaResponsaveis() {
   });
   tbody.innerHTML = filtered.map(r => {
     const aluno = ALUNOS_DATA.find(a => a.id === r.aluno_id);
-    const alunoNome = aluno ? aluno.nome : 'Aluno não localizado';
+    const alunoNome = aluno ? aluno.nome : 'Aluno nÃ£o localizado';
     const activeChecked = r.notificacoes_ativas ? 'checked' : '';
     return `
       <tr>
@@ -7722,7 +7764,7 @@ function filtrarWaResponsaveis() {
         <td><a href="https://wa.me/${r.whatsapp}" target="_blank" style="color:var(--green); text-decoration:none; display:inline-flex; align-items:center; gap:4px">
           <i data-lucide="phone" style="width:12px; height:12px"></i> ${r.whatsapp}
         </a></td>
-        <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${r.parentesco || 'Responsável'}</span></td>
+        <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${r.parentesco || 'ResponsÃ¡vel'}</span></td>
         <td>
           <label class="switch">
             <input type="checkbox" ${activeChecked} onchange="toggleWaNotif('${r.id}', this.checked)">
@@ -7743,12 +7785,12 @@ async function toggleWaNotif(id, active) {
   const { error } = await supabaseClient.from('responsaveis').update({ notificacoes_ativas: active }).eq('id', id);
   if (error) {
     console.error('[toggleWaNotif] Error:', error);
-    showToast('Erro ao atualizar notificação.', 'erro');
+    showToast('Erro ao atualizar notificaÃ§Ã£o.', 'erro');
     return;
   }
   const r = WA_RESPONSAIVEIS.find(x => x.id === id);
   if (r) r.notificacoes_ativas = active;
-  showToast('Notificação atualizada!', 'sucesso');
+  showToast('NotificaÃ§Ã£o atualizada!', 'sucesso');
 }
 
 function popularWaAlunosSelect() {
@@ -7789,7 +7831,7 @@ async function salvarResponsavelWa() {
   const notificacoes_ativas = document.getElementById('wa-resp-notif').checked;
 
   if (!nome || !whatsapp) {
-    showToast('Nome e WhatsApp são obrigatórios!', 'alerta');
+    showToast('Nome e WhatsApp sÃ£o obrigatÃ³rios!', 'alerta');
     return;
   }
 
@@ -7802,7 +7844,7 @@ async function salvarResponsavelWa() {
       showToast('Erro ao atualizar: ' + error.message, 'erro');
       return;
     }
-    showToast('Responsável atualizado! ✅', 'sucesso');
+    showToast('ResponsÃ¡vel atualizado! âœ…', 'sucesso');
   } else {
     payload.aluno_id = aluno_id;
     const { error } = await supabaseClient.from('responsaveis').insert(payload);
@@ -7811,7 +7853,7 @@ async function salvarResponsavelWa() {
       showToast('Erro ao cadastrar: ' + error.message, 'erro');
       return;
     }
-    showToast('Responsável cadastrado! ✅', 'sucesso');
+    showToast('ResponsÃ¡vel cadastrado! âœ…', 'sucesso');
   }
 
   closeModal('modal-wa-responsavel');
@@ -7822,14 +7864,14 @@ async function salvarResponsavelWa() {
 }
 
 async function excluirWaResponsavel(id) {
-  if (!confirm('Deseja realmente excluir este responsável?')) return;
+  if (!confirm('Deseja realmente excluir este responsÃ¡vel?')) return;
   const { error } = await supabaseClient.from('responsaveis').delete().eq('id', id);
   if (error) {
     console.error('[excluirWaResponsavel] Error:', error);
-    showToast('Erro ao excluir responsável.', 'erro');
+    showToast('Erro ao excluir responsÃ¡vel.', 'erro');
     return;
   }
-  showToast('Responsável excluído! 🗑', 'sucesso');
+  showToast('ResponsÃ¡vel excluÃ­do! ðŸ—‘', 'sucesso');
   await loadResponsaveisWa();
   
   const fichaAlunoId = document.getElementById('ficha-aluno-id')?.value;
@@ -7845,14 +7887,14 @@ async function renderResponsaveisFicha(alunoId) {
   
   if (error) {
     console.error('[renderResponsaveisFicha] Error:', error);
-    container.innerHTML = '<div style="font-size:12px;color:var(--red)">Erro ao carregar responsáveis.</div>';
+    container.innerHTML = '<div style="font-size:12px;color:var(--red)">Erro ao carregar responsÃ¡veis.</div>';
     return;
   }
   
   if (!data || data.length === 0) {
     container.innerHTML = `
       <div style="font-size:12.5px;color:var(--gray5);display:flex;justify-content:space-between;align-items:center;width:100%">
-        <span>Nenhum responsável cadastrado.</span>
+        <span>Nenhum responsÃ¡vel cadastrado.</span>
         <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Vincular</button>
       </div>
     `;
@@ -7863,19 +7905,19 @@ async function renderResponsaveisFicha(alunoId) {
     <div style="display:flex;justify-content:space-between;align-items:center;background:var(--gray2);padding:6px 10px;border-radius:8px;font-size:12px;width:100%">
       <div>
         <span style="font-weight:600;color:var(--gray8)">${r.nome}</span>
-        <span style="color:var(--gray5);font-size:11px"> (${r.parentesco || 'Responsável'})</span>
+        <span style="color:var(--gray5);font-size:11px"> (${r.parentesco || 'ResponsÃ¡vel'})</span>
         <div style="color:var(--green);font-size:11px;margin-top:2px;display:flex;align-items:center;gap:4px">
           <i data-lucide="phone" style="width:10px;height:10px"></i> ${r.whatsapp}
         </div>
       </div>
       <div style="display:flex;gap:4px">
-        <button class="btn btn-outline btn-xs" style="padding:2px 4px;font-size:10px" onclick="editarWaResponsavel('${r.id}')">✏️</button>
-        <button class="btn btn-red btn-xs" style="padding:2px 4px;font-size:10px" onclick="excluirWaResponsavel('${r.id}')">🗑</button>
+        <button class="btn btn-outline btn-xs" style="padding:2px 4px;font-size:10px" onclick="editarWaResponsavel('${r.id}')">âœï¸</button>
+        <button class="btn btn-red btn-xs" style="padding:2px 4px;font-size:10px" onclick="excluirWaResponsavel('${r.id}')">ðŸ—‘</button>
       </div>
     </div>
   `).join('') + `
     <div style="text-align:right;margin-top:4px;width:100%">
-      <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Novo Responsável</button>
+      <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Novo ResponsÃ¡vel</button>
     </div>
   `;
   if (window.lucide) window.lucide.createIcons();
@@ -7887,15 +7929,15 @@ async function renderResponsaveisFicha(alunoId) {
 
   setFichaCounter('ficha-responsaveis-count', 'Carregando...');
   setFichaText('ficha-total-responsaveis', '...');
-  container.innerHTML = '<div class="ficha-empty-inline">Carregando responsáveis vinculados...</div>';
+  container.innerHTML = '<div class="ficha-empty-inline">Carregando responsÃ¡veis vinculados...</div>';
 
   const { data, error } = await supabaseClient.from('responsaveis').select('*').eq('aluno_id', alunoId);
 
   if (error) {
     console.error('[renderResponsaveisFicha] Error:', error);
     setFichaCounter('ficha-responsaveis-count', 'Erro');
-    setFichaText('ficha-total-responsaveis', '—');
-    container.innerHTML = '<div class="ficha-empty-inline" style="color:var(--red-dark)">Não foi possível carregar os responsáveis deste aluno.</div>';
+    setFichaText('ficha-total-responsaveis', 'â€”');
+    container.innerHTML = '<div class="ficha-empty-inline" style="color:var(--red-dark)">NÃ£o foi possÃ­vel carregar os responsÃ¡veis deste aluno.</div>';
     return;
   }
 
@@ -7905,9 +7947,9 @@ async function renderResponsaveisFicha(alunoId) {
 
   if (!lista.length) {
     container.innerHTML = `
-      <div class="ficha-empty-inline">Nenhum responsável cadastrado para este aluno.</div>
+      <div class="ficha-empty-inline">Nenhum responsÃ¡vel cadastrado para este aluno.</div>
       <div class="ficha-section-cta">
-        <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Vincular Responsável</button>
+        <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Vincular ResponsÃ¡vel</button>
       </div>
     `;
     return;
@@ -7918,13 +7960,13 @@ async function renderResponsaveisFicha(alunoId) {
     const telefoneLink = telefone ? telefone.replace(/\D/g, '') : '';
     const contatoHtml = telefoneLink
       ? `<a class="ficha-contact-link" href="https://wa.me/${telefoneLink}" target="_blank" rel="noopener noreferrer"><i data-lucide="phone" style="width:12px;height:12px"></i>${telefone}</a>`
-      : `<span style="margin-top:8px;display:block">Telefone não informado.</span>`;
+      : `<span style="margin-top:8px;display:block">Telefone nÃ£o informado.</span>`;
 
     return `
       <div class="ficha-contact-card">
         <div class="ficha-contact-copy">
           <strong>${r.nome}</strong>
-          <span>${r.parentesco || 'Responsável'} • ${r.notificacoes_ativas ? 'Recebe notificações' : 'Notificações desativadas'}</span>
+          <span>${r.parentesco || 'ResponsÃ¡vel'} â€¢ ${r.notificacoes_ativas ? 'Recebe notificaÃ§Ãµes' : 'NotificaÃ§Ãµes desativadas'}</span>
           ${contatoHtml}
         </div>
         <div class="ficha-contact-actions">
@@ -7934,7 +7976,7 @@ async function renderResponsaveisFicha(alunoId) {
       </div>`;
   }).join('') + `
     <div class="ficha-section-cta">
-      <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Novo Responsável</button>
+      <button class="btn btn-outline btn-xs" onclick="abrirAddResponsavelFicha('${alunoId}')">+ Novo ResponsÃ¡vel</button>
     </div>
   `;
 
@@ -7965,7 +8007,7 @@ function renderWaRules() {
     return;
   }
   grid.innerHTML = WA_RULES.map(r => {
-    const icon = r.event_type === 'ENTRADA' ? '🔔' : (r.event_type === 'SAIDA' ? '🔕' : (r.event_type === 'EVASAO' ? '⚠️' : '📋'));
+    const icon = r.event_type === 'ENTRADA' ? 'ðŸ””' : (r.event_type === 'SAIDA' ? 'ðŸ”•' : (r.event_type === 'EVASAO' ? 'âš ï¸' : 'ðŸ“‹'));
     const statusLabel = r.active ? '<span class="metric-badge badge-green">Ativo</span>' : '<span class="metric-badge badge-red">Inativo</span>';
     return `
       <div class="profile-card" style="margin:0; display:flex; flex-direction:column; justify-content:space-between">
@@ -7976,7 +8018,7 @@ function renderWaRules() {
           </div>
           <div style="background:var(--gray2); padding:10px; border-radius:8px; font-family:monospace; font-size:11px; white-space:pre-wrap; color:var(--gray6); margin-top:8px; max-height:120px; overflow-y:auto; border:1px solid var(--gray3)">${r.message_template}</div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="openWaEditRule('${r.id}')" style="margin-top:12px; width:100%">⚙️ Ajustar Template</button>
+        <button class="btn btn-outline btn-sm" onclick="openWaEditRule('${r.id}')" style="margin-top:12px; width:100%">âš™ï¸ Ajustar Template</button>
       </div>
     `;
   }).join('');
@@ -7998,7 +8040,7 @@ async function salvarRuleWa() {
   const active = document.getElementById('wa-rule-active').checked;
 
   if (!message_template) {
-    showToast('O template da mensagem não pode ser vazio!', 'alerta');
+    showToast('O template da mensagem nÃ£o pode ser vazio!', 'alerta');
     return;
   }
 
@@ -8009,7 +8051,7 @@ async function salvarRuleWa() {
     return;
   }
 
-  showToast('Regra de automação atualizada! ✅', 'sucesso');
+  showToast('Regra de automaÃ§Ã£o atualizada! âœ…', 'sucesso');
   closeModal('modal-wa-edit-rule');
   await loadWaRules();
 }
@@ -8018,7 +8060,7 @@ function popularWaCampanhaTurmas() {
   const select = document.getElementById('wa-campanha-turmas');
   if (!select) return;
   const turmas = [...new Set(ALUNOS_DATA.map(a => a.turma).filter(Boolean))].sort();
-  select.innerHTML = '<option value="TODOS" selected>Todos os Responsáveis Cadastrados</option>' + 
+  select.innerHTML = '<option value="TODOS" selected>Todos os ResponsÃ¡veis Cadastrados</option>' + 
     turmas.map(t => {
       const tObj = TURMAS_DATA.find(x => x.code === t);
       const desc = tObj ? ` (${tObj.serie} - ${tObj.turno})` : '';
@@ -8032,7 +8074,7 @@ async function iniciarDisparoMassa() {
   const selectTurmas = document.getElementById('wa-campanha-turmas');
   
   if (!titulo || !mensagem) {
-    showToast('Título e Mensagem são obrigatórios!', 'alerta');
+    showToast('TÃ­tulo e Mensagem sÃ£o obrigatÃ³rios!', 'alerta');
     return;
   }
 
@@ -8063,7 +8105,7 @@ async function iniciarDisparoMassa() {
     if (res.ok) {
       const data = await res.json();
       if (data.sucesso) {
-        showToast('Disparos em massa iniciados! 🚀', 'sucesso');
+        showToast('Disparos em massa iniciados! ðŸš€', 'sucesso');
         const container = document.getElementById('wa-campanha-progresso-container');
         if (container) container.style.display = 'block';
         
@@ -8072,18 +8114,18 @@ async function iniciarDisparoMassa() {
         document.getElementById('wa-campanha-titulo').value = '';
         document.getElementById('wa-campanha-mensagem').value = '';
       } else {
-        showToast('Nenhum destinatário elegível encontrado.', 'alerta');
-        if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+        showToast('Nenhum destinatÃ¡rio elegÃ­vel encontrado.', 'alerta');
+        if (btn) { btn.disabled = false; btn.textContent = 'ðŸš€ Iniciar Disparos (background)'; }
       }
     } else {
       const errData = await res.json();
       showToast('Erro no servidor: ' + (errData.erro || 'erro'), 'erro');
-      if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'ðŸš€ Iniciar Disparos (background)'; }
     }
   } catch (err) {
     console.error('[iniciarDisparoMassa] Error:', err);
     showToast('Erro ao conectar com o servidor WhatsApp local.', 'erro');
-    if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'ðŸš€ Iniciar Disparos (background)'; }
   }
 }
 
@@ -8119,8 +8161,8 @@ function monitorarProgressoCampanha(campanhaId) {
         if (data.status === 'CONCLUIDO' || data.status === 'FALHA' || percent >= 100) {
           clearInterval(pollInterval);
           if (statusEl) statusEl.textContent = 'Disparos finalizados!';
-          showToast('Campanha de WhatsApp finalizada com sucesso! ✅', 'sucesso');
-          if (btn) { btn.disabled = false; btn.textContent = '🚀 Iniciar Disparos (background)'; }
+          showToast('Campanha de WhatsApp finalizada com sucesso! âœ…', 'sucesso');
+          if (btn) { btn.disabled = false; btn.textContent = 'ðŸš€ Iniciar Disparos (background)'; }
           
           await loadWhatsAppStats();
           await loadWaHistory();
@@ -8159,7 +8201,7 @@ function renderWaHistory() {
     const statusClass = h.status === 'ENVIADO' ? 'badge-green' : (h.status === 'PENDENTE' ? 'badge-yellow' : 'badge-red');
     
     const resp = WA_RESPONSAIVEIS.find(x => x.id === h.responsavel_id);
-    const respNome = resp ? resp.nome : 'Responsável';
+    const respNome = resp ? resp.nome : 'ResponsÃ¡vel';
 
     return `
       <tr>
@@ -8171,14 +8213,14 @@ function renderWaHistory() {
         <td><span class="badge" style="background:var(--gray3); color:var(--gray6)">${h.tipo_evento}</span></td>
         <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${h.mensagem}">${h.mensagem}</td>
         <td><span class="metric-badge ${statusClass}">${h.status}</span></td>
-        <td style="color:var(--red); font-size:11.5px; max-width:200px; word-wrap:break-word">${h.erro_log || '—'}</td>
+        <td style="color:var(--red); font-size:11.5px; max-width:200px; word-wrap:break-word">${h.erro_log || 'â€”'}</td>
       </tr>
     `;
   }).join('');
 }
 
 // ============================================================================
-// TRATAMENTO DE OCORRÊNCIAS & ALERTAS (≥ 3 OCORRÊNCIAS)
+// TRATAMENTO DE OCORRÃŠNCIAS & ALERTAS (â‰¥ 3 OCORRÃŠNCIAS)
 // ============================================================================
 let TO_ALUNOS_CRITICOS = [];
 
@@ -8213,7 +8255,7 @@ async function loadTratamentoOcorrencias() {
     
   if (errOcorrs) {
     console.error('[loadTratamentoOcorrencias] Error fetching occurrences:', errOcorrs);
-    showToast('Erro ao atualizar ocorrências.', 'erro');
+    showToast('Erro ao atualizar ocorrÃªncias.', 'erro');
     return;
   }
 
@@ -8253,7 +8295,7 @@ function renderTratamentoOcorrencias() {
   if (!container) return;
 
   if (TO_ALUNOS_CRITICOS.length === 0) {
-    container.innerHTML = emptyState('🛡️', 'Nenhum Aluno Crítico', 'Todos os alunos estão em conformidade com o regimento escolar (menos de 3 ocorrências).');
+    container.innerHTML = emptyState('ðŸ›¡ï¸', 'Nenhum Aluno CrÃ­tico', 'Todos os alunos estÃ£o em conformidade com o regimento escolar (menos de 3 ocorrÃªncias).');
     return;
   }
 
@@ -8265,10 +8307,10 @@ function renderTratamentoOcorrencias() {
     const recentes = ocorrs.slice(0, 3);
     const ocorrsHtml = recentes.map(o => {
       const data = new Date(o.created_at || o.data_ocorr).toLocaleDateString('pt-BR');
-      const tipoLabel = { evasao: '🚨 Evasão', indisciplina: '⚠️ Indisciplina', atraso: '⏰ Atraso', liberado_coord: '🟢 Liberado', suspensao_celular: '📵 Celular' }[o.tipo] || o.tipo;
+      const tipoLabel = { evasao: 'ðŸš¨ EvasÃ£o', indisciplina: 'âš ï¸ Indisciplina', atraso: 'â° Atraso', liberado_coord: 'ðŸŸ¢ Liberado', suspensao_celular: 'ðŸ“µ Celular' }[o.tipo] || o.tipo;
       
       let desc = o.descricao || '';
-      const isSuspensa = desc.includes('[SUSPENSÃO]');
+      const isSuspensa = desc.includes('[SUSPENSÃƒO]');
       
       return `
         <div style="background:var(--gray1); padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid ${isSuspensa ? 'var(--red)' : 'var(--orange)'}; font-size:12.5px">
@@ -8276,7 +8318,7 @@ function renderTratamentoOcorrencias() {
             <span style="font-weight:600; color:var(--gray7)">${tipoLabel}</span>
             <div style="display:flex; align-items:center; gap:8px">
               <span style="color:var(--gray4); font-size:11px">${data}</span>
-              <button class="btn btn-xs btn-outline" style="padding:2px 6px; font-size:10px; height:auto; border-color:var(--blue); color:var(--blue)" onclick="event.stopPropagation();gerarPDFIndividual('${o.id}')" title="Imprimir Ocorrência Individual">🖨️ PDF</button>
+              <button class="btn btn-xs btn-outline" style="padding:2px 6px; font-size:10px; height:auto; border-color:var(--blue); color:var(--blue)" onclick="event.stopPropagation();gerarPDFIndividual('${o.id}')" title="Imprimir OcorrÃªncia Individual">ðŸ–¨ï¸ PDF</button>
             </div>
           </div>
           <p style="color:var(--gray5); font-size:12px; margin:0">${desc}</p>
@@ -8297,34 +8339,34 @@ function renderTratamentoOcorrencias() {
                 <div class="user-avatar" style="width:48px; height:48px; background:var(--red-light); color:var(--red); font-size:18px; font-weight:700">
                   ${a.nome.substring(0, 2).toUpperCase()}
                 </div>
-                <span style="position:absolute; top:-6px; right:-6px; background:var(--red); color:white; font-size:11px; font-weight:700; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; border:2px solid #fff" title="Total de Ocorrências">
+                <span style="position:absolute; top:-6px; right:-6px; background:var(--red); color:white; font-size:11px; font-weight:700; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; border:2px solid #fff" title="Total de OcorrÃªncias">
                   ${count}
                 </span>
               </div>
               <div>
                 <h4 style="margin:0; font-size:16px; color:var(--gray8); font-weight:700">${a.nome}</h4>
-                <p style="margin:2px 0 0 0; font-size:12px; color:var(--gray5)">Turma: <strong>${a.turma || '—'}</strong> | Turno: ${a.turno || '—'} | Rota: ${a.rota || '—'}</p>
-                <p style="margin:4px 0 0 0; font-size:11px; color:var(--green); font-weight:600">👤 Resp: ${respContatoStr}</p>
+                <p style="margin:2px 0 0 0; font-size:12px; color:var(--gray5)">Turma: <strong>${a.turma || 'â€”'}</strong> | Turno: ${a.turno || 'â€”'} | Rota: ${a.rota || 'â€”'}</p>
+                <p style="margin:4px 0 0 0; font-size:11px; color:var(--green); font-weight:600">ðŸ‘¤ Resp: ${respContatoStr}</p>
               </div>
             </div>
             
             <div style="margin-top:16px">
-              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; color:var(--gray4); margin-bottom:8px">Últimas 3 Ocorrências do Aluno:</div>
+              <div style="font-size:11.5px; font-weight:700; text-transform:uppercase; color:var(--gray4); margin-bottom:8px">Ãšltimas 3 OcorrÃªncias do Aluno:</div>
               ${ocorrsHtml}
-              ${count > 3 ? `<div style="font-size:11px; color:var(--gray4); text-align:right">+ ${count - 3} ocorrências mais antigas registradas no dossiê...</div>` : ''}
+              ${count > 3 ? `<div style="font-size:11px; color:var(--gray4); text-align:right">+ ${count - 3} ocorrÃªncias mais antigas registradas no dossiÃª...</div>` : ''}
             </div>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:10px; width:100%; max-width:200px">
-            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--gray4); text-align:center">Ações Recomendadas</div>
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--gray4); text-align:center">AÃ§Ãµes Recomendadas</div>
             <button class="btn btn-red btn-sm" onclick="abrirSuspensaoOcorr('${a.id}')" style="width:100%; justify-content:center; background:var(--red)">
-              🚫 Aplicar Suspensão
+              ðŸš« Aplicar SuspensÃ£o
             </button>
             <button class="btn btn-outline btn-sm" onclick="gerarPDFTratamento('${a.id}')" style="width:100%; justify-content:center; border-color:var(--orange); color:var(--orange)">
-              🖨️ Imprimir Termo/Ata
+              ðŸ–¨ï¸ Imprimir Termo/Ata
             </button>
             <button class="btn btn-outline btn-xs" onclick="verFicha('${a.cpf}')" style="width:100%; justify-content:center; margin-top:8px">
-              🔍 Ver Ficha Completa
+              ðŸ” Ver Ficha Completa
             </button>
           </div>
 
@@ -8362,7 +8404,7 @@ function abrirGerarComunicadoOcorr(alunoId) {
   if (select) {
     const resps = WA_RESPONSAIVEIS.filter(r => r.aluno_id === a.id);
     if (resps.length === 0) {
-      select.innerHTML = '<option value="">Nenhum responsável cadastrado</option>';
+      select.innerHTML = '<option value="">Nenhum responsÃ¡vel cadastrado</option>';
     } else {
       select.innerHTML = resps.map(r => `<option value="${r.id}">${r.nome} (${r.parentesco}) - ${r.whatsapp}</option>`).join('');
     }
@@ -8371,12 +8413,12 @@ function abrirGerarComunicadoOcorr(alunoId) {
   const msgTextarea = document.getElementById('to-comunicado-mensagem');
   if (msgTextarea) {
     const listTipos = item.ocorrencias.slice(0, 3).map(o => {
-      const label = { evasao: 'Evasão', indisciplina: 'Indisciplina', atraso: 'Atraso', liberado_coord: 'Liberado', suspensao_celular: 'Uso de Celular' }[o.tipo] || o.tipo;
+      const label = { evasao: 'EvasÃ£o', indisciplina: 'Indisciplina', atraso: 'Atraso', liberado_coord: 'Liberado', suspensao_celular: 'Uso de Celular' }[o.tipo] || o.tipo;
       const data = new Date(o.created_at || o.data_ocorr).toLocaleDateString('pt-BR');
-      return `• ${label} (em ${data})`;
+      return `â€¢ ${label} (em ${data})`;
     }).join('\n');
 
-    msgTextarea.value = `Prezado(a) responsável,\n\nEntramos em contato para alertar que o(a) aluno(a) *${a.nome}* atingiu um limite crítico de *${item.ocorrencias.length} ocorrências* disciplinares registradas em nosso sistema pedagógico.\n\nÚltimos registros:\n${listTipos}\n\nJustificativa: Solicitamos o seu comparecimento ao colégio com urgência para conversarmos com a coordenação e alinharmos o plano de acompanhamento pedagógico do estudante.\n\nAtenciosamente,\nCoordenação Pedagógica RVS.`;
+    msgTextarea.value = `Prezado(a) responsÃ¡vel,\n\nEntramos em contato para alertar que o(a) aluno(a) *${a.nome}* atingiu um limite crÃ­tico de *${item.ocorrencias.length} ocorrÃªncias* disciplinares registradas em nosso sistema pedagÃ³gico.\n\nÃšltimos registros:\n${listTipos}\n\nJustificativa: Solicitamos o seu comparecimento ao colÃ©gio com urgÃªncia para conversarmos com a coordenaÃ§Ã£o e alinharmos o plano de acompanhamento pedagÃ³gico do estudante.\n\nAtenciosamente,\nCoordenaÃ§Ã£o PedagÃ³gica RVS.`;
   }
 
   openModal('modal-wa-comunicado-alerta');
@@ -8388,11 +8430,11 @@ async function salvarComunicadoPaisOcorr() {
   const mensagem = document.getElementById('to-comunicado-mensagem').value.trim();
 
   if (!respId) {
-    showToast('Adicione ou selecione um responsável antes de enviar!', 'alerta');
+    showToast('Adicione ou selecione um responsÃ¡vel antes de enviar!', 'alerta');
     return;
   }
   if (!mensagem) {
-    showToast('A mensagem não pode estar vazia!', 'alerta');
+    showToast('A mensagem nÃ£o pode estar vazia!', 'alerta');
     return;
   }
 
@@ -8419,14 +8461,14 @@ async function salvarComunicadoPaisOcorr() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        titulo: `Comunicado Crítico - Aluno: ${TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId)?.aluno.nome}`,
+        titulo: `Comunicado CrÃ­tico - Aluno: ${TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId)?.aluno.nome}`,
         mensagem: mensagem,
         destinatariosTurmas: 'TODOS'
       })
     });
 
     if (res.ok) {
-      showToast('Comunicado de alerta disparado com sucesso! 🚀', 'sucesso');
+      showToast('Comunicado de alerta disparado com sucesso! ðŸš€', 'sucesso');
       if (logData) {
         await supabaseClient.from('whatsapp_envios').update({ status: 'ENVIADO', updated_at: new Date().toISOString() }).eq('id', logData.id);
       }
@@ -8438,9 +8480,9 @@ async function salvarComunicadoPaisOcorr() {
     }
   } catch (err) {
     console.error('[salvarComunicadoPaisOcorr] Error:', err);
-    showToast('Falha na transmissão. Fila de disparos atualizada.', 'alerta');
+    showToast('Falha na transmissÃ£o. Fila de disparos atualizada.', 'alerta');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '🚀 Enviar via WhatsApp'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'ðŸš€ Enviar via WhatsApp'; }
     closeModal('modal-wa-comunicado-alerta');
     await loadTratamentoOcorrencias();
   }
@@ -8465,7 +8507,7 @@ async function salvarSuspensaoOcorr() {
   const motivo = document.getElementById('to-suspensao-motivo').value.trim();
 
   if (!dataInicio || !dataFim || !motivo) {
-    showToast('Preencha todas as datas e o motivo da suspensão!', 'alerta');
+    showToast('Preencha todas as datas e o motivo da suspensÃ£o!', 'alerta');
     return;
   }
 
@@ -8476,7 +8518,7 @@ async function salvarSuspensaoOcorr() {
   const dataInicioBr = new Date(dataInicio + 'T00:00:00').toLocaleDateString('pt-BR');
   const dataFimBr = new Date(dataFim + 'T00:00:00').toLocaleDateString('pt-BR');
 
-  const descFinal = `[SUSPENSÃO] Aluno suspenso no período de ${dataInicioBr} a ${dataFimBr}.\nMotivo: ${motivo}\nAutorizado por: Coordenação Pedagógica`;
+  const descFinal = `[SUSPENSÃƒO] Aluno suspenso no perÃ­odo de ${dataInicioBr} a ${dataFimBr}.\nMotivo: ${motivo}\nAutorizado por: CoordenaÃ§Ã£o PedagÃ³gica`;
 
   const payload = {
     tipo: 'indisciplina',
@@ -8494,13 +8536,13 @@ async function salvarSuspensaoOcorr() {
     const { data: insertedOcorr, error } = await supabaseClient.from('ocorrencias').insert(payload).select().single();
     if (error) throw error;
 
-    showToast('Suspensão registrada com sucesso no dossiê! 🚫', 'sucesso');
+    showToast('SuspensÃ£o registrada com sucesso no dossiÃª! ðŸš«', 'sucesso');
     
     const oData = new Date().toLocaleDateString('pt-BR');
     const oHora = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     OCORR_DATA.push({
       id: insertedOcorr?.id || Date.now(),
-      tipo: 'indisciplina', icon: '📵', aluno: a.nome, turma: a.turma,
+      tipo: 'indisciplina', icon: 'ðŸ“µ', aluno: a.nome, turma: a.turma,
       desc: descFinal, hora: oHora, data: oData,
       tratada: false, aguardandoPais: true, origem: 'manual'
     });
@@ -8515,9 +8557,9 @@ async function salvarSuspensaoOcorr() {
 
   } catch (err) {
     console.error('[salvarSuspensaoOcorr] Error:', err);
-    showToast('Erro ao salvar suspensão disciplinar: ' + err.message, 'erro');
+    showToast('Erro ao salvar suspensÃ£o disciplinar: ' + err.message, 'erro');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Confirmar Suspensão'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Confirmar SuspensÃ£o'; }
     closeModal('modal-aplicar-suspensao');
     await loadTratamentoOcorrencias();
     renderOcorrencias();
@@ -8525,10 +8567,10 @@ async function salvarSuspensaoOcorr() {
   }
 }
 
-// Relatório Consolidado de Ocorrências e Acompanhamento Disciplinar (PDF)
+// RelatÃ³rio Consolidado de OcorrÃªncias e Acompanhamento Disciplinar (PDF)
 function gerarPDFTratamento(alunoId) {
   const item = TO_ALUNOS_CRITICOS.find(x => x.aluno.id === alunoId);
-  if (!item) { showToast('Ficha não encontrada', 'alerta'); return; }
+  if (!item) { showToast('Ficha nÃ£o encontrada', 'alerta'); return; }
 
   const a = item.aluno;
   const ocorrs = item.ocorrencias;
@@ -8536,13 +8578,13 @@ function gerarPDFTratamento(alunoId) {
   const listHtml = ocorrs.map((o, index) => {
     const data = new Date(o.created_at || o.data_ocorr).toLocaleDateString('pt-BR');
     const label = {
-      evasao: 'Evasão Escolar',
+      evasao: 'EvasÃ£o Escolar',
       indisciplina: 'Indisciplina',
       bullying: 'Bullying',
-      agressao: 'Agressão Física',
+      agressao: 'AgressÃ£o FÃ­sica',
       atraso: 'Atraso',
-      liberado_coord: 'Liberado pela Coordenação',
-      suspensao_celular: 'Suspensão por Uso de Celular'
+      liberado_coord: 'Liberado pela CoordenaÃ§Ã£o',
+      suspensao_celular: 'SuspensÃ£o por Uso de Celular'
     }[o.tipo] || o.tipo;
     return `
       <tr>
@@ -8559,7 +8601,7 @@ function gerarPDFTratamento(alunoId) {
     <html>
     <head>
       <meta charset="UTF-8">
-      <title>Termo de Alerta e Acompanhamento Pedagógico - ${a.nome}</title>
+      <title>Termo de Alerta e Acompanhamento PedagÃ³gico - ${a.nome}</title>
       <style>
         @page { size: portrait; margin: 15mm; margin-top: 8mm; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.5; font-size: 12px; }
@@ -8590,33 +8632,33 @@ function gerarPDFTratamento(alunoId) {
     <body>
       <div class="header">
         <img class="logo-escola" src="assets/marca_dagua.png" alt="Escola Dr. Romildo Veloso e Silva">
-        <h2>Ata de Acompanhamento Pedagógico e Alerta Disciplinar</h2>
-        <div class="subtitle">Coordenação de Disciplina e Apoio Pedagógico</div>
+        <h2>Ata de Acompanhamento PedagÃ³gico e Alerta Disciplinar</h2>
+        <div class="subtitle">CoordenaÃ§Ã£o de Disciplina e Apoio PedagÃ³gico</div>
       </div>
       
       <p style="text-align: justify; text-indent: 30px; font-size: 12.5px; margin-bottom: 15px;">
-        Ao(s) <strong>${new Date().getDate()}</strong> dia(s) do mês de <strong>${new Date().toLocaleString('pt-BR', {month: 'long'})}</strong> de <strong>${new Date().getFullYear()}</strong>, na Coordenação Pedagógica da <strong>Escola Dr. Romildo Veloso e Silva</strong>, reuniram-se os membros do corpo docente, coordenação e o responsável legal do estudante abaixo identificado, a fim de tratar de medidas orientadoras referentes ao excessivo acúmulo de infrações disciplinares registradas no regimento escolar.
+        Ao(s) <strong>${new Date().getDate()}</strong> dia(s) do mÃªs de <strong>${new Date().toLocaleString('pt-BR', {month: 'long'})}</strong> de <strong>${new Date().getFullYear()}</strong>, na CoordenaÃ§Ã£o PedagÃ³gica da <strong>Escola Dr. Romildo Veloso e Silva</strong>, reuniram-se os membros do corpo docente, coordenaÃ§Ã£o e o responsÃ¡vel legal do estudante abaixo identificado, a fim de tratar de medidas orientadoras referentes ao excessivo acÃºmulo de infraÃ§Ãµes disciplinares registradas no regimento escolar.
       </p>
 
-      <div class="section-title">Identificação do Estudante</div>
+      <div class="section-title">IdentificaÃ§Ã£o do Estudante</div>
       <div class="grid">
         <div class="field"><span class="label">Nome do Aluno</span><div class="value">${a.nome}</div></div>
-        <div class="field"><span class="label">CPF / Matrícula</span><div class="value">${a.cpf || '—'}</div></div>
+        <div class="field"><span class="label">CPF / MatrÃ­cula</span><div class="value">${a.cpf || 'â€”'}</div></div>
       </div>
       <div class="grid-3">
-        <div class="field"><span class="label">Turma</span><div class="value">${a.turma || '—'}</div></div>
-        <div class="field"><span class="label">Turno</span><div class="value">${a.turno || '—'}</div></div>
-        <div class="field"><span class="label">Rota / Transporte</span><div class="value">${a.rota || '—'}</div></div>
+        <div class="field"><span class="label">Turma</span><div class="value">${a.turma || 'â€”'}</div></div>
+        <div class="field"><span class="label">Turno</span><div class="value">${a.turno || 'â€”'}</div></div>
+        <div class="field"><span class="label">Rota / Transporte</span><div class="value">${a.rota || 'â€”'}</div></div>
       </div>
       
-      <div class="section-title">Ocorrências Disciplinares Registradas (Acumulado Crítico)</div>
-      <p style="margin-top: 4px; margin-bottom: 8px; color: #666; font-size: 11px;">O estudante citado apresenta o seguinte histórico de registros pedagógicos/disciplinares ativos:</p>
+      <div class="section-title">OcorrÃªncias Disciplinares Registradas (Acumulado CrÃ­tico)</div>
+      <p style="margin-top: 4px; margin-bottom: 8px; color: #666; font-size: 11px;">O estudante citado apresenta o seguinte histÃ³rico de registros pedagÃ³gicos/disciplinares ativos:</p>
       <table>
         <thead>
           <tr>
             <th style="width: 5%;">Item</th>
             <th style="width: 15%;">Data</th>
-            <th style="width: 25%;">Infração</th>
+            <th style="width: 25%;">InfraÃ§Ã£o</th>
             <th style="width: 55%;">Parecer Descritivo / Motivo</th>
           </tr>
         </thead>
@@ -8625,13 +8667,13 @@ function gerarPDFTratamento(alunoId) {
         </tbody>
       </table>
       
-      <div class="section-title">Resoluções e Encaminhamentos da Coordenação</div>
-      <p style="margin-top: 4px; margin-bottom: 4px;">Fica acordado entre as partes as seguintes condutas e providências:</p>
+      <div class="section-title">ResoluÃ§Ãµes e Encaminhamentos da CoordenaÃ§Ã£o</div>
+      <p style="margin-top: 4px; margin-bottom: 4px;">Fica acordado entre as partes as seguintes condutas e providÃªncias:</p>
       <ul style="margin: 0; padding-left: 20px; font-size: 11.5px; line-height: 1.6;">
-        <li>O aluno assume formalmente o compromisso de respeitar as normas escolares descritas no regimento da instituição.</li>
-        <li>O responsável legal compromete-se a acompanhar diariamente a assiduidade e a conduta disciplinar do estudante.</li>
-        <li>Fica a coordenação autorizada a aplicar penalidades regulamentares mais severas, incluindo suspensão escolar imediata, no caso de reincidência de conduta inadequada.</li>
-        <li>Encaminhamento pedagógico complementar para acompanhamento da coordenação e orientação psicológica, se necessário.</li>
+        <li>O aluno assume formalmente o compromisso de respeitar as normas escolares descritas no regimento da instituiÃ§Ã£o.</li>
+        <li>O responsÃ¡vel legal compromete-se a acompanhar diariamente a assiduidade e a conduta disciplinar do estudante.</li>
+        <li>Fica a coordenaÃ§Ã£o autorizada a aplicar penalidades regulamentares mais severas, incluindo suspensÃ£o escolar imediata, no caso de reincidÃªncia de conduta inadequada.</li>
+        <li>Encaminhamento pedagÃ³gico complementar para acompanhamento da coordenaÃ§Ã£o e orientaÃ§Ã£o psicolÃ³gica, se necessÃ¡rio.</li>
       </ul>
       
       <div class="signatures" style="margin-top: 35px;">
@@ -8641,24 +8683,24 @@ function gerarPDFTratamento(alunoId) {
         </div>
         <div class="signature-line">
           <br><br>
-          <div>Assinatura do Responsável Legal</div>
+          <div>Assinatura do ResponsÃ¡vel Legal</div>
         </div>
       </div>
       
       <div class="signatures" style="margin-top: 25px;">
         <div class="signature-line">
           <br><br>
-          <div>Assinatura da Coordenação Pedagógica</div>
+          <div>Assinatura da CoordenaÃ§Ã£o PedagÃ³gica</div>
         </div>
         <div class="signature-line">
           <br><br>
-          <div>Assinatura da Direção Escolar</div>
+          <div>Assinatura da DireÃ§Ã£o Escolar</div>
         </div>
       </div>
       
       <div class="footer">
-        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do Pará - SEDUC">
-        <div>Relatório consolidado via RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+        <img class="logo-seduc" src="assets/cabecalho_logo.png" alt="Governo do ParÃ¡ - SEDUC">
+        <div>RelatÃ³rio consolidado via RVS Gestor em ${new Date().toLocaleDateString('pt-BR')} Ã s ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
       </div>
     </body>
     </html>
@@ -8678,7 +8720,7 @@ function gerarPDFTratamento(alunoId) {
 
 // Exibe um modal de carregamento bonito e moderno com spinner CSS
 function showLoading(msg = 'Carregando...') {
-  hideLoading(); // Garante que não duplique
+  hideLoading(); // Garante que nÃ£o duplique
 
   const overlay = document.createElement('div');
   overlay.id = 'rvs-loading-overlay';
@@ -8751,7 +8793,7 @@ function hideLoading() {
 }
 
 let currentUploadedPdfBytes = null; // ArrayBuffer do PDF original
-let currentMatches = [];            // Mapeamento atual de pág ➔ aluno
+let currentMatches = [];            // Mapeamento atual de pÃ¡g âž” aluno
 let currentAlunosTurma = [];        // Alunos carregados da turma
 let currentBoletimProcessedPackage = null;
 const BOLETINS_SUBTABS = ['listagem', 'upload', 'processado'];
@@ -8770,7 +8812,7 @@ function switchBoletinsSubTab(tabId) {
   if (activeBtn) activeBtn.classList.add('active');
   if (activePane) activePane.style.display = 'block';
   
-  // Força cor de texto do contêiner geral em preto
+  // ForÃ§a cor de texto do contÃªiner geral em preto
   document.getElementById('page-boletins').style.color = '#000000';
   
   if (tabId === 'listagem') {
@@ -8839,7 +8881,7 @@ function formatarTituloSimples(valor) {
 function getBoletimComponentAliases() {
   const baseAliases = {
     ...CONSELHO_COMPONENTE_ALIAS_MAP,
-    'AlfabetizaÃ§Ã£o': ['alfabetizacao', 'alfabetização'],
+    'AlfabetizaÃƒÂ§ÃƒÂ£o': ['alfabetizacao', 'alfabetizaÃ§Ã£o'],
     'Leitura': ['leitura'],
     'Escrita': ['escrita']
   };
@@ -8920,7 +8962,7 @@ function extrairComponentesBoletim(pageLines = [], pageText = '') {
   linhas.forEach((linha, index) => {
     const texto = (linha || '').replace(/\s+/g, ' ').trim();
     if (!texto) return;
-    const match = texto.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]{3,40})\s+(\d+(?:[.,]\d+)?)(?:\s+(\d{1,2}))?$/);
+    const match = texto.match(/^([\p{L}][\p{L}\s]{3,40})\s+(\d+(?:[.,]\d+)?)(?:\s+(\d{1,2}))?$/u);
     if (!match) return;
     const componente = canonicalizarComponenteCurricular(match[1]);
     if (componente.length < 4) return;
@@ -9031,7 +9073,7 @@ function getBoletimPackageComponents(student) {
 }
 
 function getBoletimStudentPackageLabel(student) {
-  return student?.student_name || student?.nome_aluno || student?.nome || 'Aluno sem identificação';
+  return student?.student_name || student?.nome_aluno || student?.nome || 'Aluno sem identificaÃ§Ã£o';
 }
 
 function localizarAlunoDoPacoteBoletim(item, alunos) {
@@ -9076,15 +9118,15 @@ function renderBoletimProcessadoPreview(pkg) {
     return `
       <tr style="border-bottom:1px solid var(--gray3);">
         <td style="padding:11px; font-weight:700; color:#000000;">${getBoletimStudentPackageLabel(student)}</td>
-        <td style="padding:11px; color:#000000;">${student?.student_registry || student?.matricula || '—'}</td>
+        <td style="padding:11px; color:#000000;">${student?.student_registry || student?.matricula || 'â€”'}</td>
         <td style="padding:11px; color:#000000; text-align:center;">${componentes.length}</td>
-        <td style="padding:11px; color:#000000;">${primeiraLinha ? `${primeiraLinha.componente}: ${primeiraLinha.nota ?? '—'}` : 'Sem disciplinas reconhecidas'}</td>
+        <td style="padding:11px; color:#000000;">${primeiraLinha ? `${primeiraLinha.componente}: ${primeiraLinha.nota ?? 'â€”'}` : 'Sem disciplinas reconhecidas'}</td>
       </tr>
     `;
   }).join('');
 
   const naoImportados = resumoImportacao?.unmatched?.length
-    ? `<div style="margin-top:12px; font-size:12.2px; color:#7c2d12; line-height:1.6;"><strong>Não vinculados:</strong> ${resumoImportacao.unmatched.slice(0, 6).map(item => item.nome).join(', ')}${resumoImportacao.unmatched.length > 6 ? '...' : ''}</div>`
+    ? `<div style="margin-top:12px; font-size:12.2px; color:#7c2d12; line-height:1.6;"><strong>NÃ£o vinculados:</strong> ${resumoImportacao.unmatched.slice(0, 6).map(item => item.nome).join(', ')}${resumoImportacao.unmatched.length > 6 ? '...' : ''}</div>`
     : '';
 
   container.style.display = 'block';
@@ -9092,16 +9134,16 @@ function renderBoletimProcessadoPreview(pkg) {
     <div class="table-card" style="padding:22px; margin-top:18px; background:white;">
       <div style="display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; align-items:flex-start;">
         <div>
-          <div style="font-size:15px; font-weight:800; color:#000000;">Prévia do pacote processado</div>
+          <div style="font-size:15px; font-weight:800; color:#000000;">PrÃ©via do pacote processado</div>
           <div style="font-size:12.5px; color:var(--gray5); margin-top:6px;">
-            Origem: ${(pkg?.source?.file_name || pkg?.metadata?.file_name || 'arquivo processado')} • ${students.length} aluno(s) • ${totalComponentes} disciplina(s) reconhecida(s)
+            Origem: ${(pkg?.source?.file_name || pkg?.metadata?.file_name || 'arquivo processado')} â€¢ ${students.length} aluno(s) â€¢ ${totalComponentes} disciplina(s) reconhecida(s)
           </div>
         </div>
         ${resumoImportacao ? `
           <div style="background:#f8fafc; border:1px solid var(--gray3); border-radius:12px; padding:10px 14px; min-width:210px;">
-            <div style="font-size:11.5px; color:var(--gray5); font-weight:700;">Última importação</div>
+            <div style="font-size:11.5px; color:var(--gray5); font-weight:700;">Ãšltima importaÃ§Ã£o</div>
             <div style="font-size:13px; color:#000000; font-weight:800; margin-top:6px;">${resumoImportacao.savedRows} registro(s) gravado(s)</div>
-            <div style="font-size:12px; color:var(--gray6); margin-top:4px;">${resumoImportacao.matchedStudents} aluno(s) vinculados • ${resumoImportacao.unmatched.length} pendência(s)</div>
+            <div style="font-size:12px; color:var(--gray6); margin-top:4px;">${resumoImportacao.matchedStudents} aluno(s) vinculados â€¢ ${resumoImportacao.unmatched.length} pendÃªncia(s)</div>
           </div>
         ` : ''}
       </div>
@@ -9111,13 +9153,13 @@ function renderBoletimProcessadoPreview(pkg) {
           <thead style="background:var(--gray);">
             <tr>
               <th style="padding:11px; text-align:left; font-size:12px; font-weight:800; color:#000000;">Aluno</th>
-              <th style="padding:11px; text-align:left; font-size:12px; font-weight:800; color:#000000;">Matrícula</th>
+              <th style="padding:11px; text-align:left; font-size:12px; font-weight:800; color:#000000;">MatrÃ­cula</th>
               <th style="padding:11px; text-align:center; font-size:12px; font-weight:800; color:#000000;">Itens</th>
               <th style="padding:11px; text-align:left; font-size:12px; font-weight:800; color:#000000;">Primeira leitura</th>
             </tr>
           </thead>
           <tbody>
-            ${linhasTabela || `<tr><td colspan="4" style="padding:18px; text-align:center; color:#000000; font-weight:700;">O pacote foi lido, mas não trouxe alunos válidos.</td></tr>`}
+            ${linhasTabela || `<tr><td colspan="4" style="padding:18px; text-align:center; color:#000000; font-weight:700;">O pacote foi lido, mas nÃ£o trouxe alunos vÃ¡lidos.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -9146,11 +9188,11 @@ function handleBoletimProcessadoFileSelected(input) {
       const pacote = JSON.parse(event.target.result);
       const students = getBoletimPackageStudents(pacote);
       if (!students.length) {
-        throw new Error('O pacote não possui alunos processados.');
+        throw new Error('O pacote nÃ£o possui alunos processados.');
       }
 
       currentBoletimProcessedPackage = pacote;
-      if (label) label.textContent = `📦 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+      if (label) label.textContent = `ðŸ“¦ ${file.name} (${Math.round(file.size / 1024)} KB)`;
       if (dropzoneText) dropzoneText.textContent = `Pacote carregado: ${file.name}`;
       if (fileBar) fileBar.style.display = 'flex';
       renderBoletimProcessadoPreview(pacote);
@@ -9159,7 +9201,7 @@ function handleBoletimProcessadoFileSelected(input) {
       currentBoletimProcessedPackage = null;
       if (fileBar) fileBar.style.display = 'none';
       if (preview) preview.style.display = 'none';
-      showToast('Não foi possível ler o pacote JSON: ' + error.message, 'erro');
+      showToast('NÃ£o foi possÃ­vel ler o pacote JSON: ' + error.message, 'erro');
     }
   };
   reader.onerror = function() {
@@ -9189,7 +9231,7 @@ async function importarBoletimProcessado() {
   const turmaObj = TURMAS_DATA.find(turma => turma.code === turmaCode);
   const turmaId = turmaObj?.id;
   if (!turmaId) {
-    showToast('Turma inválida ou não encontrada.', 'alerta');
+    showToast('Turma invÃ¡lida ou nÃ£o encontrada.', 'alerta');
     return;
   }
 
@@ -9243,7 +9285,7 @@ async function importarBoletimProcessado() {
     const payload = Array.from(payloadMap.values());
     if (!payload.length) {
       hideLoading();
-      showToast('O pacote foi lido, mas não gerou notas válidas para importar.', 'alerta');
+      showToast('O pacote foi lido, mas nÃ£o gerou notas vÃ¡lidas para importar.', 'alerta');
       return;
     }
 
@@ -9275,7 +9317,7 @@ async function importarBoletimProcessado() {
   }
 }
 
-// Busca a situação de todas as turmas em relação a boletins publicados
+// Busca a situaÃ§Ã£o de todas as turmas em relaÃ§Ã£o a boletins publicados
 async function renderStatusBoletinsTurmas() {
   const tbody = document.getElementById('boletins-status-tbody');
   const counterEl = document.getElementById('boletins-contador-status');
@@ -9300,7 +9342,7 @@ async function renderStatusBoletinsTurmas() {
   const periodo = document.getElementById('boletins-filtro-periodo').value;
 
   try {
-    // 1. Busca os boletins completos publicados para esse período
+    // 1. Busca os boletins completos publicados para esse perÃ­odo
     const { data: published, error } = await supabaseClient
       .from('boletins_turmas')
       .select('id, turma_id')
@@ -9333,19 +9375,19 @@ async function renderStatusBoletinsTurmas() {
 
       if (temBoletim) {
         publicadosQtd++;
-        badge = `<span class="badge badge-green" style="font-weight:800; padding:4px 10px; border-radius:12px; font-size:11.5px; color:#047857 !important;">🟢 Publicado</span>`;
+        badge = `<span class="badge badge-green" style="font-weight:800; padding:4px 10px; border-radius:12px; font-size:11.5px; color:#047857 !important;">ðŸŸ¢ Publicado</span>`;
         actions = `
           <div style="display:flex; gap:6px; justify-content:center;">
-            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1px solid var(--gray3);" onclick="visualizarBoletimCompleto('${boletimTurmaId}', '${t.code}')">👁️ Ver PDF</button>
-            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1px solid var(--gray3);" onclick="baixarBoletimCompleto('${boletimTurmaId}', 'Boletim_Completo_${t.code}_${periodo.replace(/ /g, '_')}.pdf')">📥 Baixar</button>
-            <button class="btn btn-red btn-sm" style="padding:4px 8px; font-size:11px; background:#f43f5e;" onclick="excluirBoletimCompleto('${boletimTurmaId}', '${t.code}', '${t.id}')">🗑️ Excluir</button>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1px solid var(--gray3);" onclick="visualizarBoletimCompleto('${boletimTurmaId}', '${t.code}')">ðŸ‘ï¸ Ver PDF</button>
+            <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1px solid var(--gray3);" onclick="baixarBoletimCompleto('${boletimTurmaId}', 'Boletim_Completo_${t.code}_${periodo.replace(/ /g, '_')}.pdf')">ðŸ“¥ Baixar</button>
+            <button class="btn btn-red btn-sm" style="padding:4px 8px; font-size:11px; background:#f43f5e;" onclick="excluirBoletimCompleto('${boletimTurmaId}', '${t.code}', '${t.id}')">ðŸ—‘ï¸ Excluir</button>
           </div>
         `;
       } else {
-        badge = `<span class="badge badge-yellow" style="font-weight:800; padding:4px 10px; border-radius:12px; font-size:11.5px; color:#b45309 !important;">🔴 Pendente</span>`;
+        badge = `<span class="badge badge-yellow" style="font-weight:800; padding:4px 10px; border-radius:12px; font-size:11.5px; color:#b45309 !important;">ðŸ”´ Pendente</span>`;
         actions = `
           <div style="display:flex; justify-content:center;">
-            <button class="btn btn-primary btn-sm" style="padding:4px 12px; font-size:11px; font-weight:750;" onclick="irParaUploadBoletimDeUmaTurma('${t.code}')">📤 Enviar Boletim</button>
+            <button class="btn btn-primary btn-sm" style="padding:4px 12px; font-size:11px; font-weight:750;" onclick="irParaUploadBoletimDeUmaTurma('${t.code}')">ðŸ“¤ Enviar Boletim</button>
           </div>
         `;
       }
@@ -9367,7 +9409,7 @@ async function renderStatusBoletinsTurmas() {
   }
 }
 
-// Atalho para enviar o boletim de uma turma específica a partir da tabela de status
+// Atalho para enviar o boletim de uma turma especÃ­fica a partir da tabela de status
 function irParaUploadBoletimDeUmaTurma(turmaCode) {
   switchBoletinsSubTab('upload');
   
@@ -9396,7 +9438,7 @@ async function visualizarBoletimCompleto(boletimTurmaId, turmaCode) {
   } catch (err) {
     console.error(err);
     hideLoading();
-    showToast('Não foi possível obter o PDF completo da turma.', 'erro');
+    showToast('NÃ£o foi possÃ­vel obter o PDF completo da turma.', 'erro');
   }
 }
 
@@ -9414,7 +9456,7 @@ function exibirModalPrevisualizacaoCompleta(base64, label) {
   
   const header = document.createElement('div');
   header.style = 'padding:14px 20px; border-bottom:1px solid var(--gray3); display:flex; justify-content:space-between; align-items:center; background:var(--gray);';
-  header.innerHTML = `<h4 style="font-size:14px; font-weight:800; color:#000000 !important; margin:0">👁️ Visualizando Boletim — ${label}</h4>
+  header.innerHTML = `<h4 style="font-size:14px; font-weight:800; color:#000000 !important; margin:0">ðŸ‘ï¸ Visualizando Boletim â€” ${label}</h4>
     <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:24px; cursor:pointer;">&times;</button>`;
   
   const body = document.createElement('div');
@@ -9454,9 +9496,9 @@ async function baixarBoletimCompleto(boletimTurmaId, filename) {
   }
 }
 
-// Exclui o arquivo completo do banco e cascateia a exclusão para boletins individuais
+// Exclui o arquivo completo do banco e cascateia a exclusÃ£o para boletins individuais
 async function excluirBoletimCompleto(boletimTurmaId, turmaCode, turmaId) {
-  const confirmacao = confirm(`ATENÇÃO: Tem certeza que deseja excluir o boletim completo da turma ${turmaCode}? Isso apagará permanentemente o PDF completo E todos os boletins individuais gerados para os alunos neste período.`);
+  const confirmacao = confirm(`ATENÃ‡ÃƒO: Tem certeza que deseja excluir o boletim completo da turma ${turmaCode}? Isso apagarÃ¡ permanentemente o PDF completo E todos os boletins individuais gerados para os alunos neste perÃ­odo.`);
   if (!confirmacao) return;
 
   showLoading('Excluindo boletins da turma...');
@@ -9472,7 +9514,7 @@ async function excluirBoletimCompleto(boletimTurmaId, turmaCode, turmaId) {
 
     if (err1) throw err1;
 
-    // 2. Deleta os boletins individuais dos alunos daquela turma, ano e período
+    // 2. Deleta os boletins individuais dos alunos daquela turma, ano e perÃ­odo
     const { error: err2 } = await supabaseClient
       .from('boletins')
       .delete()
@@ -9483,7 +9525,7 @@ async function excluirBoletimCompleto(boletimTurmaId, turmaCode, turmaId) {
     if (err2) throw err2;
 
     hideLoading();
-    showToast(`Boletins da turma ${turmaCode} excluídos com sucesso.`, 'sucesso');
+    showToast(`Boletins da turma ${turmaCode} excluÃ­dos com sucesso.`, 'sucesso');
     renderStatusBoletinsTurmas();
 
   } catch (err) {
@@ -9500,7 +9542,7 @@ function handleBoletimFileSelected(input) {
   
   if (input.files && input.files.length > 0) {
     const file = input.files[0];
-    fileLabel.textContent = `📄 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+    fileLabel.textContent = `ðŸ“„ ${file.name} (${Math.round(file.size / 1024)} KB)`;
     fileLabel.style.color = '#000000';
     dropzoneText.textContent = `Arquivo carregado: ${file.name}`;
     dropzoneText.style.color = '#000000';
@@ -9532,7 +9574,7 @@ async function processarBoletimPDF() {
   const turmaId = turmaObj ? turmaObj.id : null;
 
   if (!turmaId) {
-    showToast('Turma inválida ou não encontrada no sistema.', 'alerta');
+    showToast('Turma invÃ¡lida ou nÃ£o encontrada no sistema.', 'alerta');
     return;
   }
 
@@ -9552,11 +9594,11 @@ async function processarBoletimPDF() {
       return;
     }
 
-    // Ordena alfabeticamente para a UI e para o fallback alfabético
+    // Ordena alfabeticamente para a UI e para o fallback alfabÃ©tico
     alunos.sort((a, b) => a.nome.localeCompare(b.nome));
     currentAlunosTurma = alunos;
 
-    // 2. Lê os bytes do PDF
+    // 2. LÃª os bytes do PDF
     const file = fileInput.files[0];
     currentUploadedPdfBytes = await file.arrayBuffer();
 
@@ -9564,7 +9606,7 @@ async function processarBoletimPDF() {
     const lib = window.pdfjsLib || window['pdfjs-dist/build/pdf'];
     if (!lib) {
       hideLoading();
-      showToast('Biblioteca de leitura de PDF ainda não foi carregada. Recarregue a página.', 'erro');
+      showToast('Biblioteca de leitura de PDF ainda nÃ£o foi carregada. Recarregue a pÃ¡gina.', 'erro');
       return;
     }
     
@@ -9583,20 +9625,20 @@ async function processarBoletimPDF() {
 
     const matches = [];
 
-    // 3. Processa cada página do PDF
+    // 3. Processa cada pÃ¡gina do PDF
     for (let i = 1; i <= numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items.map(item => item.str).join(' ');
       const pageLines = buildPdfTextLines(textContent);
 
-      // Normalização para busca sem acentos e case-insensitive
+      // NormalizaÃ§Ã£o para busca sem acentos e case-insensitive
       const normalizedPageText = normalizarTexto(pageText);
 
       let matchedAluno = null;
       let matchType = 'nenhum';
 
-      // A) Busca por Matrícula
+      // A) Busca por MatrÃ­cula
       for (const al of alunos) {
         if (al.matricula && normalizedPageText.includes(normalizarTexto(al.matricula))) {
           matchedAluno = al;
@@ -9605,7 +9647,7 @@ async function processarBoletimPDF() {
         }
       }
 
-      // B) Se não achar, busca por Nome Completo Exato
+      // B) Se nÃ£o achar, busca por Nome Completo Exato
       if (!matchedAluno) {
         for (const al of alunos) {
           const nomeNorm = normalizarTexto(al.nome);
@@ -9617,7 +9659,7 @@ async function processarBoletimPDF() {
         }
       }
 
-      // C) Se não achar por nome exato, faz busca super resiliente por palavras principais (ignora números e preposições)
+      // C) Se nÃ£o achar por nome exato, faz busca super resiliente por palavras principais (ignora nÃºmeros e preposiÃ§Ãµes)
       if (!matchedAluno) {
         for (const al of alunos) {
           const nomeNorm = normalizarTexto(al.nome);
@@ -9633,12 +9675,12 @@ async function processarBoletimPDF() {
         }
       }
 
-      // D) Se não achar por texto (ex: folha escaneada ou sem texto), faz fallback para a ordem alfabética da turma
+      // D) Se nÃ£o achar por texto (ex: folha escaneada ou sem texto), faz fallback para a ordem alfabÃ©tica da turma
       if (!matchedAluno) {
         const studentIndex = i - 1;
         if (studentIndex < alunos.length) {
           matchedAluno = alunos[studentIndex];
-          matchType = 'manual'; // Sinaliza mapeamento automático/alfabético
+          matchType = 'manual'; // Sinaliza mapeamento automÃ¡tico/alfabÃ©tico
         }
       }
 
@@ -9658,19 +9700,19 @@ async function processarBoletimPDF() {
     hideLoading();
 
     if (matches.length === 0) {
-      showToast('Não foi possível associar nenhuma página aos alunos da turma.', 'alerta');
+      showToast('NÃ£o foi possÃ­vel associar nenhuma pÃ¡gina aos alunos da turma.', 'alerta');
       return;
     }
 
 
 
-    // 4. Inicia o Salvamento Automático com Barra de Progresso
+    // 4. Inicia o Salvamento AutomÃ¡tico com Barra de Progresso
     const progressModal = document.createElement('div');
     progressModal.id = 'boletim-progress-modal';
     progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
     progressModal.innerHTML = `
       <div style="background:white; border:1px solid var(--gray3); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-        <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">💾 Gravando Boletins no Banco...</h4>
+        <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">ðŸ’¾ Gravando Boletins no Banco...</h4>
         <p style="font-size:12.5px; color:#000000 !important; font-weight:700; margin-bottom:20px;" id="boletim-progress-text">Codificando arquivo completo...</p>
         
         <div style="width:100%; height:8px; background:var(--gray); border-radius:4px; overflow:hidden; margin-bottom:10px;">
@@ -9726,7 +9768,7 @@ async function processarBoletimPDF() {
       document.getElementById('boletim-progress-bar').style.width = `${pct}%`;
       document.getElementById('boletim-progress-counter').textContent = `${i} de ${matches.length} boletins salvos`;
 
-      // Cria um novo PDF de apenas 1 página
+      // Cria um novo PDF de apenas 1 pÃ¡gina
       const newDoc = await PDFDocument.create();
       const [copiedPage] = await newDoc.copyPages(srcDoc, [pageIndex]);
       newDoc.addPage(copiedPage);
@@ -9769,9 +9811,9 @@ async function processarBoletimPDF() {
     progressModal.remove();
     
     const mensagemNotas = resumoNotas.saved
-      ? ` ${resumoNotas.saved} nota(s) estruturada(s) também foram sincronizadas para o Conselho de Classe.`
+      ? ` ${resumoNotas.saved} nota(s) estruturada(s) tambÃ©m foram sincronizadas para o Conselho de Classe.`
       : '';
-    showToast(`Sucesso! Os boletins foram analisados, mapeados e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!${mensagemNotas}`, resumoNotas.error ? 'alerta' : 'sucesso');
+    showToast(`Sucesso! Os boletins foram analisados, mapeados e jÃ¡ estÃ£o disponÃ­veis para consulta e impressÃ£o na Ficha do Aluno e no Portal do Aluno!${mensagemNotas}`, resumoNotas.error ? 'alerta' : 'sucesso');
     
     // Limpa UI e volta para a aba de listagem
     document.getElementById('boletim-pdf-file').value = '';
@@ -9797,25 +9839,25 @@ function renderGridMapeamento(matches, alunos) {
   let html = `
     <div style="background: #f8fafc; border: 1.5px solid var(--gray3); border-radius: 16px; padding: 22px; margin-top: 25px; animation: fadeIn 0.4s ease; color: #000000 !important;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-        <h3 style="font-size:15px; font-weight:850; color:#000000 !important; font-family:'Outfit',sans-serif; margin:0">📊 Mapeamento das Páginas do PDF</h3>
+        <h3 style="font-size:15px; font-weight:850; color:#000000 !important; font-family:'Outfit',sans-serif; margin:0">ðŸ“Š Mapeamento das PÃ¡ginas do PDF</h3>
         <div style="display:flex; gap:10px;">
-          <button class="btn btn-secondary btn-sm" onclick="mapearOrdemAlfabetica()" style="font-size: 11.5px; padding: 6px 12px; background:white; border: 1.5px solid var(--gray3); color:#000000 !important; font-weight:700;">✍️ Preencher Ordem Alfabética</button>
-          <button class="btn btn-red btn-sm" onclick="limparMapeamento()" style="font-size: 11.5px; padding: 6px 12px; background:#f43f5e; font-weight:700;">❌ Limpar Tudo</button>
+          <button class="btn btn-secondary btn-sm" onclick="mapearOrdemAlfabetica()" style="font-size: 11.5px; padding: 6px 12px; background:white; border: 1.5px solid var(--gray3); color:#000000 !important; font-weight:700;">âœï¸ Preencher Ordem AlfabÃ©tica</button>
+          <button class="btn btn-red btn-sm" onclick="limparMapeamento()" style="font-size: 11.5px; padding: 6px 12px; background:#f43f5e; font-weight:700;">âŒ Limpar Tudo</button>
         </div>
       </div>
       
       <p style="font-size:12.5px; color:#000000 !important; margin-bottom:18px; line-height: 1.5; font-weight:700;">
-        Confira o aluno associado a cada página. Você pode alterar a seleção manualmente ou marcar páginas a serem ignoradas (ex: capas ou informativos gerais).
+        Confira o aluno associado a cada pÃ¡gina. VocÃª pode alterar a seleÃ§Ã£o manualmente ou marcar pÃ¡ginas a serem ignoradas (ex: capas ou informativos gerais).
       </p>
       
       <div style="max-height: 480px; overflow-y: auto; border: 1.5px solid var(--gray3); border-radius: 12px; margin-bottom: 20px; background: white;">
         <table style="width:100%; border-collapse:collapse; text-align: left; color:#000000 !important;">
           <thead style="background: var(--gray); position: sticky; top: 0; z-index: 2; border-bottom: 2px solid var(--gray3);">
             <tr>
-              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 80px;">Página</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 80px;">PÃ¡gina</th>
               <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 90px;">Ver</th>
-              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800;">Aluno da Página</th>
-              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 140px;">Correspondência</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800;">Aluno da PÃ¡gina</th>
+              <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 140px;">CorrespondÃªncia</th>
               <th style="padding:12px; font-size:12px; color:#000000 !important; font-weight:800; text-align:center; width: 80px;">Ignorar</th>
             </tr>
           </thead>
@@ -9825,15 +9867,15 @@ function renderGridMapeamento(matches, alunos) {
   matches.forEach((m, idx) => {
     const isMatched = m.matchedAluno !== null;
     const matchBadge = m.matchType === 'matricula'
-      ? '<span style="background:rgba(16,185,129,0.2); color:#047857 !important; border:1px solid rgba(16,185,129,0.4); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Matrícula</span>'
+      ? '<span style="background:rgba(16,185,129,0.2); color:#047857 !important; border:1px solid rgba(16,185,129,0.4); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">MatrÃ­cula</span>'
       : m.matchType === 'nome'
       ? '<span style="background:rgba(79,70,229,0.15); color:#4f46e5 !important; border:1px solid rgba(79,70,229,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Nome</span>'
       : m.matchType === 'manual'
       ? '<span style="background:rgba(245,158,11,0.2); color:#b45309 !important; border:1px solid rgba(245,158,11,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Manual</span>'
       : '<span style="background:rgba(244,63,94,0.2); color:#be123c !important; border:1px solid rgba(244,63,94,0.3); padding:3px 8px; border-radius:10px; font-size:9.5px; font-weight:800;">Nenhum</span>';
 
-    // Cria as opções do Select
-    let options = '<option value="">-- Ignorar página / Sem Aluno --</option>';
+    // Cria as opÃ§Ãµes do Select
+    let options = '<option value="">-- Ignorar pÃ¡gina / Sem Aluno --</option>';
     alunos.forEach(al => {
       const selected = isMatched && m.matchedAluno.id === al.id ? 'selected' : '';
       options += `<option value="${al.id}" ${selected}>${al.nome} (${al.matricula})</option>`;
@@ -9841,9 +9883,9 @@ function renderGridMapeamento(matches, alunos) {
 
     html += `
       <tr style="border-bottom:1px solid var(--gray3); transition:opacity 0.2s; ${m.ignored ? 'opacity:0.45; background:#f1f5f9;' : ''}">
-        <td style="padding:12px; text-align:center; font-weight:800; color:#000000 !important;">Pág. ${m.pageNum}</td>
+        <td style="padding:12px; text-align:center; font-weight:800; color:#000000 !important;">PÃ¡g. ${m.pageNum}</td>
         <td style="padding:12px; text-align:center;">
-          <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:10.5px; background:white; border:1px solid var(--gray3); color:#000000 !important; font-weight:700;" onclick="abrirPrevisualizacaoPagina(${m.pageNum})">👁️ Ver</button>
+          <button class="btn btn-secondary btn-sm" style="padding:4px 8px; font-size:10.5px; background:white; border:1px solid var(--gray3); color:#000000 !important; font-weight:700;" onclick="abrirPrevisualizacaoPagina(${m.pageNum})">ðŸ‘ï¸ Ver</button>
         </td>
         <td style="padding:12px;">
           <select class="form-input form-select" style="width:100%; margin:0; padding:6px 10px; border:1.5px solid var(--gray3); color:#000000 !important; font-weight:600;" onchange="alterarMapeamentoManual(${idx}, this.value)" ${m.ignored ? 'disabled' : ''}>
@@ -9864,7 +9906,7 @@ function renderGridMapeamento(matches, alunos) {
       </div>
       
       <div style="display:flex; justify-content:flex-end;">
-        <button class="btn btn-primary" onclick="salvarBoletinsMapeados()" style="padding: 10px 22px; font-weight: 800; font-size:13.5px;">💾 Confirmar e Salvar Boletins</button>
+        <button class="btn btn-primary" onclick="salvarBoletinsMapeados()" style="padding: 10px 22px; font-weight: 800; font-size:13.5px;">ðŸ’¾ Confirmar e Salvar Boletins</button>
       </div>
     </div>
   `;
@@ -9873,7 +9915,7 @@ function renderGridMapeamento(matches, alunos) {
 }
 
 async function abrirPrevisualizacaoPagina(pageNum) {
-  showLoading('Carregando pré-visualização...');
+  showLoading('Carregando prÃ©-visualizaÃ§Ã£o...');
   try {
     const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(currentUploadedPdfBytes.slice(0)) }).promise;
     const page = await pdf.getPage(pageNum);
@@ -9891,7 +9933,7 @@ async function abrirPrevisualizacaoPagina(pageNum) {
   } catch (err) {
     console.error(err);
     hideLoading();
-    showToast('Erro ao carregar imagem da página.', 'erro');
+    showToast('Erro ao carregar imagem da pÃ¡gina.', 'erro');
   }
 }
 
@@ -9908,7 +9950,7 @@ function exibirModalPrevisualizacao(canvas, pageNum) {
   
   const header = document.createElement('div');
   header.style = 'padding:14px 20px; border-bottom:1px solid var(--gray3); display:flex; justify-content:space-between; align-items:center; background:var(--gray);';
-  header.innerHTML = `<h4 style="font-size:14px; font-weight:800; color:#000000 !important; margin:0">👁️ Pré-visualização da Página ${pageNum}</h4>
+  header.innerHTML = `<h4 style="font-size:14px; font-weight:800; color:#000000 !important; margin:0">ðŸ‘ï¸ PrÃ©-visualizaÃ§Ã£o da PÃ¡gina ${pageNum}</h4>
     <button onclick="document.getElementById('boletim-preview-modal').remove()" style="background:none; border:none; color:var(--gray5); font-size:24px; cursor:pointer;">&times;</button>`;
   
   const body = document.createElement('div');
@@ -9939,7 +9981,7 @@ function mapearOrdemAlfabetica() {
     }
   });
 
-  showToast('Ordem alfabética aplicada! Confirme os dados antes de salvar.', 'sucesso');
+  showToast('Ordem alfabÃ©tica aplicada! Confirme os dados antes de salvar.', 'sucesso');
   renderGridMapeamento(currentMatches, currentAlunosTurma);
 }
 
@@ -9979,7 +10021,7 @@ async function salvarBoletinsMapeados() {
   const activeMatches = currentMatches.filter(m => !m.ignored && m.matchedAluno !== null);
   
   if (activeMatches.length === 0) {
-    showToast('Nenhuma página associada a alunos para salvar.', 'alerta');
+    showToast('Nenhuma pÃ¡gina associada a alunos para salvar.', 'alerta');
     return;
   }
 
@@ -9992,7 +10034,7 @@ async function salvarBoletinsMapeados() {
   progressModal.style = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:20000; display:flex; align-items:center; justify-content:center; padding:20px;';
   progressModal.innerHTML = `
     <div style="background:white; border:1px solid var(--gray3); border-radius:16px; max-width:400px; width:100%; padding:25px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
-      <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">💾 Salvando Boletins no Banco...</h4>
+      <h4 style="font-size:15px; font-weight:800; color:#000000 !important; margin:0 0 10px;">ðŸ’¾ Salvando Boletins no Banco...</h4>
       <p style="font-size:12.5px; color:#000000 !important; font-weight:700; margin-bottom:20px;" id="boletim-progress-text">Codificando arquivo completo...</p>
       
       <div style="width:100%; height:8px; background:var(--gray); border-radius:4px; overflow:hidden; margin-bottom:10px;">
@@ -10049,7 +10091,7 @@ async function salvarBoletinsMapeados() {
       document.getElementById('boletim-progress-bar').style.width = `${pct}%`;
       document.getElementById('boletim-progress-counter').textContent = `${i} de ${activeMatches.length} boletins salvos`;
 
-      // Cria um novo PDF de apenas 1 página
+      // Cria um novo PDF de apenas 1 pÃ¡gina
       const newDoc = await PDFDocument.create();
       const [copiedPage] = await newDoc.copyPages(srcDoc, [pageIndex]);
       newDoc.addPage(copiedPage);
@@ -10092,9 +10134,9 @@ async function salvarBoletinsMapeados() {
     progressModal.remove();
     
     const mensagemNotas = resumoNotas.saved
-      ? ` ${resumoNotas.saved} nota(s) estruturada(s) também foram sincronizadas.`
+      ? ` ${resumoNotas.saved} nota(s) estruturada(s) tambÃ©m foram sincronizadas.`
       : '';
-    showToast(`Sucesso! Os boletins foram salvos e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!${mensagemNotas}`, resumoNotas.error ? 'alerta' : 'sucesso');
+    showToast(`Sucesso! Os boletins foram salvos e jÃ¡ estÃ£o disponÃ­veis para consulta e impressÃ£o na Ficha do Aluno e no Portal do Aluno!${mensagemNotas}`, resumoNotas.error ? 'alerta' : 'sucesso');
     
     // Limpa UI e volta para a aba de listagem
     document.getElementById('boletim-pdf-file').value = '';
@@ -10133,7 +10175,7 @@ function irParaUploadBoletimDaTurma() {
 // ------------------------------------------------------------------------------
 async function renderFichaBoletins(aluno) {
   const el = document.getElementById('ficha-boletins-lista'); if (!el) return;
-  el.innerHTML = '<div style="font-size:12.5px;color:var(--gray5);padding:6px 0; font-weight:600;">🔍 Buscando boletins no sistema...</div>';
+  el.innerHTML = '<div style="font-size:12.5px;color:var(--gray5);padding:6px 0; font-weight:600;">ðŸ” Buscando boletins no sistema...</div>';
   
   try {
     const { data, error } = await supabaseClient
@@ -10151,16 +10193,16 @@ async function renderFichaBoletins(aluno) {
     }
 
     el.innerHTML = data.map(b => {
-      // Escape simples das aspas no Base64 para passar na interpolação sem quebrar o HTML
+      // Escape simples das aspas no Base64 para passar na interpolaÃ§Ã£o sem quebrar o HTML
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; background:var(--gray); padding:8px 12px; border-radius:8px; font-size:12.5px; border:1px solid var(--gray3);">
           <div>
             <strong style="color:#000000 !important; font-weight: 800;">${b.periodo}</strong> <span style="color:#000000; font-weight:600;">(${b.ano})</span>
           </div>
           <div style="display:flex; gap:6px;">
-            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="visualizarBoletimFicha('${b.id}')">👁️ Ver</button>
-            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="baixarBoletimFicha('${b.id}', 'Boletim_${aluno.nome.replace(/ /g, '_')}_${b.periodo.replace(/ /g, '_')}.pdf')">📥 Baixar</button>
-            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="imprimirBoletimFicha('${b.id}')">🖨️ Imprimir</button>
+            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="visualizarBoletimFicha('${b.id}')">ðŸ‘ï¸ Ver</button>
+            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="baixarBoletimFicha('${b.id}', 'Boletim_${aluno.nome.replace(/ /g, '_')}_${b.periodo.replace(/ /g, '_')}.pdf')">ðŸ“¥ Baixar</button>
+            <button class="btn btn-secondary btn-xs" style="margin:0; padding:3px 8px; font-size:11px; font-weight:700; color:#000000 !important; background:white; border:1.5px solid var(--gray3);" onclick="imprimirBoletimFicha('${b.id}')">ðŸ–¨ï¸ Imprimir</button>
           </div>
         </div>
       `;
@@ -10172,7 +10214,7 @@ async function renderFichaBoletins(aluno) {
   }
 }
 
-// Ações para os Boletins na Ficha do Aluno
+// AÃ§Ãµes para os Boletins na Ficha do Aluno
 async function renderFichaBoletins(aluno) {
   const el = document.getElementById('ficha-boletins-lista'); if (!el) return;
   setFichaCounter('ficha-boletins-count', 'Carregando...');
@@ -10194,7 +10236,7 @@ async function renderFichaBoletins(aluno) {
     setFichaCounter('ficha-boletins-count', lista.length, 'boletim', 'boletins');
 
     if (!lista.length) {
-      el.innerHTML = '<div class="ficha-empty-inline">Nenhum boletim publicado para este aluno até o momento.</div>';
+      el.innerHTML = '<div class="ficha-empty-inline">Nenhum boletim publicado para este aluno atÃ© o momento.</div>';
       return;
     }
 
@@ -10202,7 +10244,7 @@ async function renderFichaBoletins(aluno) {
       <div class="ficha-doc-card">
         <div class="ficha-doc-copy">
           <strong>${b.periodo} (${b.ano})</strong>
-          <span>Boletim pronto para consulta, download e impressão.</span>
+          <span>Boletim pronto para consulta, download e impressÃ£o.</span>
         </div>
         <div class="ficha-doc-actions">
           <button class="btn btn-outline btn-xs" onclick="visualizarBoletimFicha('${b.id}')">Ver</button>
@@ -10215,7 +10257,7 @@ async function renderFichaBoletins(aluno) {
   } catch (err) {
     console.error('[renderFichaBoletins] Erro:', err);
     setFichaCounter('ficha-boletins-count', 'Erro');
-    setFichaText('ficha-total-boletins', '—');
+    setFichaText('ficha-total-boletins', 'â€”');
     el.innerHTML = '<div class="ficha-empty-inline" style="color:var(--red-dark)">Erro ao buscar os boletins deste aluno.</div>';
   }
 }
@@ -10262,7 +10304,7 @@ async function baixarBoletimFicha(boletimId, filename) {
 
 // IMPRIME O BOLETIM COM UM IFRAME OCULTO DE MANEIRA PERFEITA E NATIVA
 async function imprimirBoletimFicha(boletimId) {
-  showLoading('Preparando impressão...');
+  showLoading('Preparando impressÃ£o...');
   try {
     const { data, error } = await supabaseClient
       .from('boletins')
@@ -10287,18 +10329,18 @@ async function imprimirBoletimFicha(boletimId) {
     iframe.contentWindow.focus();
     setTimeout(() => {
       iframe.contentWindow.print();
-      // Remove o iframe da DOM após o início do spooler
+      // Remove o iframe da DOM apÃ³s o inÃ­cio do spooler
       setTimeout(() => iframe.remove(), 1500);
     }, 600);
 
   } catch (err) {
     console.error(err);
     hideLoading();
-    showToast('Não foi possível inicializar a impressão do boletim.', 'erro');
+    showToast('NÃ£o foi possÃ­vel inicializar a impressÃ£o do boletim.', 'erro');
   }
 }
 
-// Reutilizável: Realiza download do Blob a partir do Base64
+// ReutilizÃ¡vel: Realiza download do Blob a partir do Base64
 function downloadBase64PDF(base64, filename) {
   const byteCharacters = atob(base64);
   const byteNumbers = new Array(byteCharacters.length);
@@ -10317,7 +10359,7 @@ function downloadBase64PDF(base64, filename) {
   URL.revokeObjectURL(url);
 }
 
-// Auxiliares Úteis
+// Auxiliares Ãšteis
 function normalizarTexto(str) {
   if (!str) return '';
   return str.toString()
@@ -10329,13 +10371,13 @@ function normalizarTexto(str) {
 
 function formatarSerieDocumento(serie) {
   const valor = (serie || '').toString().trim();
-  if (!valor) return '—';
+  if (!valor) return 'â€”';
   return valor
-    .replace(/\s+[—-]\s+(Ensino Médio|Ensino Fundamental)\b/gi, ' do $1')
-    .replace(/\s+[—-]\s+/g, ' - ');
+    .replace(/\s+[â€”-]\s+(Ensino MÃ©dio|Ensino Fundamental)\b/gi, ' do $1')
+    .replace(/\s+[â€”-]\s+/g, ' - ');
 }
 
-// ─── DOCUMENTOS SECRETARIA ───────────────────────────────────────────────────
+// â”€â”€â”€ DOCUMENTOS SECRETARIA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 let SEC_DOCUMENTOS = [];
 const DOCUMENTO_SECRETARIA_VALIDADE_DIAS = 30;
@@ -10371,25 +10413,25 @@ function isDocumentoSecretariaValido(doc) {
 }
 
 function formatarDataDocumentoBr(value) {
-  if (!value) return '—';
+  if (!value) return 'â€”';
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? '—' : value.toLocaleDateString('pt-BR');
+    return Number.isNaN(value.getTime()) ? 'â€”' : value.toLocaleDateString('pt-BR');
   }
   if (typeof value === 'string' && value.includes('/')) return value;
   const isoBase = typeof value === 'string' && value.length <= 10 ? `${value}T00:00:00` : value;
   const date = new Date(isoBase);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('pt-BR');
+  return Number.isNaN(date.getTime()) ? 'â€”' : date.toLocaleDateString('pt-BR');
 }
 
 function abrirValidacaoDocumentoSec(protocolo) {
   const url = getDocumentoSecretariaValidationUrl(protocolo);
   if (!url) {
-    showToast('Protocolo inválido para consulta.', 'alerta');
+    showToast('Protocolo invÃ¡lido para consulta.', 'alerta');
     return;
   }
   const popup = window.open(url, '_blank', 'noopener,noreferrer');
   if (!popup) {
-    showToast('Permita pop-ups para abrir a conferência do documento.', 'alerta');
+    showToast('Permita pop-ups para abrir a conferÃªncia do documento.', 'alerta');
   }
 }
 
@@ -10447,7 +10489,7 @@ function renderSecDocumentos() {
   const rKey = user ? getRoleKey(user.perfil) : 'prof';
   const canDelete = (rKey === 'admin' || rKey === 'coord' || rKey === 'sec');
   
-  // 1. Filtragem & renderização do Histórico (Declarações)
+  // 1. Filtragem & renderizaÃ§Ã£o do HistÃ³rico (DeclaraÃ§Ãµes)
   const filtroAluno = normalizarTexto(document.getElementById('filtro-sec-aluno')?.value);
   const filtroTipo = document.getElementById('filtro-sec-tipo')?.value;
   const filtroDataIni = document.getElementById('filtro-sec-data-ini')?.value;
@@ -10471,19 +10513,19 @@ function renderSecDocumentos() {
     } else {
       tbodyHist.innerHTML = declFiltradas.map(doc => {
         const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
-        const dataFormatada = doc.data_emissao ? new Date(`${doc.data_emissao}T00:00:00`).toLocaleDateString('pt-BR') : '—';
-        const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">🗑️</button>` : '';
+        const dataFormatada = doc.data_emissao ? new Date(`${doc.data_emissao}T00:00:00`).toLocaleDateString('pt-BR') : 'â€”';
+        const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">ðŸ—‘ï¸</button>` : '';
         const validarBtn = `<button class="btn btn-xs btn-outline" style="margin-left:5px" onclick="abrirValidacaoDocumentoSec('${doc.protocolo}')" title="Conferir autenticidade">Conferir</button>`;
         return `
           <tr>
             <td><strong style="color:var(--primary);font-family:monospace">${doc.protocolo}</strong></td>
-            <td>${aluno ? aluno.nome : '<span style="color:var(--red)">Aluno não encontrado</span>'}</td>
-            <td>${aluno ? aluno.turma : '—'}</td>
+            <td>${aluno ? aluno.nome : '<span style="color:var(--red)">Aluno nÃ£o encontrado</span>'}</td>
+            <td>${aluno ? aluno.turma : 'â€”'}</td>
             <td><span class="badge" style="background:var(--gray2);color:var(--gray7);font-weight:600">${doc.tipo}</span></td>
             <td>${dataFormatada}</td>
-            <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || '—'}</td>
+            <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || 'â€”'}</td>
             <td style="text-align:right">
-              <button class="btn btn-xs btn-primary" onclick="imprimirDocumentoSec('${doc.id}')">🖨️ Imprimir</button>
+              <button class="btn btn-xs btn-primary" onclick="imprimirDocumentoSec('${doc.id}')">ðŸ–¨ï¸ Imprimir</button>
               ${validarBtn}
               ${deleteBtn}
             </td>
@@ -10493,7 +10535,7 @@ function renderSecDocumentos() {
     }
   }
   
-  // 2. Filtragem & renderização dos Requerimentos
+  // 2. Filtragem & renderizaÃ§Ã£o dos Requerimentos
   const filtroReqAluno = normalizarTexto(document.getElementById('filtro-sec-req-aluno')?.value);
   const filtroReqTipo = document.getElementById('filtro-sec-req-tipo')?.value;
   const filtroReqStatus = document.getElementById('filtro-sec-req-status')?.value;
@@ -10515,7 +10557,7 @@ function renderSecDocumentos() {
     } else {
       tbodyReq.innerHTML = reqFiltrados.map(doc => {
         const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
-        const dataFormatada = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+        const dataFormatada = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : 'â€”';
         
         let badgeColor = 'var(--gray3)';
         let badgeText = 'var(--gray7)';
@@ -10525,7 +10567,7 @@ function renderSecDocumentos() {
         else if (doc.status === 'entregue') { badgeColor = '#dcfce7'; badgeText = '#15803d'; }
         else if (doc.status === 'cancelado') { badgeColor = '#fee2e2'; badgeText = '#b91c1c'; }
         
-        const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">🗑️</button>` : '';
+        const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">ðŸ—‘ï¸</button>` : '';
         
         const selectStatus = `
           <select class="form-input form-select" style="width:145px;display:inline-block;padding:2px 4px;font-size:11.5px;height:28px" onchange="alterarStatusRequerimento('${doc.id}', this.value)">
@@ -10540,18 +10582,18 @@ function renderSecDocumentos() {
         return `
           <tr>
             <td><strong style="color:var(--primary);font-family:monospace">${doc.protocolo}</strong></td>
-            <td>${aluno ? aluno.nome : '<span style="color:var(--red)">Aluno não encontrado</span>'}</td>
-            <td>${aluno ? aluno.turma : '—'}</td>
+            <td>${aluno ? aluno.nome : '<span style="color:var(--red)">Aluno nÃ£o encontrado</span>'}</td>
+            <td>${aluno ? aluno.turma : 'â€”'}</td>
             <td><span class="badge" style="background:var(--gray1);color:var(--gray6);font-weight:600">${doc.tipo}</span></td>
-            <td>${doc.solicitante || 'O próprio aluno'}</td>
+            <td>${doc.solicitante || 'O prÃ³prio aluno'}</td>
             <td>${dataFormatada}</td>
-            <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || '—'}</td>
+            <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || 'â€”'}</td>
             <td>
               <span class="badge" style="background:${badgeColor};color:${badgeText};font-weight:700">${doc.status.replace('_', ' ').toUpperCase()}</span>
             </td>
             <td style="text-align:right;white-space:nowrap">
               ${selectStatus}
-              <button class="btn btn-xs btn-primary" onclick="imprimirDocumentoSec('${doc.id}')" title="Imprimir Comprovante">🖨️</button>
+              <button class="btn btn-xs btn-primary" onclick="imprimirDocumentoSec('${doc.id}')" title="Imprimir Comprovante">ðŸ–¨ï¸</button>
               ${deleteBtn}
             </td>
           </tr>
@@ -10597,7 +10639,7 @@ function abrirModalNovoDocSecretaria() {
   const mot = document.getElementById('sec-doc-motivo'); if (mot) mot.value = '';
   const obs = document.getElementById('sec-doc-obs'); if (obs) obs.value = '';
   
-  const cidade = document.getElementById('sec-doc-cidade-nasc'); if (cidade) cidade.value = 'Ourilândia do Norte';
+  const cidade = document.getElementById('sec-doc-cidade-nasc'); if (cidade) cidade.value = 'OurilÃ¢ndia do Norte';
   const uf = document.getElementById('sec-doc-uf-nasc'); if (uf) uf.value = 'PA';
   const dtNasc = document.getElementById('sec-doc-data-nasc'); if (dtNasc) dtNasc.value = '';
   
@@ -10637,11 +10679,11 @@ function mostrarCamposDinamicosSec() {
     if (grupoNasc) grupoNasc.classList.remove('hidden');
   }
   
-  if (tipo === 'Declaração de Frequência (Bolsa Família)') {
+  if (tipo === 'DeclaraÃ§Ã£o de FrequÃªncia (Bolsa FamÃ­lia)') {
     if (grupoFreq) grupoFreq.classList.remove('hidden');
   } else if (tipo && tipo.startsWith('Requerimento')) {
     if (grupoReq) grupoReq.classList.remove('hidden');
-  } else if (tipo === 'Declaração de Transferência') {
+  } else if (tipo === 'DeclaraÃ§Ã£o de TransferÃªncia') {
     if (grupoReq) grupoReq.classList.remove('hidden');
   }
 }
@@ -10657,7 +10699,7 @@ async function gerarProtocoloSec(tipoDoc) {
       
     if (error) throw error;
     
-    // Extrai os números dos protocolos encontrados para evitar duplicatas ou buracos
+    // Extrai os nÃºmeros dos protocolos encontrados para evitar duplicatas ou buracos
     let maxSeq = 0;
     if (data && data.length > 0) {
       data.forEach(d => {
@@ -10674,7 +10716,7 @@ async function gerarProtocoloSec(tipoDoc) {
     return `SEC-${prefix}-${ano}-${nextSeq.toString().padStart(4, '0')}`;
   } catch (err) {
     console.error('[gerarProtocoloSec] Erro:', err);
-    // Fallback randômico para não travar o processo
+    // Fallback randÃ´mico para nÃ£o travar o processo
     const rand = Math.floor(1000 + Math.random() * 9000);
     return `SEC-${prefix}-${ano}-${rand}`;
   }
@@ -10692,10 +10734,10 @@ async function salvarDocumentoSecretaria() {
   const dataNascInput = document.getElementById('sec-doc-data-nasc')?.value || '';
   
   if (!alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
-  if (!tipo) { showToast('Selecione o tipo de emissão.', 'alerta'); return; }
+  if (!tipo) { showToast('Selecione o tipo de emissÃ£o.', 'alerta'); return; }
   
-  if (tipo === 'Declaração de Frequência (Bolsa Família)' && !frequencia) {
-    showToast('Informe a frequência do aluno.', 'alerta');
+  if (tipo === 'DeclaraÃ§Ã£o de FrequÃªncia (Bolsa FamÃ­lia)' && !frequencia) {
+    showToast('Informe a frequÃªncia do aluno.', 'alerta');
     return;
   }
   
@@ -10713,8 +10755,8 @@ async function salvarDocumentoSecretaria() {
         obsCompleta = `[DT_NASC: ${dataNascInput}] ${obsCompleta}`.trim();
       }
     }
-    if (tipo === 'Declaração de Frequência (Bolsa Família)') {
-      obsCompleta = `Frequência de ${frequencia}%. ${obsCompleta}`.trim();
+    if (tipo === 'DeclaraÃ§Ã£o de FrequÃªncia (Bolsa FamÃ­lia)') {
+      obsCompleta = `FrequÃªncia de ${frequencia}%. ${obsCompleta}`.trim();
     }
     
     const payload = {
@@ -10739,18 +10781,18 @@ async function salvarDocumentoSecretaria() {
       
     if (error) throw error;
     
-    // Se for declaração de transferência, gera automaticamente um requerimento de transferência pendente
-    if (tipo === 'Declaração de Transferência') {
-      const reqProtocolo = await gerarProtocoloSec('Requerimento de Transferência');
+    // Se for declaraÃ§Ã£o de transferÃªncia, gera automaticamente um requerimento de transferÃªncia pendente
+    if (tipo === 'DeclaraÃ§Ã£o de TransferÃªncia') {
+      const reqProtocolo = await gerarProtocoloSec('Requerimento de TransferÃªncia');
       const reqPayload = {
         protocolo: reqProtocolo,
         aluno_id: alunoId,
-        tipo: 'Requerimento de Transferência',
+        tipo: 'Requerimento de TransferÃªncia',
         data_emissao: new Date().toISOString().split('T')[0],
         status: 'pendente',
         solicitante: solicitante || 'Secretaria (Auto)',
-        motivo: motivo || 'Declaração de transferência emitida',
-        obs: 'Gerado automaticamente por emissão de declaração.',
+        motivo: motivo || 'DeclaraÃ§Ã£o de transferÃªncia emitida',
+        obs: 'Gerado automaticamente por emissÃ£o de declaraÃ§Ã£o.',
         responsavel
       };
       
@@ -10759,7 +10801,7 @@ async function salvarDocumentoSecretaria() {
         .insert(reqPayload);
         
       if (reqError) {
-        console.error('[salvarDocumentoSecretaria] Erro ao criar requerimento automático:', reqError);
+        console.error('[salvarDocumentoSecretaria] Erro ao criar requerimento automÃ¡tico:', reqError);
       }
     }
     
@@ -10769,7 +10811,7 @@ async function salvarDocumentoSecretaria() {
     // Atualiza a listagem local
     await carregarDocumentosSecretaria();
     
-    // Chama o disparador de impressão nativa
+    // Chama o disparador de impressÃ£o nativa
     imprimirDocumentoHtml(data.id);
     
   } catch (err) {
@@ -10800,7 +10842,7 @@ async function alterarStatusRequerimento(id, novoStatus) {
 }
 
 async function excluirDocumentoSec(id) {
-  if (!confirm('Deseja realmente excluir este registro? Esta ação é irreversível e excluirá o protocolo do histórico.')) return;
+  if (!confirm('Deseja realmente excluir este registro? Esta aÃ§Ã£o Ã© irreversÃ­vel e excluirÃ¡ o protocolo do histÃ³rico.')) return;
   
   showLoading('Excluindo...');
   try {
@@ -10810,7 +10852,7 @@ async function excluirDocumentoSec(id) {
       .eq('id', id);
       
     if (error) throw error;
-    showToast('Registro excluído!', 'sucesso');
+    showToast('Registro excluÃ­do!', 'sucesso');
     await carregarDocumentosSecretaria();
   } catch (err) {
     console.error('[excluirDocumentoSec] Erro:', err);
@@ -10825,7 +10867,7 @@ async function imprimirDocumentoSec(id) {
 }
 
 async function imprimirDocumentoHtml(id) {
-  showLoading('Formatando impressão...');
+  showLoading('Formatando impressÃ£o...');
   try {
     let doc = SEC_DOCUMENTOS.find(d => d.id === id);
     if (!doc) {
@@ -10834,26 +10876,26 @@ async function imprimirDocumentoHtml(id) {
         .select('*')
         .eq('id', id)
         .single();
-      if (error || !data) throw new Error('Documento não encontrado');
+      if (error || !data) throw new Error('Documento nÃ£o encontrado');
       doc = data;
     }
     
     const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
-    if (!aluno) throw new Error('Dados do aluno não encontrados.');
+    if (!aluno) throw new Error('Dados do aluno nÃ£o encontrados.');
     const turmaAluno = TURMAS_DATA.find(t => t.id === aluno.turma_id) || TURMAS_DATA.find(t => t.code === aluno.turma);
-    const turmaTexto = aluno.turma || turmaAluno?.code || '—';
-    const turnoTexto = aluno.turno || turmaAluno?.turno || '—';
+    const turmaTexto = aluno.turma || turmaAluno?.code || 'â€”';
+    const turnoTexto = aluno.turno || turmaAluno?.turno || 'â€”';
     const serieTexto = formatarSerieDocumento(aluno.serie || turmaAluno?.serie || '');
     
     const dataPorExtenso = formatarDataPorExtenso(doc.data_emissao);
     const dataBr = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '';
     const dataValidade = getDocumentoSecretariaDataValidade(doc);
-    const dataValidadeBr = dataValidade ? formatarDataDocumentoBr(dataValidade) : '—';
+    const dataValidadeBr = dataValidade ? formatarDataDocumentoBr(dataValidade) : 'â€”';
     const documentoValido = isDocumentoSecretariaValido(doc);
     const urlValidacao = getDocumentoSecretariaValidationUrl(doc.protocolo);
     const qrCodeUrl = getDocumentoSecretariaQrUrl(doc.protocolo, 180);
     
-    // Obtenção da Cidade e UF de Nascimento de forma defensiva/segura
+    // ObtenÃ§Ã£o da Cidade e UF de Nascimento de forma defensiva/segura
     let cidadeNasc = doc.cidade_nascimento || '';
     let ufNasc = doc.uf_nascimento || '';
     if (!cidadeNasc && doc.obs && doc.obs.includes('[NASC:')) {
@@ -10876,14 +10918,14 @@ async function imprimirDocumentoHtml(id) {
     }
 
     const formatarDataNasc = (dt) => {
-      if (!dt) return '—';
+      if (!dt) return 'â€”';
       if (dt.includes('/')) return dt;
       const parts = dt.split('-');
       if (parts.length === 3) {
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
       }
       const parsedDate = new Date(dt + 'T00:00:00');
-      return Number.isNaN(parsedDate.getTime()) ? '—' : parsedDate.toLocaleDateString('pt-BR');
+      return Number.isNaN(parsedDate.getTime()) ? 'â€”' : parsedDate.toLocaleDateString('pt-BR');
     };
     
     let cidadeNascText = '';
@@ -10894,67 +10936,67 @@ async function imprimirDocumentoHtml(id) {
     let contentHtml = '';
     let titleHtml = doc.tipo;
     
-    if (doc.tipo === 'Declaração de Matrícula') {
+    if (doc.tipo === 'DeclaraÃ§Ã£o de MatrÃ­cula') {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
-          está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, 
+          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || 'â€”')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
+          estÃ¡ regularmente matriculado(a) e frequentando as aulas nesta instituiÃ§Ã£o de ensino no ano letivo de <b>2026</b>, 
           cursando a turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
-          Referida informação é expressão da verdade.
+          Referida informaÃ§Ã£o Ã© expressÃ£o da verdade.
         </p>
       `;
-    } else if (doc.tipo === 'Declaração de Frequência (Bolsa Família)') {
+    } else if (doc.tipo === 'DeclaraÃ§Ã£o de FrequÃªncia (Bolsa FamÃ­lia)') {
       let freqValue = '100';
-      if (doc.obs && doc.obs.includes('Frequência de')) {
-        const match = doc.obs.match(/Frequência de (\d+)%/);
+      if (doc.obs && doc.obs.includes('FrequÃªncia de')) {
+        const match = doc.obs.match(/FrequÃªncia de (\d+)%/);
         if (match) freqValue = match[1];
       }
       contentHtml = `
         <p class="doc-text">
-          Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, 
-          que o(a) estudante <b>${aluno.nome}</b>, inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, 
-          nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, está regularmente matriculado(a) 
-          e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${turmaTexto}</b>, 
+          Declaramos, para os devidos fins de comprovaÃ§Ã£o de condicionalidade do Programa Bolsa FamÃ­lia, 
+          que o(a) estudante <b>${aluno.nome}</b>, inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || 'â€”')}</b>, 
+          nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, estÃ¡ regularmente matriculado(a) 
+          e frequentando as aulas nesta instituiÃ§Ã£o de ensino no ano letivo de <b>2026</b>, na turma <b>${turmaTexto}</b>, 
           correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
-          Apurou-se, para o período avaliativo correspondente, uma frequência escolar global e relativa de <b>${freqValue}%</b>.
+          Apurou-se, para o perÃ­odo avaliativo correspondente, uma frequÃªncia escolar global e relativa de <b>${freqValue}%</b>.
         </p>
       `;
-    } else if (doc.tipo === 'Declaração de Escolaridade') {
+    } else if (doc.tipo === 'DeclaraÃ§Ã£o de Escolaridade') {
       contentHtml = `
         <p class="doc-text">
           Declaramos, para os devidos fins de direito, que o(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
+          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || 'â€”')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${turmaTexto}</b>, 
-          correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>, sob regime letivo ordinário.
+          correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>, sob regime letivo ordinÃ¡rio.
         </p>
         <p class="doc-text">
-          O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.
+          O referido estudante possui histÃ³rico de rendimento escolar e frequÃªncia arquivados em pasta individual sob responsabilidade da secretaria desta unidade.
         </p>
       `;
-    } else if (doc.tipo === 'Declaração de Transferência') {
+    } else if (doc.tipo === 'DeclaraÃ§Ã£o de TransferÃªncia') {
       contentHtml = `
         <p class="doc-text">
-          Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <b>${aluno.nome}</b>, 
-          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
+          Declaramos, para os devidos fins, que foi solicitada nesta data a transferÃªncia escolar do(a) estudante <b>${aluno.nome}</b>, 
+          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || 'â€”')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
           que se encontrava devidamente matriculado(a) na turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
-          Esta declaração atesta que a vaga de origem está liberada e o processo de transferência ativo. O presente documento 
-          tem validade improrrogável de <b>30 (trinta) dias</b> a partir de sua emissão, prazo este necessário para a confecção e 
-          entrega do Histórico Escolar definitivo.
+          Esta declaraÃ§Ã£o atesta que a vaga de origem estÃ¡ liberada e o processo de transferÃªncia ativo. O presente documento 
+          tem validade improrrogÃ¡vel de <b>30 (trinta) dias</b> a partir de sua emissÃ£o, prazo este necessÃ¡rio para a confecÃ§Ã£o e 
+          entrega do HistÃ³rico Escolar definitivo.
         </p>
       `;
     } else if (doc.tipo.startsWith('Requerimento')) {
       titleHtml = 'Comprovante de Requerimento';
       contentHtml = `
         <p style="text-align:justify;margin-bottom:20px;font-size:12pt">
-          A secretaria escolar atesta e emite o presente comprovante de solicitação para fins de controle e protocolo do pedido. 
-          O documento requerido encontra-se em fase de processamento, devendo ser observados os prazos regimentais desta instituição.
+          A secretaria escolar atesta e emite o presente comprovante de solicitaÃ§Ã£o para fins de controle e protocolo do pedido. 
+          O documento requerido encontra-se em fase de processamento, devendo ser observados os prazos regimentais desta instituiÃ§Ã£o.
         </p>
         
         <div class="receipt-card">
@@ -10971,19 +11013,19 @@ async function imprimirDocumentoHtml(id) {
           </div>
           <div class="receipt-row">
             <span class="receipt-label">CPF:</span>
-            <span>${formatarCPF(aluno.cpf || '—')}</span>
+            <span>${formatarCPF(aluno.cpf || 'â€”')}</span>
           </div>
           <div class="receipt-row">
             <span class="receipt-label">Turma / Ano / Turno:</span>
-            <span>${turmaTexto} (${serieTexto} • ${turnoTexto})</span>
+            <span>${turmaTexto} (${serieTexto} â€¢ ${turnoTexto})</span>
           </div>
           <div class="receipt-row">
-            <span class="receipt-label">Serviço/Documento Solicitado:</span>
+            <span class="receipt-label">ServiÃ§o/Documento Solicitado:</span>
             <span style="font-weight:bold">${doc.tipo}</span>
           </div>
           <div class="receipt-row">
             <span class="receipt-label">Solicitante:</span>
-            <span>${doc.solicitante || 'O próprio aluno'}</span>
+            <span>${doc.solicitante || 'O prÃ³prio aluno'}</span>
           </div>
           <div class="receipt-row">
             <span class="receipt-label">Motivo do Pedido:</span>
@@ -10994,14 +11036,14 @@ async function imprimirDocumentoHtml(id) {
             <span>${dataBr}</span>
           </div>
           <div class="receipt-row" style="margin-top:8px;border-top:1px dashed #ccc;padding-top:8px">
-            <span class="receipt-label">Responsável pelo Cadastro:</span>
+            <span class="receipt-label">ResponsÃ¡vel pelo Cadastro:</span>
             <span>${doc.responsavel || 'Secretaria'}</span>
           </div>
         </div>
         
         <div style="margin-top:30px;font-size:10.5px;color:#555;text-align:justify;line-height:1.4">
-          * IMPORTANTE: O prazo médio de expedição para 2ª vias de diploma e histórico escolar é de até 5 (cinco) dias úteis. 
-          Para requerimentos de transferência, o prazo é de até 3 (três) dias úteis. Guarde este documento comprobatório.
+          * IMPORTANTE: O prazo mÃ©dio de expediÃ§Ã£o para 2Âª vias de diploma e histÃ³rico escolar Ã© de atÃ© 5 (cinco) dias Ãºteis. 
+          Para requerimentos de transferÃªncia, o prazo Ã© de atÃ© 3 (trÃªs) dias Ãºteis. Guarde este documento comprobatÃ³rio.
         </div>
       `;
     }
@@ -11189,10 +11231,10 @@ async function imprimirDocumentoHtml(id) {
       </head>
       <body>
         <div class="container">
-          <img class="watermark" src="assets/marca_dagua.png" alt="Marca d'água">
+          <img class="watermark" src="assets/marca_dagua.png" alt="Marca d'Ã¡gua">
           
           <div class="content-header">
-            <img class="header-logo" src="assets/cabecalho_logo.png" alt="Cabeçalho Oficial">
+            <img class="header-logo" src="assets/cabecalho_logo.png" alt="CabeÃ§alho Oficial">
             <div class="protocol-tag">Protocolo: <b>${doc.protocolo}</b></div>
           </div>
           
@@ -11203,20 +11245,20 @@ async function imprimirDocumentoHtml(id) {
             
             ${!doc.tipo.startsWith('Requerimento') ? `
               <div class="doc-date">
-                Ourilândia do Norte - PA, ${dataPorExtenso}.
+                OurilÃ¢ndia do Norte - PA, ${dataPorExtenso}.
               </div>
               
               <div class="signature-area">
                 <div class="signature-box" style="width:50%">
                   <div class="signature-line"></div>
-                  <span class="signature-desc"><b>Assinatura Autorizada</b><br>Secretaria / Direção Escolar</span>
+                  <span class="signature-desc"><b>Assinatura Autorizada</b><br>Secretaria / DireÃ§Ã£o Escolar</span>
                 </div>
               </div>
             ` : `
               <div class="signature-area">
                 <div class="signature-box">
                   <div class="signature-line"></div>
-                  <span class="signature-desc"><b>${doc.responsavel || 'Secretaria'}</b><br>Responsável pelo Cadastro</span>
+                  <span class="signature-desc"><b>${doc.responsavel || 'Secretaria'}</b><br>ResponsÃ¡vel pelo Cadastro</span>
                 </div>
                 <div class="signature-box">
                   <div class="signature-line"></div>
@@ -11229,10 +11271,10 @@ async function imprimirDocumentoHtml(id) {
           ${!doc.tipo.startsWith('Requerimento') ? `
             <div class="verification-strip">
               <div>
-                <strong>Autenticidade digital:</strong> utilize o QR Code ou informe o protocolo <b>${doc.protocolo}</b> no portal de conferência.<br>
-                Documento eletrônico com validade de <b>${DOCUMENTO_SECRETARIA_VALIDADE_DIAS} dias</b> a partir da emissão.
-                Situação atual: <b>${documentoValido ? 'dentro do prazo' : 'fora do prazo'}</b>.
-                ${dataValidade ? `Válido até <b>${dataValidadeBr}</b>.` : ''}
+                <strong>Autenticidade digital:</strong> utilize o QR Code ou informe o protocolo <b>${doc.protocolo}</b> no portal de conferÃªncia.<br>
+                Documento eletrÃ´nico com validade de <b>${DOCUMENTO_SECRETARIA_VALIDADE_DIAS} dias</b> a partir da emissÃ£o.
+                SituaÃ§Ã£o atual: <b>${documentoValido ? 'dentro do prazo' : 'fora do prazo'}</b>.
+                ${dataValidade ? `VÃ¡lido atÃ© <b>${dataValidadeBr}</b>.` : ''}
               </div>
               <div class="verification-link">${urlValidacao}</div>
             </div>
@@ -11240,14 +11282,14 @@ async function imprimirDocumentoHtml(id) {
 
           <div class="footer">
             <div class="footer-main">
-              RVS Escolar Gestão Inteligente — Responsável: <b>${doc.responsavel || 'Secretaria'}</b><br>
-              Ficha gerada eletronicamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} | Protocolo: ${doc.protocolo}<br>
-              ${dataValidade ? `Validade eletrônica: ${dataValidadeBr} | Status da consulta: ${documentoValido ? 'válido' : 'expirado'}` : 'Consulta eletrônica disponível por protocolo.'}
+              RVS Escolar GestÃ£o Inteligente â€” ResponsÃ¡vel: <b>${doc.responsavel || 'Secretaria'}</b><br>
+              Ficha gerada eletronicamente em ${new Date().toLocaleDateString('pt-BR')} Ã s ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} | Protocolo: ${doc.protocolo}<br>
+              ${dataValidade ? `Validade eletrÃ´nica: ${dataValidadeBr} | Status da consulta: ${documentoValido ? 'vÃ¡lido' : 'expirado'}` : 'Consulta eletrÃ´nica disponÃ­vel por protocolo.'}
             </div>
             ${!doc.tipo.startsWith('Requerimento') ? `
               <div class="footer-qr">
-                <img src="${qrCodeUrl}" alt="QR Code de autenticação do documento">
-                <span>Escaneie para validar<br>somente em visualização</span>
+                <img src="${qrCodeUrl}" alt="QR Code de autenticaÃ§Ã£o do documento">
+                <span>Escaneie para validar<br>somente em visualizaÃ§Ã£o</span>
               </div>
             ` : ''}
           </div>
@@ -11279,7 +11321,7 @@ async function imprimirDocumentoHtml(id) {
     
   } catch (err) {
     console.error('[imprimirDocumentoHtml] Erro:', err);
-    showToast('Erro ao inicializar impressão.', 'erro');
+    showToast('Erro ao inicializar impressÃ£o.', 'erro');
   } finally {
     hideLoading();
   }
@@ -11291,7 +11333,7 @@ function formatarDataPorExtenso(dateVal) {
   if (isNaN(date.getTime())) return '';
   const dia = date.getDate();
   const meses = [
-    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+    'janeiro', 'fevereiro', 'marÃ§o', 'abril', 'maio', 'junho',
     'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
   ];
   const mes = meses[date.getMonth()];
@@ -11408,10 +11450,10 @@ function openRecoveryResult(result) {
   const resultBox = document.getElementById('recovery-result');
   if (!resultBox) return;
   document.getElementById('recovery-result-badge').textContent = result.tipo === 'aluno' ? 'Aluno' : 'Servidor';
-  document.getElementById('recovery-result-nome').textContent = result.nome || '—';
-  document.getElementById('recovery-result-email').textContent = result.email || '—';
-  document.getElementById('recovery-result-senha').textContent = result.senha || '—';
-  document.getElementById('recovery-result-portal').textContent = result.portal || '—';
+  document.getElementById('recovery-result-nome').textContent = result.nome || 'â€”';
+  document.getElementById('recovery-result-email').textContent = result.email || 'â€”';
+  document.getElementById('recovery-result-senha').textContent = result.senha || 'â€”';
+  document.getElementById('recovery-result-portal').textContent = result.portal || 'â€”';
   resultBox.style.display = 'block';
 }
 
@@ -11427,7 +11469,7 @@ function setRecoveryType(type) {
   if (matriculaField) matriculaField.style.display = RECOVERY_TYPE === 'servidor' ? 'block' : 'none';
   if (descricao) {
     descricao.textContent = RECOVERY_TYPE === 'servidor'
-      ? 'Informe Matrícula sem Vínculo, CPF e Data de Nascimento para localizar o acesso do servidor.'
+      ? 'Informe MatrÃ­cula sem VÃ­nculo, CPF e Data de Nascimento para localizar o acesso do servidor.'
       : 'Informe CPF e Data de Nascimento para localizar o acesso do aluno.';
   }
 
@@ -11476,7 +11518,7 @@ async function tryServidorLogin(email, pass) {
     ok: true,
     user: userData || {
       id: authData.user.id,
-      nome: authData.user.user_metadata?.nome || 'Usuário',
+      nome: authData.user.user_metadata?.nome || 'UsuÃ¡rio',
       perfil: authData.user.user_metadata?.perfil || 'professor',
       email: authData.user.email
     }
@@ -11517,7 +11559,7 @@ async function consultarRecuperacaoServidor() {
   const dataNascimento = String(document.getElementById('recovery-dn-input')?.value || '').trim();
 
   if (!matricula) {
-    setRecoveryError('Informe a Matrícula sem Vínculo do servidor.');
+    setRecoveryError('Informe a MatrÃ­cula sem VÃ­nculo do servidor.');
     document.getElementById('recovery-matricula-input')?.focus();
     return;
   }
@@ -11542,7 +11584,7 @@ async function consultarRecuperacaoServidor() {
   );
 
   if (!hasLookupFields) {
-    setRecoveryError('O cadastro de servidores ainda não possui Matrícula sem Vínculo, CPF e Data de Nascimento disponíveis para recuperação automática.');
+    setRecoveryError('O cadastro de servidores ainda nÃ£o possui MatrÃ­cula sem VÃ­nculo, CPF e Data de Nascimento disponÃ­veis para recuperaÃ§Ã£o automÃ¡tica.');
     return;
   }
 
@@ -11556,14 +11598,14 @@ async function consultarRecuperacaoServidor() {
   });
 
   if (!found) {
-    setRecoveryError('Não localizamos um servidor com os dados informados.');
+    setRecoveryError('NÃ£o localizamos um servidor com os dados informados.');
     return;
   }
 
   const email = normalizeInstitutionalEmail(readFirstAvailable(found, ['email']));
   const senha = readFirstAvailable(found, ['senha']);
   if (!email || !senha) {
-    setRecoveryError('O servidor foi localizado, mas o cadastro de acesso ainda está incompleto.');
+    setRecoveryError('O servidor foi localizado, mas o cadastro de acesso ainda estÃ¡ incompleto.');
     return;
   }
 
@@ -11599,7 +11641,7 @@ async function consultarRecuperacaoAluno() {
   if (error) throw error;
 
   if (!data || data.status === 'error') {
-    setRecoveryError('Não localizamos um aluno com os dados informados.');
+    setRecoveryError('NÃ£o localizamos um aluno com os dados informados.');
     return;
   }
 
@@ -11620,7 +11662,7 @@ async function consultarRecuperacaoAcesso() {
     else await consultarRecuperacaoServidor();
   } catch (err) {
     console.error('[consultarRecuperacaoAcesso]', err);
-    setRecoveryError('Não foi possível concluir a busca agora. Tente novamente.');
+    setRecoveryError('NÃ£o foi possÃ­vel concluir a busca agora. Tente novamente.');
   } finally {
     setRecoveryButtonState(false);
   }
@@ -11667,7 +11709,7 @@ async function doLogin() {
     }
 
     if (servidorResult.inactive) {
-      setLoginError('Acesso negado: usuário inativo.');
+      setLoginError('Acesso negado: usuÃ¡rio inativo.');
       return;
     }
 
@@ -11680,7 +11722,7 @@ async function doLogin() {
 
     const authErr = servidorResult.error;
     if (authErr?.message && authErr.message.toLowerCase().includes('email not confirmed')) {
-      setLoginError('E-mail não confirmado. Contate o administrador do sistema.');
+      setLoginError('E-mail nÃ£o confirmado. Contate o administrador do sistema.');
     } else if (authErr?.status === 500 || (authErr?.message && authErr.message.toLowerCase().includes('database'))) {
       setLoginError('Erro interno no servidor. Contate o administrador.');
     } else {
@@ -11688,7 +11730,7 @@ async function doLogin() {
     }
   } catch (err) {
     console.error('[login exception]', err);
-    setLoginError('Erro de conexão. Tente novamente.');
+    setLoginError('Erro de conexÃ£o. Tente novamente.');
   } finally {
     setLoginButtonState(false);
   }
@@ -11743,7 +11785,7 @@ function normalizeLoginInterface() {
 
   ['recovery-result-nome', 'recovery-result-email', 'recovery-result-senha', 'recovery-result-portal'].forEach((id) => {
     const el = document.getElementById(id);
-    if (el && (!el.textContent.trim() || el.textContent.includes('â'))) el.textContent = '--';
+    if (el && (!el.textContent.trim() || el.textContent.includes('Ã¢'))) el.textContent = '--';
   });
 
   const modalClose = document.querySelector('#modal-recuperacao-acesso .modal-close');
@@ -11961,7 +12003,7 @@ async function renderTurmasTable(){
   const { turno } = getDashFiltros();
   let turmas = turno ? TURMAS_DATA.filter(t => t.turno === turno) : TURMAS_DATA;
   if(!turmas.length){
-    b.innerHTML = emptyTr('🏷️', 'Nenhuma turma encontrada', 'Cadastre turmas ou altere o filtro', 8);
+    b.innerHTML = emptyTr('ðŸ·ï¸', 'Nenhuma turma encontrada', 'Cadastre turmas ou altere o filtro', 8);
     return;
   }
 
@@ -12008,10 +12050,10 @@ async function renderTurmasTable(){
     const saiPct = total > 0 ? Math.round(saiP / total * 100) : 0;
     const stEnt = entTotal > 0 ? `<span class="metric-badge badge-green">${entPct}% pres.</span>` : `<span class="metric-badge badge-yellow">Pendente</span>`;
     const stSai = saiTotal > 0 ? `<span class="metric-badge badge-green">${saiPct}% pres.</span>` : `<span class="metric-badge badge-yellow">Pendente</span>`;
-    const evasBadge = evasoes > 0 ? `<span class="metric-badge badge-red">⚠ ${evasoes}</span>` : '';
+    const evasBadge = evasoes > 0 ? `<span class="metric-badge badge-red">âš  ${evasoes}</span>` : '';
 
     return `<tr>
-      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirAcoesTurma('${t.id}')" title="Clique para ver as opcoes">${t.code} ✏️</strong></td>
+      <td><strong style="cursor:pointer;color:var(--blue)" onclick="abrirAcoesTurma('${t.id}')" title="Clique para ver as opcoes">${t.code} âœï¸</strong></td>
       <td>${t.turno}</td>
       <td>${total}</td>
       <td><span class="metric-badge badge-blue">${entPct}%</span></td>
@@ -12026,7 +12068,7 @@ async function renderTurmasTable(){
 function renderTurmaGrid(){
   const g = document.getElementById('turma-grid'); if(!g) return;
   if(!TURMAS_DATA.length){
-    g.innerHTML = emptyState('🏷️', 'Nenhuma turma cadastrada', 'Clique em "+ Nova Turma"');
+    g.innerHTML = emptyState('ðŸ·ï¸', 'Nenhuma turma cadastrada', 'Clique em "+ Nova Turma"');
     return;
   }
 
@@ -12037,14 +12079,16 @@ function renderTurmaGrid(){
     const color = pct >= 90 ? 'var(--green)' : pct >= 75 ? 'var(--yellow)' : 'var(--red)';
     return `<div class="turma-card" onclick="abrirAcoesTurma('${t.id}')" title="Clique para ver as opcoes da turma" style="cursor:pointer;transition:box-shadow 0.2s" onmouseenter="this.style.boxShadow='0 4px 18px rgba(0,0,0,0.13)'" onmouseleave="this.style.boxShadow=''">
       <div class="turma-code">${t.code}</div>
-      <div class="turma-info">${t.serie} — ${t.turno}</div>
+      <div class="turma-info">${t.serie} â€” ${t.turno}</div>
       <div class="turma-progress"><div class="turma-progress-bar" style="width:${pct}%;background:${color}"></div></div>
       <div class="turma-stats">
-        <span style="color:var(--gray5)">👥 ${total}</span>
-        <span style="color:var(--green-dark)">✓ ${pres}</span>
-        <span style="color:var(--red)">✕ ${total-pres}</span>
+        <span style="color:var(--gray5)">ðŸ‘¥ ${total}</span>
+        <span style="color:var(--green-dark)">âœ“ ${pres}</span>
+        <span style="color:var(--red)">âœ• ${total-pres}</span>
       </div>
       <div style="font-size:10px;color:var(--gray4);text-align:center;margin-top:4px">clique para ver as opcoes da turma</div>
     </div>`;
   }).join('');
 }
+
+
