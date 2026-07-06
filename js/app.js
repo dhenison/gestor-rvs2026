@@ -9365,10 +9365,6 @@ async function imprimirDocumentoHtml(id) {
             width: 100%;
             box-sizing: border-box;
             position: relative;
-            min-height: 260mm;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
           }
           .header-logo {
             width: 100%;
@@ -9395,7 +9391,6 @@ async function imprimirDocumentoHtml(id) {
             margin-bottom: 10px;
           }
           .content-body {
-            flex: 1;
             margin-top: 10px;
           }
           .doc-title {
@@ -9483,6 +9478,7 @@ async function imprimirDocumentoHtml(id) {
             word-break: break-all;
           }
           .footer {
+            margin-top: 18px;
             font-size: 8.5pt;
             color: #444;
             border-top: 1px solid #bbb;
