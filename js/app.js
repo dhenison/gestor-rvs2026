@@ -8694,22 +8694,482 @@ function hideLoading() {
 let currentUploadedPdfBytes = null; // ArrayBuffer do PDF original
 let currentMatches = [];            // Mapeamento atual de pág ➔ aluno
 let currentAlunosTurma = [];        // Alunos carregados da turma
+let currentBoletimProcessedPackage = null;
+const BOLETINS_SUBTABS = ['listagem', 'upload', 'processado'];
 
 // Alterna entre a Aba de Status das Turmas e o Envio de Boletim
 function switchBoletinsSubTab(tabId) {
-  document.getElementById('btn-boletins-listagem').classList.remove('active');
-  document.getElementById('btn-boletins-upload').classList.remove('active');
-  document.getElementById('subtab-boletins-listagem').style.display = 'none';
-  document.getElementById('subtab-boletins-upload').style.display = 'none';
+  BOLETINS_SUBTABS.forEach(id => {
+    const btn = document.getElementById(`btn-boletins-${id}`);
+    const pane = document.getElementById(`subtab-boletins-${id}`);
+    if (btn) btn.classList.remove('active');
+    if (pane) pane.style.display = 'none';
+  });
 
-  document.getElementById(`btn-boletins-${tabId}`).classList.add('active');
-  document.getElementById(`subtab-boletins-${tabId}`).style.display = 'block';
+  const activeBtn = document.getElementById(`btn-boletins-${tabId}`);
+  const activePane = document.getElementById(`subtab-boletins-${tabId}`);
+  if (activeBtn) activeBtn.classList.add('active');
+  if (activePane) activePane.style.display = 'block';
   
   // Força cor de texto do contêiner geral em preto
   document.getElementById('page-boletins').style.color = '#000000';
   
   if (tabId === 'listagem') {
     renderStatusBoletinsTurmas();
+  }
+}
+
+function buildPdfTextLines(textContent) {
+  const items = (textContent?.items || [])
+    .filter(item => item?.str && item.str.trim())
+    .map(item => ({
+      text: item.str.trim(),
+      x: Array.isArray(item.transform) ? item.transform[4] : 0,
+      y: Array.isArray(item.transform) ? item.transform[5] : 0
+    }))
+    .sort((a, b) => (b.y - a.y) || (a.x - b.x));
+
+  const grouped = [];
+  items.forEach(item => {
+    const last = grouped[grouped.length - 1];
+    if (last && Math.abs(last.y - item.y) <= 2.5) {
+      last.items.push(item);
+      last.y = (last.y + item.y) / 2;
+    } else {
+      grouped.push({ y: item.y, items: [item] });
+    }
+  });
+
+  return grouped
+    .map(group => group.items.sort((a, b) => a.x - b.x).map(item => item.text).join(' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function normalizarNumeroDocumentoBoletim(valor) {
+  return (valor || '').toString().replace(/\D+/g, '');
+}
+
+function formatarTituloSimples(valor) {
+  return (valor || '')
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, letra => letra.toUpperCase());
+}
+
+function getBoletimComponentAliases() {
+  const baseAliases = {
+    'Lingua Portuguesa': ['lingua portuguesa', 'língua portuguesa', 'portugues', 'português', 'lp'],
+    'Matematica': ['matematica', 'matemática'],
+    'Historia': ['historia', 'história'],
+    'Geografia': ['geografia'],
+    'Ciencias': ['ciencias', 'ciências'],
+    'Arte': ['arte', 'artes'],
+    'Educacao Fisica': ['educacao fisica', 'educação física', 'ed fisica', 'ed. fisica'],
+    'Ingles': ['ingles', 'inglês', 'lingua inglesa', 'língua inglesa'],
+    'Ensino Religioso': ['ensino religioso', 'religiao', 'religião'],
+    'Projeto de Vida': ['projeto de vida'],
+    'Espanhol': ['espanhol'],
+    'Fisica': ['fisica', 'física'],
+    'Quimica': ['quimica', 'química'],
+    'Biologia': ['biologia'],
+    'Filosofia': ['filosofia'],
+    'Sociologia': ['sociologia'],
+    'Redacao': ['redacao', 'redação', 'producao textual', 'produção textual'],
+    'Literatura': ['literatura'],
+    'Alfabetizacao': ['alfabetizacao', 'alfabetização'],
+    'Leitura': ['leitura'],
+    'Escrita': ['escrita']
+  };
+
+  if (typeof CONSELHO_COMPONENTES_PADRAO !== 'undefined' && Array.isArray(CONSELHO_COMPONENTES_PADRAO)) {
+    CONSELHO_COMPONENTES_PADRAO.forEach(item => {
+      const nome = (item || '').toString().trim();
+      if (!nome) return;
+      const titulo = formatarTituloSimples(nome);
+      if (!baseAliases[titulo]) {
+        baseAliases[titulo] = [normalizarTexto(nome)];
+      }
+    });
+  }
+
+  return Object.entries(baseAliases).map(([componente, aliases]) => ({
+    componente,
+    aliases: Array.from(new Set([componente, ...(aliases || [])])).map(alias => normalizarTexto(alias))
+  }));
+}
+
+function parseBoletimNumero(valor) {
+  if (valor === null || valor === undefined) return null;
+  const normalizado = valor.toString().replace(/\s+/g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+  if (!normalizado || normalizado === '-' || normalizado === '.') return null;
+  const numero = Number(normalizado);
+  if (!Number.isFinite(numero)) return null;
+  if (numero < 0 || numero > 100) return null;
+  return numero;
+}
+
+function extrairComponentesBoletim(pageLines = [], pageText = '') {
+  const aliases = getBoletimComponentAliases();
+  const encontrados = new Map();
+  const linhas = Array.isArray(pageLines) && pageLines.length
+    ? pageLines
+    : pageText.split(/\r?\n/).map(linha => linha.trim()).filter(Boolean);
+
+  linhas.forEach((linha, index) => {
+    const linhaLimpa = (linha || '').replace(/\s+/g, ' ').trim();
+    if (!linhaLimpa) return;
+
+    const linhaNorm = normalizarTexto(linhaLimpa);
+    const candidato = aliases.find(item => item.aliases.some(alias => alias && linhaNorm.includes(alias)));
+    if (!candidato) return;
+
+    const numerosBrutos = linhaLimpa.match(/\d+(?:[.,]\d+)?/g) || [];
+    const numeros = numerosBrutos
+      .map(parseBoletimNumero)
+      .filter(numero => numero !== null);
+
+    if (!numeros.length) return;
+
+    const faltasMatch = linhaNorm.match(/faltas?\s*[:\-]?\s*(\d{1,2})/);
+    const faltas = faltasMatch ? parseInt(faltasMatch[1], 10) : 0;
+    const nota = numeros[0];
+
+    const atual = encontrados.get(candidato.componente);
+    const entrada = {
+      componente: candidato.componente,
+      nota,
+      faltas_componente: Number.isFinite(faltas) ? faltas : 0,
+      confidence: faltasMatch ? 0.96 : (numeros.length > 1 ? 0.88 : 0.8),
+      raw_line: linhaLimpa,
+      line_index: index + 1
+    };
+
+    if (!atual || ((entrada.nota !== null) && (atual.nota === null || entrada.confidence >= atual.confidence))) {
+      encontrados.set(candidato.componente, entrada);
+    }
+  });
+
+  if (encontrados.size > 0) {
+    return Array.from(encontrados.values());
+  }
+
+  const fallback = [];
+  linhas.forEach((linha, index) => {
+    const texto = (linha || '').replace(/\s+/g, ' ').trim();
+    if (!texto) return;
+    const match = texto.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]{3,40})\s+(\d+(?:[.,]\d+)?)(?:\s+(\d{1,2}))?$/);
+    if (!match) return;
+    const componente = formatarTituloSimples(match[1]);
+    if (componente.length < 4) return;
+    fallback.push({
+      componente,
+      nota: parseBoletimNumero(match[2]),
+      faltas_componente: parseInt(match[3] || '0', 10) || 0,
+      confidence: 0.6,
+      raw_line: texto,
+      line_index: index + 1
+    });
+  });
+
+  return fallback;
+}
+
+async function salvarNotasEstruturadasBoletim(matches, turmaId, ano, periodo, origem = 'boletim_pdf') {
+  const linhasAtivas = (matches || []).filter(match => !match.ignored && match.matchedAluno?.id);
+  const mapaPayload = new Map();
+
+  linhasAtivas.forEach(match => {
+    const componentes = Array.isArray(match.extractedComponents) && match.extractedComponents.length
+      ? match.extractedComponents
+      : extrairComponentesBoletim(match.pageLines, match.pageText);
+
+    componentes.forEach(item => {
+      if (!item?.componente || item.nota === null || item.nota === undefined) return;
+      const chave = `${match.matchedAluno.id}::${ano}::${periodo}::${normalizarTexto(item.componente)}`;
+      mapaPayload.set(chave, {
+        aluno_id: match.matchedAluno.id,
+        turma_id: turmaId,
+        ano,
+        periodo,
+        componente: item.componente,
+        nota: item.nota,
+        faltas_componente: item.faltas_componente || 0,
+        origem
+      });
+    });
+  });
+
+  const payload = Array.from(mapaPayload.values());
+  if (!payload.length) {
+    return { saved: 0, componentes: 0, alunos: 0 };
+  }
+
+  const { error } = await supabaseClient
+    .from('notas_bimestrais')
+    .upsert(payload, { onConflict: 'aluno_id,ano,periodo,componente' });
+
+  if (error) {
+    return { saved: 0, componentes: payload.length, alunos: linhasAtivas.length, error };
+  }
+
+  return { saved: payload.length, componentes: payload.length, alunos: linhasAtivas.length };
+}
+
+function getBoletimPackageStudents(pkg) {
+  if (Array.isArray(pkg?.students)) return pkg.students;
+  if (Array.isArray(pkg?.alunos)) return pkg.alunos;
+  if (Array.isArray(pkg?.entries)) return pkg.entries;
+  return [];
+}
+
+function getBoletimPackageComponents(student) {
+  if (Array.isArray(student?.components)) return student.components;
+  if (Array.isArray(student?.componentes)) return student.componentes;
+  if (Array.isArray(student?.subjects)) return student.subjects;
+  return [];
+}
+
+function getBoletimStudentPackageLabel(student) {
+  return student?.student_name || student?.nome_aluno || student?.nome || 'Aluno sem identificação';
+}
+
+function localizarAlunoDoPacoteBoletim(item, alunos) {
+  const registro = normalizarNumeroDocumentoBoletim(item?.student_registry || item?.matricula || item?.registro || '');
+  if (registro) {
+    const porMatricula = alunos.find(aluno => normalizarNumeroDocumentoBoletim(aluno.matricula) === registro);
+    if (porMatricula) return porMatricula;
+  }
+
+  const cpfPacote = normalizarNumeroDocumentoBoletim(item?.student_cpf || item?.cpf || '');
+  if (cpfPacote) {
+    const porCpf = alunos.find(aluno => normalizarNumeroDocumentoBoletim(aluno.cpf) === cpfPacote);
+    if (porCpf) return porCpf;
+  }
+
+  const nomeNorm = normalizarTexto(getBoletimStudentPackageLabel(item));
+  if (!nomeNorm) return null;
+
+  const porNomeExato = alunos.find(aluno => normalizarTexto(aluno.nome) === nomeNorm);
+  if (porNomeExato) return porNomeExato;
+
+  const tokens = nomeNorm.split(/\s+/).filter(token => token.length > 2 && !['de', 'da', 'do', 'dos', 'das'].includes(token));
+  if (!tokens.length) return null;
+
+  return alunos.find(aluno => {
+    const alunoNorm = normalizarTexto(aluno.nome);
+    return tokens.every(token => alunoNorm.includes(token));
+  }) || null;
+}
+
+function renderBoletimProcessadoPreview(pkg) {
+  const container = document.getElementById('boletim-processado-preview');
+  if (!container) return;
+
+  const students = getBoletimPackageStudents(pkg);
+  const totalComponentes = students.reduce((acc, student) => acc + getBoletimPackageComponents(student).length, 0);
+  const resumoImportacao = pkg?.__lastImport || null;
+
+  const linhasTabela = students.slice(0, 8).map(student => {
+    const componentes = getBoletimPackageComponents(student);
+    const primeiraLinha = componentes[0];
+    return `
+      <tr style="border-bottom:1px solid var(--gray3);">
+        <td style="padding:11px; font-weight:700; color:#000000;">${getBoletimStudentPackageLabel(student)}</td>
+        <td style="padding:11px; color:#000000;">${student?.student_registry || student?.matricula || '—'}</td>
+        <td style="padding:11px; color:#000000; text-align:center;">${componentes.length}</td>
+        <td style="padding:11px; color:#000000;">${primeiraLinha ? `${primeiraLinha.componente}: ${primeiraLinha.nota ?? '—'}` : 'Sem disciplinas reconhecidas'}</td>
+      </tr>
+    `;
+  }).join('');
+
+  const naoImportados = resumoImportacao?.unmatched?.length
+    ? `<div style="margin-top:12px; font-size:12.2px; color:#7c2d12; line-height:1.6;"><strong>Não vinculados:</strong> ${resumoImportacao.unmatched.slice(0, 6).map(item => item.nome).join(', ')}${resumoImportacao.unmatched.length > 6 ? '...' : ''}</div>`
+    : '';
+
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="table-card" style="padding:22px; margin-top:18px; background:white;">
+      <div style="display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap; align-items:flex-start;">
+        <div>
+          <div style="font-size:15px; font-weight:800; color:#000000;">Prévia do pacote processado</div>
+          <div style="font-size:12.5px; color:var(--gray5); margin-top:6px;">
+            Origem: ${(pkg?.source?.file_name || pkg?.metadata?.file_name || 'arquivo processado')} • ${students.length} aluno(s) • ${totalComponentes} disciplina(s) reconhecida(s)
+          </div>
+        </div>
+        ${resumoImportacao ? `
+          <div style="background:#f8fafc; border:1px solid var(--gray3); border-radius:12px; padding:10px 14px; min-width:210px;">
+            <div style="font-size:11.5px; color:var(--gray5); font-weight:700;">Última importação</div>
+            <div style="font-size:13px; color:#000000; font-weight:800; margin-top:6px;">${resumoImportacao.savedRows} registro(s) gravado(s)</div>
+            <div style="font-size:12px; color:var(--gray6); margin-top:4px;">${resumoImportacao.matchedStudents} aluno(s) vinculados • ${resumoImportacao.unmatched.length} pendência(s)</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div style="margin-top:16px; border:1px solid var(--gray3); border-radius:12px; overflow:hidden;">
+        <table style="width:100%; border-collapse:collapse;">
+          <thead style="background:var(--gray);">
+            <tr>
+              <th style="padding:11px; text-align:left; font-size:12px; font-weight:800; color:#000000;">Aluno</th>
+              <th style="padding:11px; text-align:left; font-size:12px; font-weight:800; color:#000000;">Matrícula</th>
+              <th style="padding:11px; text-align:center; font-size:12px; font-weight:800; color:#000000;">Itens</th>
+              <th style="padding:11px; text-align:left; font-size:12px; font-weight:800; color:#000000;">Primeira leitura</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linhasTabela || `<tr><td colspan="4" style="padding:18px; text-align:center; color:#000000; font-weight:700;">O pacote foi lido, mas não trouxe alunos válidos.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      ${naoImportados}
+    </div>
+  `;
+}
+
+function handleBoletimProcessadoFileSelected(input) {
+  const fileBar = document.getElementById('boletim-processado-file-bar');
+  const label = document.getElementById('boletim-processado-file-label');
+  const dropzoneText = document.getElementById('boletim-processado-dropzone-text');
+  const preview = document.getElementById('boletim-processado-preview');
+  const file = input?.files?.[0];
+
+  if (!file) {
+    currentBoletimProcessedPackage = null;
+    if (fileBar) fileBar.style.display = 'none';
+    if (preview) preview.style.display = 'none';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const pacote = JSON.parse(event.target.result);
+      const students = getBoletimPackageStudents(pacote);
+      if (!students.length) {
+        throw new Error('O pacote não possui alunos processados.');
+      }
+
+      currentBoletimProcessedPackage = pacote;
+      if (label) label.textContent = `📦 ${file.name} (${Math.round(file.size / 1024)} KB)`;
+      if (dropzoneText) dropzoneText.textContent = `Pacote carregado: ${file.name}`;
+      if (fileBar) fileBar.style.display = 'flex';
+      renderBoletimProcessadoPreview(pacote);
+      showToast('Pacote processado carregado com sucesso!', 'sucesso');
+    } catch (error) {
+      currentBoletimProcessedPackage = null;
+      if (fileBar) fileBar.style.display = 'none';
+      if (preview) preview.style.display = 'none';
+      showToast('Não foi possível ler o pacote JSON: ' + error.message, 'erro');
+    }
+  };
+  reader.onerror = function() {
+    currentBoletimProcessedPackage = null;
+    if (fileBar) fileBar.style.display = 'none';
+    if (preview) preview.style.display = 'none';
+    showToast('Erro ao ler o arquivo do pacote processado.', 'erro');
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+async function importarBoletimProcessado() {
+  const turmaCode = document.getElementById('boletim-import-turma-select')?.value;
+  const ano = parseInt(document.getElementById('boletim-import-ano')?.value) || 2026;
+  const periodo = document.getElementById('boletim-import-periodo-select')?.value;
+  const students = getBoletimPackageStudents(currentBoletimProcessedPackage);
+
+  if (!turmaCode) {
+    showToast('Selecione a turma de destino do pacote.', 'alerta');
+    return;
+  }
+  if (!students.length) {
+    showToast('Carregue um pacote processado antes de importar.', 'alerta');
+    return;
+  }
+
+  const turmaObj = TURMAS_DATA.find(turma => turma.code === turmaCode);
+  const turmaId = turmaObj?.id;
+  if (!turmaId) {
+    showToast('Turma inválida ou não encontrada.', 'alerta');
+    return;
+  }
+
+  showLoading('Cruzando pacote processado com os alunos da turma...');
+  try {
+    const { data: alunos, error } = await supabaseClient
+      .from('alunos')
+      .select('id, nome, matricula, cpf')
+      .eq('turma_id', turmaId)
+      .eq('status', 'ativo');
+
+    if (error) throw error;
+    if (!alunos?.length) {
+      hideLoading();
+      showToast('Nenhum aluno ativo encontrado nesta turma.', 'alerta');
+      return;
+    }
+
+    const payloadMap = new Map();
+    const unmatched = [];
+    const matchedStudents = new Set();
+
+    students.forEach(student => {
+      const aluno = localizarAlunoDoPacoteBoletim(student, alunos);
+      if (!aluno) {
+        unmatched.push({ nome: getBoletimStudentPackageLabel(student) });
+        return;
+      }
+
+      matchedStudents.add(aluno.id);
+      getBoletimPackageComponents(student).forEach(component => {
+        const componente = component?.componente || component?.component || component?.disciplina || component?.nome;
+        const nota = parseBoletimNumero(component?.nota ?? component?.grade ?? component?.valor);
+        if (!componente || nota === null) return;
+
+        const faltas = parseInt(component?.faltas_componente ?? component?.faltas ?? component?.absences ?? 0, 10) || 0;
+        const chave = `${aluno.id}::${ano}::${periodo}::${normalizarTexto(componente)}`;
+        payloadMap.set(chave, {
+          aluno_id: aluno.id,
+          turma_id: turmaId,
+          ano,
+          periodo,
+          componente: formatarTituloSimples(componente),
+          nota,
+          faltas_componente: faltas,
+          origem: 'boletim_compilado'
+        });
+      });
+    });
+
+    const payload = Array.from(payloadMap.values());
+    if (!payload.length) {
+      hideLoading();
+      showToast('O pacote foi lido, mas não gerou notas válidas para importar.', 'alerta');
+      return;
+    }
+
+    const { error: saveError } = await supabaseClient
+      .from('notas_bimestrais')
+      .upsert(payload, { onConflict: 'aluno_id,ano,periodo,componente' });
+
+    hideLoading();
+
+    if (saveError) {
+      console.error('[importarBoletimProcessado]', saveError);
+      showToast('Erro ao salvar notas estruturadas: ' + saveError.message, 'erro');
+      return;
+    }
+
+    currentBoletimProcessedPackage.__lastImport = {
+      savedRows: payload.length,
+      matchedStudents: matchedStudents.size,
+      unmatched
+    };
+    renderBoletimProcessadoPreview(currentBoletimProcessedPackage);
+    showToast(`Pacote importado! ${payload.length} nota(s) estruturada(s) foram gravadas.`, unmatched.length ? 'alerta' : 'sucesso');
+  } catch (error) {
+    console.error('[importarBoletimProcessado]', error);
+    hideLoading();
+    showToast('Erro ao importar pacote processado: ' + error.message, 'erro');
   }
 }
 
@@ -9026,6 +9486,7 @@ async function processarBoletimPDF() {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items.map(item => item.str).join(' ');
+      const pageLines = buildPdfTextLines(textContent);
 
       // Normalização para busca sem acentos e case-insensitive
       const normalizedPageText = normalizarTexto(pageText);
@@ -9084,7 +9545,10 @@ async function processarBoletimPDF() {
           pageNum: i,
           matchedAluno: matchedAluno,
           matchType: matchType,
-          ignored: false
+          ignored: false,
+          pageText,
+          pageLines,
+          extractedComponents: extrairComponentesBoletim(pageLines, pageText)
         });
       }
     }
@@ -9194,10 +9658,18 @@ async function processarBoletimPDF() {
       }
     }
 
+    const resumoNotas = await salvarNotasEstruturadasBoletim(matches, turmaId, ano, periodo, 'boletim_pdf_upload');
+    if (resumoNotas.error) {
+      console.error('[processarBoletimPDF] Erro ao salvar notas estruturadas:', resumoNotas.error);
+    }
+
     // Fecha o modal de progresso
     progressModal.remove();
     
-    showToast(`Sucesso! Os boletins foram analisados, mapeados e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!`, 'sucesso');
+    const mensagemNotas = resumoNotas.saved
+      ? ` ${resumoNotas.saved} nota(s) estruturada(s) também foram sincronizadas para o Conselho de Classe.`
+      : '';
+    showToast(`Sucesso! Os boletins foram analisados, mapeados e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!${mensagemNotas}`, resumoNotas.error ? 'alerta' : 'sucesso');
     
     // Limpa UI e volta para a aba de listagem
     document.getElementById('boletim-pdf-file').value = '';
@@ -9509,10 +9981,18 @@ async function salvarBoletinsMapeados() {
       }
     }
 
+    const resumoNotas = await salvarNotasEstruturadasBoletim(activeMatches, turmaId, ano, periodo, 'boletim_pdf_manual');
+    if (resumoNotas.error) {
+      console.error('[salvarBoletinsMapeados] Erro ao salvar notas estruturadas:', resumoNotas.error);
+    }
+
     // Fecha o modal de progresso
     progressModal.remove();
     
-    showToast(`Sucesso! Os boletins foram salvos e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!`, 'sucesso');
+    const mensagemNotas = resumoNotas.saved
+      ? ` ${resumoNotas.saved} nota(s) estruturada(s) também foram sincronizadas.`
+      : '';
+    showToast(`Sucesso! Os boletins foram salvos e já estão disponíveis para consulta e impressão na Ficha do Aluno e no Portal do Aluno!${mensagemNotas}`, resumoNotas.error ? 'alerta' : 'sucesso');
     
     // Limpa UI e volta para a aba de listagem
     document.getElementById('boletim-pdf-file').value = '';

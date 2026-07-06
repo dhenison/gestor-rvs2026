@@ -510,6 +510,7 @@
         <div style="display:flex; gap:10px; margin-bottom:20px; border-bottom: 1.5px solid var(--gray3); padding-bottom:10px;">
           <button class="filter-btn active" id="btn-boletins-listagem" onclick="switchBoletinsSubTab('listagem')">📂 Status das Turmas</button>
           <button class="filter-btn" id="btn-boletins-upload" onclick="switchBoletinsSubTab('upload')">📤 Enviar Novo Boletim</button>
+          <button class="filter-btn" id="btn-boletins-processado" onclick="switchBoletinsSubTab('processado')">🧠 Importar Pacote Processado</button>
         </div>
 
         <!-- ABA 1: LISTAGEM E STATUS DAS TURMAS -->
@@ -602,6 +603,68 @@
 
           <!-- Resultados do Mapeamento -->
           <div id="boletim-mapeamento-container" style="display:none;"></div>
+        </div>
+
+        <div id="subtab-boletins-processado" style="display:none; animation: fadeIn 0.3s ease;">
+          <div class="table-card" style="padding: 25px; background: white;">
+            <h3 style="font-size: 15px; color: var(--gray7) !important; margin-bottom: 10px; font-weight: 800; font-family: 'Outfit', sans-serif;">🧠 Importar Boletim Já Compilado</h3>
+            <p style="font-size: 12.8px; color: var(--gray6); line-height: 1.6; margin-bottom: 18px;">
+              Use este fluxo quando o PDF já foi processado pela pasta <strong>compilador_boletins</strong>. O pacote importa as disciplinas, notas e faltas para o Conselho de Classe e mantém o envio do PDF no fluxo tradicional da aba anterior.
+            </p>
+
+            <div style="display:grid; grid-template-columns: minmax(280px, 1.3fr) minmax(280px, 1fr); gap: 16px; align-items:start;">
+              <div style="border:1.5px solid var(--gray3); border-radius: 14px; padding: 18px; background: #fffdf7;">
+                <div style="font-size: 13px; font-weight: 800; color: var(--gray7); margin-bottom: 10px;">Como usar o compilador local</div>
+                <div style="font-size: 12.4px; color: var(--gray6); line-height: 1.7;">
+                  1. Coloque os PDFs da turma em <code>compilador_boletins/entrada</code>.<br>
+                  2. Execute <code>compilador_boletins\executar_compilador.bat</code>.<br>
+                  3. Pegue o arquivo JSON gerado em <code>compilador_boletins/saida</code>.<br>
+                  4. Importe o pacote abaixo e depois publique o PDF completo na aba <strong>Enviar Novo Boletim</strong>.
+                </div>
+              </div>
+
+              <div style="border:1.5px solid var(--gray3); border-radius: 14px; padding: 18px; background: #f8fafc;">
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                  <div style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Turma de Destino</label>
+                    <select id="boletim-import-turma-select" class="form-input form-select select-turmas" style="width:200px; margin:0;"></select>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Ano Letivo</label>
+                    <input id="boletim-import-ano" class="form-input" type="number" value="2026" style="width:90px; margin:0;">
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:11.5px; color:var(--gray5); font-weight:700;">Período / Bimestre</label>
+                    <select id="boletim-import-periodo-select" class="form-input form-select" style="width:160px; margin:0;">
+                      <option value="1º Bimestre">1º Bimestre</option>
+                      <option value="2º Bimestre">2º Bimestre</option>
+                      <option value="3º Bimestre">3º Bimestre</option>
+                      <option value="4º Bimestre">4º Bimestre</option>
+                      <option value="Recuperação">Recuperação</option>
+                      <option value="Final">Final</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <input id="boletim-processado-file" type="file" accept=".json,application/json" class="form-input" style="display:none;" onchange="handleBoletimProcessadoFileSelected(this)">
+
+            <div id="boletim-processado-dropzone" onclick="document.getElementById('boletim-processado-file').click()" style="border: 2.5px dashed var(--gray3); border-radius: 12px; padding: 34px 20px; text-align: center; background: var(--gray); cursor: pointer; transition: all 0.2s ease; margin-top:18px;" onmouseover="this.style.borderColor='var(--green-dark)'; this.style.background='white';" onmouseout="this.style.borderColor='var(--gray3)'; this.style.background='var(--gray)';">
+              <div style="font-size: 34px; margin-bottom: 12px;">🧾</div>
+              <div id="boletim-processado-dropzone-text" style="font-size: 14.5px; font-weight: 800; color: var(--gray7) !important;">Clique para selecionar o pacote JSON processado</div>
+              <div style="font-size: 12.5px; color: var(--gray5); margin-top: 6px;">O sistema vai cruzar os alunos da turma com o pacote e alimentar as notas estruturadas</div>
+            </div>
+
+            <div style="margin-top:18px; display:none; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;" id="boletim-processado-file-bar">
+              <span style="font-size:13.5px; color:var(--gray7); font-weight:700;" id="boletim-processado-file-label">📦 pacote.json</span>
+              <button class="btn btn-primary" onclick="importarBoletimProcessado()">⬆️ Importar Pacote no Sistema</button>
+            </div>
+          </div>
+
+          <div id="boletim-processado-preview" style="display:none;"></div>
         </div>
       </div>
 
