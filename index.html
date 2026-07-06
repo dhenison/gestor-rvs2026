@@ -122,10 +122,18 @@
       </div>
     </div>
     <div class="sidebar-nav">
-      <div class="nav-section-title">Principal</div>
+      <div class="nav-dropdown open">
+        <button type="button" class="nav-dropdown-toggle" onclick="toggleNavGroup(this)" aria-expanded="true">
+          <span>Principal</span>
+          <i data-lucide="chevron-down" class="nav-chevron"></i>
+        </button>
+        <div class="nav-dropdown-menu">
       <div class="nav-item active" onclick="showPage('dashboard',this)"><i data-lucide="layout-dashboard" class="nav-item-icon"></i>Dashboard</div>
       <div class="nav-item" onclick="showPage('agenda',this)"><i data-lucide="calendar" class="nav-item-icon"></i>Agenda</div>
+        </div>
+      </div>
       <div class="nav-section-title">Pedagógico</div>
+      <div class="nav-dropdown-menu">
       <div class="nav-item" onclick="showPage('turmas',this)"><i data-lucide="library" class="nav-item-icon"></i>Turmas</div>
       <div class="nav-item" onclick="showPage('alunos',this)"><i data-lucide="users" class="nav-item-icon"></i>Alunos</div>
       <div class="nav-item" onclick="showPage('boletins',this)"><i data-lucide="file-spreadsheet" class="nav-item-icon"></i>Boletins</div>
@@ -137,6 +145,7 @@
       <div class="nav-item" onclick="showPage('transporte',this)"><i data-lucide="bus" class="nav-item-icon"></i>Transporte</div>
       <div class="nav-item" onclick="showPage('ocorrencias',this)"><i data-lucide="alert-triangle" class="nav-item-icon"></i>Ocorrências</div>
       <div class="nav-item" onclick="showPage('tratamento-ocorrencias',this)"><i data-lucide="shield-alert" class="nav-item-icon"></i>Tratamento Ocorr.</div>
+      </div>
       <div class="nav-section-title">Gestão</div>
       <div class="nav-item" onclick="showPage('livros',this)"><i data-lucide="book-open" class="nav-item-icon"></i>Livros Didáticos</div>
       <div class="nav-item" onclick="showPage('relatorios',this)"><i data-lucide="bar-chart-2" class="nav-item-icon"></i>Relatórios</div>
