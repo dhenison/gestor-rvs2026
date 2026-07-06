@@ -161,6 +161,26 @@ const CONSELHO_COMPONENTES_PADRAO = [
 ];
 
 const CONSELHO_MEDIA_MINIMA = 6;
+const CONSELHO_COMPONENTE_ALIAS_MAP = {
+  'LÃ­ngua Portuguesa': ['lingua portuguesa', 'língua portuguesa', 'portugues', 'português', 'lp'],
+  'MatemÃ¡tica': ['matematica', 'matemática'],
+  'CiÃªncias': ['ciencias', 'ciências', 'ciencias naturais', 'ciências naturais'],
+  'HistÃ³ria': ['historia', 'história'],
+  'Geografia': ['geografia'],
+  'Arte': ['arte', 'artes'],
+  'EducaÃ§Ã£o FÃ­sica': ['educacao fisica', 'educação física', 'ed fisica', 'ed. fisica'],
+  'InglÃªs': ['ingles', 'inglês', 'lingua inglesa', 'língua inglesa'],
+  'Ensino Religioso': ['ensino religioso', 'religiao', 'religião'],
+  'Projeto de Vida': ['projeto de vida'],
+  'FÃ­sica': ['fisica', 'física'],
+  'QuÃ­mica': ['quimica', 'química'],
+  'Biologia': ['biologia'],
+  'Filosofia': ['filosofia'],
+  'Sociologia': ['sociologia'],
+  'RedaÃ§Ã£o': ['redacao', 'redação', 'produção textual', 'producao textual'],
+  'Literatura': ['literatura'],
+  'Espanhol': ['espanhol']
+};
 
 const CHAT_DATA = { coord:[], sec:[], prof:[] };
 const freq = { entrada:{}, saida:{} };
@@ -491,7 +511,7 @@ async function carregarDados(){
       turma_id: n.turma_id,
       ano: n.ano,
       periodo: n.periodo,
-      componente: n.componente,
+      componente: canonicalizarComponenteCurricular(n.componente),
       nota: n.nota == null ? null : Number(n.nota),
       faltas_componente: Number(n.faltas_componente || 0),
       origem: n.origem || 'manual',
@@ -4335,7 +4355,8 @@ function getConselhoPeriodoRange(ano, periodo) {
 function agruparNotasPorAlunoComponente(notas) {
   return notas.reduce((acc, nota) => {
     if (!acc[nota.aluno_id]) acc[nota.aluno_id] = {};
-    acc[nota.aluno_id][nota.componente] = nota;
+    const componente = canonicalizarComponenteCurricular(nota.componente);
+    acc[nota.aluno_id][componente] = { ...nota, componente };
     return acc;
   }, {});
 }
@@ -4462,8 +4483,10 @@ function getConselhoAtualSalvo(turmaId, ano, periodo) {
 }
 
 function getConselhoComponentesAtual(conselhoSalvo, notasTurma) {
-  const componentesNotas = [...new Set((notasTurma || []).map(item => item.componente).filter(Boolean))];
-  const componentesSalvos = Array.isArray(conselhoSalvo?.componentes) ? conselhoSalvo.componentes.filter(Boolean) : [];
+  const componentesNotas = [...new Set((notasTurma || []).map(item => canonicalizarComponenteCurricular(item.componente)).filter(Boolean))];
+  const componentesSalvos = Array.isArray(conselhoSalvo?.componentes)
+    ? conselhoSalvo.componentes.map(item => canonicalizarComponenteCurricular(item)).filter(Boolean)
+    : [];
   return [...new Set([...componentesSalvos, ...componentesNotas, ...CONSELHO_COMPONENTES_PADRAO])];
 }
 
@@ -4502,6 +4525,61 @@ function gerarAtaConselhoClasse() {
   if (textarea) textarea.value = texto;
   if (conselhoClasseAtual) conselhoClasseAtual.ata_texto = texto;
   showToast('Ata preliminar gerada. Revise o texto antes de salvar.', 'sucesso');
+}
+
+function renderConselhoClasseIdentificacao({ turmaObj, ano, periodo, alunosTurma, componentes, notasTurma }) {
+  const componentesNotas = [...new Set((notasTurma || []).map(item => canonicalizarComponenteCurricular(item.componente)).filter(Boolean))];
+  const alunosComNotas = new Set((notasTurma || []).map(item => item.aluno_id).filter(Boolean));
+  const origens = {};
+  (notasTurma || []).forEach(item => {
+    const chave = item.origem || 'manual';
+    origens[chave] = (origens[chave] || 0) + 1;
+  });
+
+  const origemLabels = {
+    manual: 'Lançamento manual',
+    boletim_pdf_upload: 'Upload do boletim',
+    boletim_pdf_manual: 'Mapeamento do boletim',
+    boletim_compilado: 'Pacote compilado'
+  };
+
+  const fontesNotas = Object.entries(origens).length
+    ? Object.entries(origens).map(([origem, total]) => `${origemLabels[origem] || origem}: ${total}`).join(' • ')
+    : 'Nenhuma nota estruturada identificada ainda';
+
+  const statusNotas = !notasTurma.length
+    ? 'Nenhuma nota estruturada encontrada para esta turma e bimestre.'
+    : alunosComNotas.size < alunosTurma.length
+      ? `Análise parcial: ${alunosComNotas.size} de ${alunosTurma.length} aluno(s) já possuem notas.`
+      : 'Análise pronta: todos os alunos da turma possuem notas estruturadas.';
+
+  return `
+    <div class="conselho-ident-grid">
+      <div class="conselho-ident-card">
+        <span>Turma identificada</span>
+        <strong>${escapeHtml(turmaObj?.code || '—')}</strong>
+        <small>${escapeHtml(turmaObj?.serie || '')} • ${escapeHtml(turmaObj?.turno || '')} • ${escapeHtml(periodo || '')}/${escapeHtml(String(ano || ''))}</small>
+      </div>
+      <div class="conselho-ident-card">
+        <span>Alunos encontrados</span>
+        <strong>${alunosTurma.length}</strong>
+        <small>${alunosComNotas.size} com notas estruturadas para análise</small>
+      </div>
+      <div class="conselho-ident-card">
+        <span>Disciplinas identificadas</span>
+        <strong>${componentesNotas.length}</strong>
+        <small>${escapeHtml(componentesNotas.join(', ') || 'Aguardando identificação pelas notas estruturadas')}</small>
+      </div>
+      <div class="conselho-ident-card">
+        <span>Notas reconhecidas</span>
+        <strong>${notasTurma.length}</strong>
+        <small>${escapeHtml(fontesNotas)}</small>
+      </div>
+    </div>
+    <div class="conselho-ident-status ${notasTurma.length ? (alunosComNotas.size < alunosTurma.length ? 'is-warning' : 'is-ready') : 'is-danger'}">
+      ${escapeHtml(statusNotas)}
+    </div>
+  `;
 }
 
 function renderConselhoClasseResumo(linhas, dias, periodoInfo) {
@@ -4754,6 +4832,14 @@ async function renderConselhoClassePage(forceReload = false) {
   });
 
   content.innerHTML = `
+    ${renderConselhoClasseIdentificacao({
+      turmaObj: filters.turmaObj,
+      ano: filters.ano,
+      periodo: filters.periodo,
+      alunosTurma,
+      componentes,
+      notasTurma
+    })}
     ${renderConselhoClasseResumo(conselhoClasseLinhas, periodoInfo.dias, periodoInfo)}
     ${renderConselhoClasseTabela(conselhoClasseLinhas)}
     <div class="table-card conselho-ata-card">
@@ -4789,7 +4875,7 @@ async function saveConselhoClasseCabecalho(silent = false) {
     periodo: filters.periodo,
     data_reuniao: filters.dataReuniao || null,
     status: filters.status || 'Em preparação',
-    componentes: conselhoClasseAtual?.componentes || CONSELHO_COMPONENTES_PADRAO,
+    componentes: (conselhoClasseAtual?.componentes || CONSELHO_COMPONENTES_PADRAO).map(item => canonicalizarComponenteCurricular(item)),
     ata_texto: ataTexto,
     criado_por: getCurrentUser()?.nome || 'Sistema'
   };
@@ -4946,7 +5032,7 @@ function atualizarGradeConselhoNotas() {
     return;
   }
 
-  conselhoClasseAtual.componentes = [...new Set(componentes)];
+  conselhoClasseAtual.componentes = [...new Set(componentes.map(item => canonicalizarComponenteCurricular(item)).filter(Boolean))];
   renderConselhoNotasGrid(conselhoClasseAtual.componentes);
 }
 
@@ -5016,7 +5102,7 @@ async function salvarNotasConselho() {
     return;
   }
 
-  conselhoClasseAtual.componentes = [...new Set(componentes)];
+  conselhoClasseAtual.componentes = [...new Set(componentes.map(item => canonicalizarComponenteCurricular(item)).filter(Boolean))];
   const inputs = [...document.querySelectorAll('#conselho-notas-grid input[data-aluno][data-componente]')];
 
   const payload = inputs
@@ -5026,7 +5112,7 @@ async function salvarNotasConselho() {
       turma_id: conselhoClasseAtual.turma_id,
       ano: conselhoClasseAtual.ano,
       periodo: conselhoClasseAtual.periodo,
-      componente: input.dataset.componente,
+      componente: canonicalizarComponenteCurricular(input.dataset.componente),
       nota: Number(String(input.value).replace(',', '.')),
       origem: 'manual'
     }));
@@ -5047,34 +5133,7 @@ async function salvarNotasConselho() {
     return;
   }
 
-  if (Array.isArray(data)) {
-    data.forEach(item => {
-      const normalized = {
-        id: item.id,
-        aluno_id: item.aluno_id,
-        turma_id: item.turma_id,
-        ano: item.ano,
-        periodo: item.periodo,
-        componente: item.componente,
-        nota: item.nota == null ? null : Number(item.nota),
-        faltas_componente: Number(item.faltas_componente || 0),
-        origem: item.origem || 'manual',
-        created_at: item.created_at
-      };
-      const idx = NOTAS_BIMESTRAIS_DATA.findIndex(row => row.id === normalized.id);
-      if (idx >= 0) NOTAS_BIMESTRAIS_DATA[idx] = { ...NOTAS_BIMESTRAIS_DATA[idx], ...normalized };
-      else {
-        const sameUnique = NOTAS_BIMESTRAIS_DATA.findIndex(row =>
-          String(row.aluno_id) === String(normalized.aluno_id) &&
-          Number(row.ano) === Number(normalized.ano) &&
-          row.periodo === normalized.periodo &&
-          row.componente === normalized.componente
-        );
-        if (sameUnique >= 0) NOTAS_BIMESTRAIS_DATA[sameUnique] = normalized;
-        else NOTAS_BIMESTRAIS_DATA.push(normalized);
-      }
-    });
-  }
+  mergeNotasBimestraisCache(data || []);
 
   await saveConselhoClasseCabecalho(true);
   fecharConselhoNotasModal();
@@ -8749,6 +8808,26 @@ function normalizarNumeroDocumentoBoletim(valor) {
   return (valor || '').toString().replace(/\D+/g, '');
 }
 
+function getConselhoComponenteCanonicoMap() {
+  const mapa = {};
+  Object.entries(CONSELHO_COMPONENTE_ALIAS_MAP || {}).forEach(([canonico, aliases]) => {
+    [canonico, ...(aliases || [])].forEach(alias => {
+      mapa[normalizarTexto(alias)] = canonico;
+    });
+  });
+  (CONSELHO_COMPONENTES_PADRAO || []).forEach(item => {
+    mapa[normalizarTexto(item)] = item;
+  });
+  return mapa;
+}
+
+function canonicalizarComponenteCurricular(valor) {
+  const texto = (valor || '').toString().trim();
+  if (!texto) return '';
+  const mapa = getConselhoComponenteCanonicoMap();
+  return mapa[normalizarTexto(texto)] || formatarTituloSimples(texto);
+}
+
 function formatarTituloSimples(valor) {
   return (valor || '')
     .toString()
@@ -8759,25 +8838,8 @@ function formatarTituloSimples(valor) {
 
 function getBoletimComponentAliases() {
   const baseAliases = {
-    'Lingua Portuguesa': ['lingua portuguesa', 'língua portuguesa', 'portugues', 'português', 'lp'],
-    'Matematica': ['matematica', 'matemática'],
-    'Historia': ['historia', 'história'],
-    'Geografia': ['geografia'],
-    'Ciencias': ['ciencias', 'ciências'],
-    'Arte': ['arte', 'artes'],
-    'Educacao Fisica': ['educacao fisica', 'educação física', 'ed fisica', 'ed. fisica'],
-    'Ingles': ['ingles', 'inglês', 'lingua inglesa', 'língua inglesa'],
-    'Ensino Religioso': ['ensino religioso', 'religiao', 'religião'],
-    'Projeto de Vida': ['projeto de vida'],
-    'Espanhol': ['espanhol'],
-    'Fisica': ['fisica', 'física'],
-    'Quimica': ['quimica', 'química'],
-    'Biologia': ['biologia'],
-    'Filosofia': ['filosofia'],
-    'Sociologia': ['sociologia'],
-    'Redacao': ['redacao', 'redação', 'producao textual', 'produção textual'],
-    'Literatura': ['literatura'],
-    'Alfabetizacao': ['alfabetizacao', 'alfabetização'],
+    ...CONSELHO_COMPONENTE_ALIAS_MAP,
+    'AlfabetizaÃ§Ã£o': ['alfabetizacao', 'alfabetização'],
     'Leitura': ['leitura'],
     'Escrita': ['escrita']
   };
@@ -8786,7 +8848,7 @@ function getBoletimComponentAliases() {
     CONSELHO_COMPONENTES_PADRAO.forEach(item => {
       const nome = (item || '').toString().trim();
       if (!nome) return;
-      const titulo = formatarTituloSimples(nome);
+      const titulo = canonicalizarComponenteCurricular(nome);
       if (!baseAliases[titulo]) {
         baseAliases[titulo] = [normalizarTexto(nome)];
       }
@@ -8860,7 +8922,7 @@ function extrairComponentesBoletim(pageLines = [], pageText = '') {
     if (!texto) return;
     const match = texto.match(/^([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s]{3,40})\s+(\d+(?:[.,]\d+)?)(?:\s+(\d{1,2}))?$/);
     if (!match) return;
-    const componente = formatarTituloSimples(match[1]);
+    const componente = canonicalizarComponenteCurricular(match[1]);
     if (componente.length < 4) return;
     fallback.push({
       componente,
@@ -8892,7 +8954,7 @@ async function salvarNotasEstruturadasBoletim(matches, turmaId, ano, periodo, or
         turma_id: turmaId,
         ano,
         periodo,
-        componente: item.componente,
+        componente: canonicalizarComponenteCurricular(item.componente),
         nota: item.nota,
         faltas_componente: item.faltas_componente || 0,
         origem
@@ -8905,15 +8967,53 @@ async function salvarNotasEstruturadasBoletim(matches, turmaId, ano, periodo, or
     return { saved: 0, componentes: 0, alunos: 0 };
   }
 
-  const { error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from('notas_bimestrais')
-    .upsert(payload, { onConflict: 'aluno_id,ano,periodo,componente' });
+    .upsert(payload, { onConflict: 'aluno_id,ano,periodo,componente' })
+    .select();
 
   if (error) {
     return { saved: 0, componentes: payload.length, alunos: linhasAtivas.length, error };
   }
 
+  mergeNotasBimestraisCache(data || payload);
   return { saved: payload.length, componentes: payload.length, alunos: linhasAtivas.length };
+}
+
+function mergeNotasBimestraisCache(rows = []) {
+  rows.forEach(item => {
+    const normalized = {
+      id: item.id || null,
+      aluno_id: item.aluno_id,
+      turma_id: item.turma_id,
+      ano: item.ano,
+      periodo: item.periodo,
+      componente: canonicalizarComponenteCurricular(item.componente),
+      nota: item.nota == null ? null : Number(item.nota),
+      faltas_componente: Number(item.faltas_componente || 0),
+      origem: item.origem || 'manual',
+      created_at: item.created_at || ''
+    };
+
+    const idx = normalized.id
+      ? NOTAS_BIMESTRAIS_DATA.findIndex(row => row.id === normalized.id)
+      : -1;
+
+    if (idx >= 0) {
+      NOTAS_BIMESTRAIS_DATA[idx] = { ...NOTAS_BIMESTRAIS_DATA[idx], ...normalized };
+      return;
+    }
+
+    const sameUnique = NOTAS_BIMESTRAIS_DATA.findIndex(row =>
+      String(row.aluno_id) === String(normalized.aluno_id) &&
+      Number(row.ano) === Number(normalized.ano) &&
+      row.periodo === normalized.periodo &&
+      canonicalizarComponenteCurricular(row.componente) === normalized.componente
+    );
+
+    if (sameUnique >= 0) NOTAS_BIMESTRAIS_DATA[sameUnique] = { ...NOTAS_BIMESTRAIS_DATA[sameUnique], ...normalized };
+    else NOTAS_BIMESTRAIS_DATA.push(normalized);
+  });
 }
 
 function getBoletimPackageStudents(pkg) {
@@ -9132,7 +9232,7 @@ async function importarBoletimProcessado() {
           turma_id: turmaId,
           ano,
           periodo,
-          componente: formatarTituloSimples(componente),
+          componente: canonicalizarComponenteCurricular(componente),
           nota,
           faltas_componente: faltas,
           origem: 'boletim_compilado'
@@ -9147,9 +9247,10 @@ async function importarBoletimProcessado() {
       return;
     }
 
-    const { error: saveError } = await supabaseClient
+    const { data: savedRows, error: saveError } = await supabaseClient
       .from('notas_bimestrais')
-      .upsert(payload, { onConflict: 'aluno_id,ano,periodo,componente' });
+      .upsert(payload, { onConflict: 'aluno_id,ano,periodo,componente' })
+      .select();
 
     hideLoading();
 
@@ -9159,6 +9260,7 @@ async function importarBoletimProcessado() {
       return;
     }
 
+    mergeNotasBimestraisCache(savedRows || payload);
     currentBoletimProcessedPackage.__lastImport = {
       savedRows: payload.length,
       matchedStudents: matchedStudents.size,
