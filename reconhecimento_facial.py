@@ -81,7 +81,7 @@ def cadastrar_face_manual(aluno_id, embedding):
     """
     Cadastra o vetor facial de um aluno diretamente no banco de dados.
     """
-    url = f"{SUPABASE_URL}/rest/v1/aluno_faces"
+    url = f"{SUPABASE_URL}/rest/v1/aluno_faces?on_conflict=aluno_id"
     payload = {
         "aluno_id": aluno_id,
         "embedding": list(embedding)
