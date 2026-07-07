@@ -35,7 +35,7 @@ def buscar_aluno_por_face(embedding):
     url = f"{SUPABASE_URL}/rest/v1/rpc/buscar_aluno_por_face"
     payload = {
         "p_embedding": list(embedding),
-        "p_limite_distancia": 0.40
+        "p_limite_distancia": 0.90
     }
     
     try:
