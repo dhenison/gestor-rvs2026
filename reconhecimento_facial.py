@@ -4,6 +4,7 @@ import json
 import time
 import sys
 import numpy as np
+from io import BytesIO
 
 # Configurações de Conexão com o Supabase
 SUPABASE_URL = "https://xjtluflzpkkbckkcwagf.supabase.co"
@@ -34,7 +35,7 @@ def buscar_aluno_por_face(embedding):
     url = f"{SUPABASE_URL}/rest/v1/rpc/buscar_aluno_por_face"
     payload = {
         "p_embedding": list(embedding),
-        "p_limite_distancia": 0.40 # Limiar de similaridade (padrão Facenet: ~0.40)
+        "p_limite_distancia": 0.40
     }
     
     try:
@@ -109,6 +110,79 @@ def listar_alunos_pendentes():
         print(f"Erro ao listar alunos: {e}")
     return []
 
+def sincronizar_novas_fotos():
+    """
+    Busca alunos que possuem foto_url no Supabase mas ainda NÃO possuem registro na tabela aluno_faces.
+    Baixa a foto, gera o embedding em background e salva no banco de dados automaticamente.
+    """
+    print("\n🔄 [Sincronizador] Verificando se há novos alunos com foto cadastrada...")
+    try:
+        # 1. Pega todos os IDs de faces já cadastradas
+        res_faces = requests.get(f"{SUPABASE_URL}/rest/v1/aluno_faces?select=aluno_id", headers=HEADERS)
+        if res_faces.status_code != 200:
+            print("❌ [Sincronizador] Erro ao buscar aluno_faces")
+            return
+        faces_cadastradas = {f["aluno_id"] for f in res_faces.json()}
+
+        # 2. Pega todos os alunos ativos que possuem foto_url
+        res_alunos = requests.get(f"{SUPABASE_URL}/rest/v1/alunos?select=id,nome,foto_url&foto_url=not.is.null", headers=HEADERS)
+        if res_alunos.status_code != 200:
+            print("❌ [Sincronizador] Erro ao buscar alunos")
+            return
+        
+        alunos_com_foto = res_alunos.json()
+        pendentes = [a for a in alunos_com_foto if a["id"] not in faces_cadastradas and a["foto_url"].strip() != ""]
+
+        if not pendentes:
+            print("✅ [Sincronizador] Nenhuma foto nova pendente de processamento facial.")
+            return
+
+        print(f"⏳ [Sincronizador] Encontrado(s) {len(pendentes)} aluno(s) pendente(s). Iniciando processamento...")
+
+        for a in pendentes:
+            aluno_id = a["id"]
+            nome = a["nome"]
+            foto_url = a["foto_url"]
+
+            print(f"📷 [Sincronizador] Processando rosto de: {nome}...")
+            try:
+                # Baixa a imagem
+                response = requests.get(foto_url, timeout=10)
+                if response.status_code != 200:
+                    print(f"⚠️ [Sincronizador] Falha ao baixar imagem de {nome} (HTTP {response.status_code})")
+                    continue
+
+                # Converte os bytes da imagem para formato OpenCV
+                image_bytes = np.frombuffer(response.content, np.uint8)
+                img = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
+
+                if img is None or img.size == 0:
+                    print(f"⚠️ [Sincronizador] Falha ao decodificar imagem de {nome}")
+                    continue
+
+                # Extrai embedding usando DeepFace
+                predictions = DeepFace.represent(
+                    img_path=img,
+                    model_name="Facenet",
+                    enforce_detection=False
+                )
+
+                if predictions:
+                    embedding = predictions[0]["embedding"]
+                    # Cadastra a face no banco de dados
+                    sucesso = cadastrar_face_manual(aluno_id, embedding)
+                    if sucesso:
+                        print(f"✨ [Sincronizador] Rosto de {nome} sincronizado com sucesso!")
+                else:
+                    print(f"⚠️ [Sincronizador] Nenhum rosto detectado na foto de {nome}")
+
+            except Exception as e:
+                print(f"❌ [Sincronizador] Erro ao processar foto de {nome}: {e}")
+
+    except Exception as e:
+        print(f"❌ [Sincronizador] Erro geral na sincronização: {e}")
+    print("----------------------------------------------------")
+
 def main():
     print("====================================================")
     print(" RVS Escolar - Reconhecimento Facial (OpenCV Haar + DeepFace)")
@@ -117,18 +191,7 @@ def main():
     # Carrega o detector de faces Haar Cascade do OpenCV (nativo e super rápido)
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     
-    print("Iniciando câmera local...")
-    video_capture = cv2.VideoCapture(0)
-    
-    if not video_capture.isOpened():
-        print("❌ Erro: Não foi possível acessar a câmera/webcam.")
-        sys.exit(1)
-        
-    print("🎥 Câmera conectada com sucesso!")
-    print("Pressione 'c' no terminal/janela para CADASTRAR o rosto detectado a um aluno.")
-    print("Pressione 'q' para SAIR.")
-    print("----------------------------------------------------")
-
+    # Mapeamento do tipo de acesso desta câmera
     TIPO_ACESSO = 'entrada' 
     
     print("⏳ Inicializando modelos de Inteligência Artificial (FaceNet)...")
@@ -140,6 +203,22 @@ def main():
     except Exception as e:
         print(f"Erro ao carregar modelos da DeepFace: {e}")
 
+    # Sincroniza fotos recém-cadastradas no RVS Gestor
+    sincronizar_novas_fotos()
+
+    print("Iniciando câmera local...")
+    video_capture = cv2.VideoCapture(0)
+    
+    if not video_capture.isOpened():
+        print("❌ Erro: Não foi possível acessar a câmera/webcam.")
+        sys.exit(1)
+        
+    print("🎥 Câmera conectada com sucesso!")
+    print("Pressione 'c' no terminal/janela para CADASTRAR o rosto detectado a um aluno.")
+    print("Pressione 's' no terminal/janela para FORÇAR sincronização de fotos do dashboard.")
+    print("Pressione 'q' para SAIR.")
+    print("----------------------------------------------------")
+
     while True:
         ret, frame = video_capture.read()
         if not ret:
@@ -150,7 +229,6 @@ def main():
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
         # Detecta rostos usando o classificador rápido do OpenCV
-        # Retorna lista de caixas (x, y, w, h)
         faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=6, minSize=(60, 60))
         
         last_embedding = None
@@ -191,8 +269,7 @@ def main():
                                 if sucesso:
                                     ultimos_registros[aluno_id] = agora
                 except Exception as e:
-                    # Ocorre se o recorte facial for inválido ou se houver erro interno
-                    print(f"⚠️ Erro ao extrair vetor facial: {e}")
+                    pass
 
             # Desenha a caixa ao redor do rosto detectado pelo OpenCV
             cv2.rectangle(frame, (x, y), (x + w, y + h), cor_caixa, 2)
@@ -209,6 +286,10 @@ def main():
         if key == ord('q'):
             break
             
+        # Pressionar 's' para forçar sincronização
+        elif key == ord('s'):
+            sincronizar_novas_fotos()
+
         # Pressionar 'c' para cadastrar
         elif key == ord('c'):
             if last_embedding is None:
