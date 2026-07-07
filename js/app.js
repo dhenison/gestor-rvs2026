@@ -9078,6 +9078,18 @@ function getBoletimStudentPackageLabel(student) {
 }
 
 function localizarAlunoDoPacoteBoletim(item, alunos) {
+  const registro = normalizarNumeroDocumentoBoletim(item?.student_registry || item?.matricula || item?.registro || '');
+  if (registro) {
+    const porMatricula = alunos.find(aluno => normalizarNumeroDocumentoBoletim(aluno.matricula) === registro);
+    if (porMatricula) return porMatricula;
+  }
+
+  const cpfPacote = normalizarNumeroDocumentoBoletim(item?.student_cpf || item?.cpf || '');
+  if (cpfPacote) {
+    const porCpf = alunos.find(aluno => normalizarNumeroDocumentoBoletim(aluno.cpf) === cpfPacote);
+    if (porCpf) return porCpf;
+  }
+
   const nomeNorm = normalizarTexto(getBoletimStudentPackageLabel(item));
   if (!nomeNorm) return null;
 
@@ -9091,20 +9103,6 @@ function localizarAlunoDoPacoteBoletim(item, alunos) {
     const alunoNorm = normalizarTexto(aluno.nome);
     return tokens.every(token => alunoNorm.includes(token));
   }) || null;
-}
-
-async function carregarAlunosParaImportacaoBoletim(turmaId) {
-  const alunosCache = (ALUNOS_DATA || [])
-    .filter(aluno => String(aluno.turma_id) === String(turmaId) && String(aluno.status || 'ativo').toLowerCase() === 'ativo')
-    .map(aluno => ({
-      id: aluno.id,
-      nome: aluno.nome
-    }));
-
-  return {
-    data: alunosCache,
-    error: null
-  };
 }
 
 function renderBoletimProcessadoPreview(pkg) {
@@ -9240,7 +9238,11 @@ async function importarBoletimProcessado() {
 
   showLoading('Cruzando pacote processado com os alunos da turma...');
   try {
-    const { data: alunos, error } = await carregarAlunosParaImportacaoBoletim(turmaId);
+    const { data: alunos, error } = await supabaseClient
+      .from('alunos')
+      .select('id, nome, matricula, cpf')
+      .eq('turma_id', turmaId)
+      .eq('status', 'ativo');
 
     if (error) throw error;
     if (!alunos?.length) {

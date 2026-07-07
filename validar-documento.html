@@ -554,7 +554,7 @@
           <strong id="detail-aluno">—</strong>
         </div>
         <div class="detail-box">
-          <span>Matrícula</span>
+          <span>CPF</span>
           <strong id="detail-matricula">—</strong>
         </div>
         <div class="detail-box">
@@ -615,6 +615,12 @@
         .replaceAll("'", '&#39;');
     }
 
+    function formatCpf(value) {
+      const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+      if (digits.length !== 11) return value || '—';
+      return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    }
+
     function formatDateBr(value) {
       if (!value) return '—';
       if (typeof value === 'string' && value.includes('/')) return value;
@@ -655,7 +661,7 @@
     function buildDocumentVisualization(data) {
       const aluno = data.aluno || {};
       const nome = escapeHtml(aluno.nome || 'Não informado');
-      const matricula = escapeHtml(aluno.matricula || '—');
+      const cpf = escapeHtml(formatCpf(aluno.cpf || aluno.matricula || '—'));
       const turma = escapeHtml(aluno.turma || '—');
       const turno = escapeHtml(aluno.turno || '—');
       const dataNasc = escapeHtml(formatBirthDate(aluno.data_nascimento || ''));
@@ -669,24 +675,24 @@
 
       if (tipo === 'Declaração de Matrícula') {
         bodyHtml = [
-          paragraph(`Declaramos, para os devidos fins, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o número de matrícula <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <strong>2026</strong>, cursando a turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
+          paragraph(`Declaramos, para os devidos fins, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o CPF <strong>${cpf}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <strong>2026</strong>, cursando a turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
           paragraph('Referida informação é expressão da verdade.')
         ].join('');
       } else if (tipo === 'Declaração de Frequência (Bolsa Família)') {
         const freqMatch = (data.observacoes || '').match(/Frequência de (\\d+)%/);
         const frequencia = escapeHtml(freqMatch ? freqMatch[1] : '100');
         bodyHtml = [
-          paragraph(`Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, que o(a) estudante <strong>${nome}</strong>, matriculado(a) sob o número <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <strong>2026</strong>, na turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
+          paragraph(`Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o CPF <strong>${cpf}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <strong>2026</strong>, na turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
           paragraph(`Apurou-se, para o período avaliativo correspondente, uma frequência escolar global e relativa de <strong>${frequencia}%</strong>.`)
         ].join('');
       } else if (tipo === 'Declaração de Escolaridade') {
         bodyHtml = [
-          paragraph(`Declaramos, para os devidos fins de direito, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o número de matrícula <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <strong>${turma}</strong> sob regime letivo ordinário.`),
+          paragraph(`Declaramos, para os devidos fins de direito, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o CPF <strong>${cpf}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <strong>${turma}</strong> sob regime letivo ordinário.`),
           paragraph('O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.')
         ].join('');
       } else if (tipo === 'Declaração de Transferência') {
         bodyHtml = [
-          paragraph(`Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <strong>${nome}</strong>, matriculado(a) sob o número <strong>${matricula}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, que se encontrava devidamente matriculado(a) na turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
+          paragraph(`Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <strong>${nome}</strong>, inscrito(a) sob o CPF <strong>${cpf}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, que se encontrava devidamente matriculado(a) na turma <strong>${turma}</strong>, no turno <strong>${turno}</strong>.`),
           paragraph('Esta declaração atesta que a vaga de origem está liberada e o processo de transferência ativo. O presente documento tem validade improrrogável de 30 (trinta) dias a partir de sua emissão, prazo este necessário para a confecção e entrega do Histórico Escolar definitivo.')
         ].join('');
       } else {
@@ -695,7 +701,7 @@
             <h4>Detalhes do requerimento</h4>
             <div class="receipt-row"><strong>Protocolo</strong><span>${escapeHtml(data.protocolo || '—')}</span></div>
             <div class="receipt-row"><strong>Estudante</strong><span>${nome}</span></div>
-            <div class="receipt-row"><strong>Matrícula</strong><span>${matricula}</span></div>
+            <div class="receipt-row"><strong>CPF</strong><span>${cpf}</span></div>
             <div class="receipt-row"><strong>Turma / Turno</strong><span>${turma} (${turno})</span></div>
             <div class="receipt-row"><strong>Solicitante</strong><span>${escapeHtml(data.solicitante || 'O próprio aluno')}</span></div>
             <div class="receipt-row"><strong>Motivo</strong><span>${escapeHtml(data.motivo || 'Sem justificativa informada')}</span></div>
@@ -729,7 +735,7 @@
       refs.metaValidade.textContent = formatDateBr(data.data_validade);
       refs.metaSituacao.textContent = data.documento_valido ? 'Válido no momento da consulta' : 'Documento fora do prazo';
       refs.detailAluno.textContent = aluno.nome || '—';
-      refs.detailMatricula.textContent = aluno.matricula || '—';
+      refs.detailMatricula.textContent = formatCpf(aluno.cpf || aluno.matricula || '—');
       refs.detailTurma.textContent = `${aluno.turma || '—'} / ${aluno.turno || '—'}`;
       refs.detailResponsavel.textContent = data.responsavel || 'Secretaria';
       refs.detailSolicitante.textContent = data.solicitante || 'O próprio aluno';

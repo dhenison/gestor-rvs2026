@@ -1,0 +1,1 @@
+Os pacotes JSON e as páginas separadas de cada boletim serão criados nesta pasta.

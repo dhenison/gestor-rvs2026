@@ -104,6 +104,11 @@
       gap: 12px;
     }
 
+    .header-info {
+      flex: 1;
+      min-width: 0;
+    }
+
     .header-logo {
       width: 38px;
       height: 38px;
@@ -119,42 +124,59 @@
       font-weight: 700;
       color: white;
       letter-spacing: -0.02em;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .header-info p {
       font-size: 10.5px;
       color: var(--text-muted);
-      margin-top: 1px;
+      margin: 1px 0 0;
     }
 
     .btn-sair {
       margin-left: auto;
-      display: flex;
+      flex-shrink: 0;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 8px;
       color: #94a3b8;
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
       text-decoration: none;
-      width: 38px;
-      height: 38px;
-      padding: 0;
+      line-height: 1;
+      white-space: nowrap;
+      min-height: 42px;
+      padding: 0 16px;
       border: 1px solid rgba(255,255,255,.1);
-      border-radius: 50%;
+      border-radius: 999px;
       background: rgba(255,255,255,0.03);
       cursor: pointer;
       transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: inherit;
       flex-shrink: 0;
     }
-    .btn-sair span { display: none; }
-    .btn-sair::before { content: '⏻'; line-height: 1; }
-    .btn-sair:hover, .btn-sair:active {
+    .btn-sair-icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .btn-sair:hover {
       color: #fda4af;
       border-color: rgba(244,63,94,.4);
       background: rgba(244,63,94,.08);
-      transform: scale(0.94);
+      transform: translateY(-1px);
+    }
+    .btn-sair:active {
+      transform: scale(0.96);
     }
 
     /* ── Main Container ── */
@@ -480,6 +502,298 @@
     .badge-normal { background: rgba(99,102,241,.15); color: #cbd5e1; border: 1px solid rgba(99,102,241,.3); }
     .badge-urgente { background: rgba(244,63,94,.15); color: #fca5a5; border: 1px solid rgba(244,63,94,.3); }
     .badge-ok { background: rgba(16,185,129,.12); color: #a7f3d0; border: 1px solid rgba(16,185,129,.25); }
+
+    #view-frequencia .view-title {
+      color: var(--primary);
+    }
+
+    #view-frequencia .btn-voltar {
+      background: rgba(255,255,255,.74);
+      border: 1px solid rgba(171, 145, 118, 0.34);
+      color: #62564d;
+      box-shadow: 0 10px 24px rgba(92, 65, 40, 0.08);
+    }
+
+    #view-frequencia .btn-voltar:hover {
+      background: rgba(255,255,255,.92);
+      border-color: rgba(171, 145, 118, 0.5);
+    }
+
+    .freq-page-note {
+      margin: -8px 0 18px;
+      font-size: 12px;
+      color: #6a5f57;
+      line-height: 1.5;
+    }
+
+    .freq-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .freq-metric-card {
+      background: rgba(255,255,255,.84);
+      border: 1px solid rgba(168, 144, 118, 0.2);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 18px 34px rgba(91, 64, 41, 0.08);
+    }
+
+    .freq-metric-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #7a6d63;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .freq-metric-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .freq-metric-sub {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #6a5f57;
+    }
+
+    .freq-overview-card {
+      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(248,242,235,.94));
+      border: 1px solid rgba(168, 144, 118, 0.22);
+      border-radius: 20px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 22px 42px rgba(91, 64, 41, 0.09);
+    }
+
+    .freq-overview-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 6px;
+      letter-spacing: -0.02em;
+    }
+
+    .freq-overview-sub {
+      font-size: 12px;
+      color: #6a5f57;
+      line-height: 1.5;
+    }
+
+    .freq-overview-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .freq-overview-main {
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 800;
+    }
+
+    .freq-overview-side {
+      font-size: 11.5px;
+      color: #6a5f57;
+      font-weight: 600;
+    }
+
+    .freq-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 6px;
+    }
+
+    .freq-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(23,21,19,.05);
+      border: 1px solid rgba(23,21,19,.08);
+      color: #5e534b;
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .freq-progress-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(23,21,19,.08);
+      overflow: hidden;
+      margin: 12px 0 10px;
+    }
+
+    .freq-progress-bar {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #188b5f, #29bf81);
+    }
+
+    .freq-history {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .freq-day-card {
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(168, 144, 118, 0.18);
+      border-radius: 18px;
+      padding: 16px 18px;
+      border-left: 4px solid var(--primary);
+      box-shadow: 0 16px 30px rgba(91, 64, 41, 0.07);
+    }
+
+    .freq-day-card.status-p { border-left-color: var(--success); }
+    .freq-day-card.status-f { border-left-color: var(--danger); }
+    .freq-day-card.status-fj { border-left-color: var(--warning); }
+
+    .freq-day-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .freq-day-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 3px;
+    }
+
+    .freq-day-meta {
+      font-size: 11px;
+      color: #7a6d63;
+    }
+
+    .freq-day-note {
+      font-size: 12px;
+      color: #5f544c;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .freq-day-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .freq-slot-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      background: rgba(23,21,19,.05);
+      color: #6c6058;
+      border: 1px solid rgba(23,21,19,.08);
+    }
+
+    .freq-slot-pill.status-p {
+      background: rgba(25,135,84,.12);
+      color: #16724a;
+      border-color: rgba(25,135,84,.24);
+    }
+
+    .freq-slot-pill.status-f {
+      background: rgba(244,63,94,.12);
+      color: #b42345;
+      border-color: rgba(244,63,94,.22);
+    }
+
+    .freq-slot-pill.status-fj {
+      background: rgba(245,158,11,.12);
+      color: #9a6d00;
+      border-color: rgba(245,158,11,.22);
+    }
+
+    .freq-slot-pill.status-n {
+      background: rgba(23,21,19,.05);
+      color: #6c6058;
+      border-color: rgba(23,21,19,.08);
+    }
+
+    .freq-status-pill.status-fj {
+      background: rgba(245,158,11,.14);
+      color: #9a6d00;
+      border: 1px solid rgba(245,158,11,.24);
+    }
+
+    .freq-status-pill.status-p {
+      background: rgba(25,135,84,.12);
+      color: #16724a;
+      border: 1px solid rgba(25,135,84,.22);
+    }
+
+    .freq-status-pill.status-f {
+      background: rgba(244,63,94,.12);
+      color: #b42345;
+      border: 1px solid rgba(244,63,94,.22);
+    }
+
+    .freq-status-pill.status-n {
+      background: rgba(23,21,19,.05);
+      color: #6c6058;
+      border: 1px solid rgba(23,21,19,.08);
+    }
+
+    .freq-empty-card {
+      background: rgba(255,255,255,.88);
+      border: 1px dashed rgba(168, 144, 118, 0.36);
+      border-radius: 18px;
+      padding: 30px 20px;
+      text-align: center;
+      max-width: 560px;
+      margin: 20px auto;
+      color: #5f544c;
+      box-shadow: 0 18px 36px rgba(91, 64, 41, 0.08);
+    }
+
+    .freq-empty-card h3 {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .freq-empty-card p {
+      font-size: 12px;
+      color: #6a5f57;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .freq-section-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #7a6d63;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 6px 0 12px;
+    }
 
     /* ── View: Topo do Saber (Banners Grid) ── */
     .olimp-grid {
@@ -901,6 +1215,8 @@
       .header-inner { padding: calc(10px + env(safe-area-inset-top)) 14px 10px; }
       .header-info h1 { font-size: 12px; }
       main { padding: 16px 12px calc(96px + env(safe-area-inset-bottom)); }
+      .btn-sair { min-height: 38px; padding: 0 12px; gap: 6px; font-size: 12px; }
+      .btn-sair-icon { width: 14px; height: 14px; }
 
       .perfil-card { flex-direction: column; text-align: center; padding: 18px 14px; gap: 10px; }
       .perfil-nome { font-size: 16px; white-space: normal; }
@@ -1104,7 +1420,13 @@
         <h1>E.E. Dr. Romildo Veloso e Silva</h1>
         <p>Portal do Aluno</p>
       </div>
-      <button class="btn-sair" onclick="sair()">⬅ Sair</button>
+      <button class="btn-sair" type="button" onclick="sair()" aria-label="Sair do portal do aluno">
+        <svg class="btn-sair-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v9"></path>
+          <path d="M7.05 5.05a9 9 0 1 0 9.9 0"></path>
+        </svg>
+        <span>Sair</span>
+      </button>
     </div>
   </header>
 
@@ -1193,6 +1515,20 @@
           </div>
         </div>
 
+        <!-- Card 5: Minha Frequencia -->
+        <div class="portal-card" id="card-frequencia" onclick="abrirFrequencia(); setActiveNav('nav-frequencia')">
+          <div class="card-img-area">
+            <div class="card-img-placeholder">
+              <span class="placeholder-icon">OK</span>
+              <span class="placeholder-text">Registro escolar</span>
+            </div>
+          </div>
+          <div class="card-label">
+            <div class="card-label-title">Minha Frequencia</div>
+            <div class="card-label-sub">Presencas e faltas</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1233,6 +1569,14 @@
       <div id="boletim-container" style="margin-top:20px;"></div>
     </div>
 
+    <div id="view-frequencia" class="page-view">
+      <div class="view-header">
+        <button class="btn-voltar" onclick="voltarDashboard(); setActiveNav('nav-inicio')">⬅ Voltar</button>
+        <div class="view-title">Frequencia Escolar</div>
+      </div>
+      <div id="frequencia-container" style="margin-top:20px;"></div>
+    </div>
+
   </main>
 
   <!-- BARRA DE NAVEGAÇÃO INFERIOR (APP NATIVO) -->
@@ -1244,6 +1588,10 @@
     <button class="nav-item" id="nav-notas" onclick="abrirBoletim(); setActiveNav('nav-notas')">
       <span class="nav-icon">📊</span>
       <span class="nav-label">Notas</span>
+    </button>
+    <button class="nav-item" id="nav-frequencia" onclick="abrirFrequencia(); setActiveNav('nav-frequencia')">
+      <span class="nav-icon">✅</span>
+      <span class="nav-label">Freq.</span>
     </button>
     <button class="nav-item" id="nav-agenda" onclick="abrirAgenda(); setActiveNav('nav-agenda')">
       <span class="nav-icon">📅</span>
@@ -1461,6 +1809,10 @@
   }
 
   async function carregarIdAlunoSessao() {
+    if (studentProfile && studentProfile.id) {
+      return studentProfile.id;
+    }
+
     if (studentProfile && studentProfile.cpf && !studentProfile.id) {
       try {
         const { data, error } = await supabaseClient
@@ -1476,6 +1828,8 @@
         console.warn('Erro ao carregar ID do aluno:', err);
       }
     }
+
+    return studentProfile && studentProfile.id ? studentProfile.id : null;
   }
 
   // Executa imediatamente se o DOM já estiver pronto
@@ -2105,6 +2459,356 @@
   function sair() {
     sessionStorage.removeItem('portal_aluno');
     window.location.href = 'aluno.html';
+  }
+
+  function obterResumoFrequenciaDia(entrada, saida) {
+    const ent = entrada || null;
+    const sai = saida || null;
+    const evasao = ent === 'P' && sai === 'F';
+
+    if ((ent && ent.startsWith('FJ')) || (sai && sai.startsWith('FJ'))) {
+      return {
+        status: 'FJ',
+        titulo: 'Falta justificada',
+        descricao: 'A escola registrou uma justificativa para este dia letivo.'
+      };
+    }
+
+    if (ent === 'F' || sai === 'F' || evasao) {
+      return {
+        status: 'F',
+        titulo: evasao ? 'Ausencia na saida' : 'Falta registrada',
+        descricao: evasao
+          ? 'Presenca na entrada e ausencia na saida registradas no mesmo dia.'
+          : 'Foi registrada ausencia em pelo menos um dos turnos acompanhados.'
+      };
+    }
+
+    if (ent === 'P' && (sai === 'P' || sai === null)) {
+      return {
+        status: 'P',
+        titulo: 'Presenca confirmada',
+        descricao: sai === 'P'
+          ? 'Presenca registrada na entrada e na saida.'
+          : 'Presenca registrada no turno de entrada.'
+      };
+    }
+
+    if (sai === 'P' && !ent) {
+      return {
+        status: 'P',
+        titulo: 'Presenca confirmada',
+        descricao: 'Presenca registrada no turno de saida.'
+      };
+    }
+
+    return {
+      status: 'N',
+      titulo: 'Sem consolidacao',
+      descricao: 'Ainda nao ha um fechamento de frequencia disponivel para este dia.'
+    };
+  }
+
+  function obterClasseStatusFrequencia(status) {
+    if (status === 'P') return 'status-p';
+    if (status === 'F') return 'status-f';
+    if (status === 'FJ') return 'status-fj';
+    if (status === 'N') return 'status-n';
+    return 'status-n';
+  }
+
+  function obterRotuloTurnoStatus(status) {
+    if (status === 'P') return 'Presente';
+    if (status === 'F') return 'Falta';
+    if (status && status.startsWith('FJ')) return 'Justificada';
+    return 'Sem registro';
+  }
+
+  function formatarDataFrequencia(dataIso) {
+    const data = new Date(`${dataIso}T12:00:00`);
+    return data.toLocaleDateString('pt-BR', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  function criarDataLocal(dataIso) {
+    return new Date(`${dataIso}T12:00:00`);
+  }
+
+  function formatarDataIsoLocal(data) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  function isDiaUtilData(data) {
+    const diaSemana = data.getDay();
+    return diaSemana >= 1 && diaSemana <= 5;
+  }
+
+  function isDiaUtilIso(dataIso) {
+    return isDiaUtilData(criarDataLocal(dataIso));
+  }
+
+  function obterInicioSemanaUtil(dataBase) {
+    const inicio = new Date(dataBase);
+    const diaSemana = inicio.getDay();
+    const deslocamento = diaSemana === 0 ? -6 : 1 - diaSemana;
+    inicio.setDate(inicio.getDate() + deslocamento);
+    inicio.setHours(12, 0, 0, 0);
+    return inicio;
+  }
+
+  function obterFimSemanaUtil(dataBase) {
+    const fim = obterInicioSemanaUtil(dataBase);
+    fim.setDate(fim.getDate() + 4);
+    return fim;
+  }
+
+  function formatarPeriodoFrequencia(inicio, fim) {
+    const inicioTxt = inicio.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const fimTxt = fim.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    return `${inicioTxt} a ${fimTxt}`;
+  }
+
+  function formatarMesAnoFrequencia(data) {
+    return data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  }
+
+  function criarDiaSemRegistro(dataIso) {
+    return {
+      data: dataIso,
+      entrada: null,
+      saida: null,
+      status: 'N',
+      titulo: 'Sem registro consolidado',
+      descricao: 'A escola ainda nao publicou a chamada consolidada para este dia util.'
+    };
+  }
+
+  function montarSemanaUtilFrequencia(inicio, fim, diasMap) {
+    const semana = [];
+    const cursor = new Date(inicio);
+
+    while (cursor <= fim) {
+      if (isDiaUtilData(cursor)) {
+        const dataIso = formatarDataIsoLocal(cursor);
+        semana.push(diasMap.get(dataIso) || criarDiaSemRegistro(dataIso));
+      }
+
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return semana;
+  }
+
+  async function abrirFrequencia() {
+    mostrarView('view-frequencia');
+    const container = document.getElementById('frequencia-container');
+    container.innerHTML = `
+      <div style="display:flex; justify-content:center; align-items:center; min-height:200px; flex-direction:column; gap:12px;">
+        <div style="width:24px; height:24px; border:2px solid rgba(255,255,255,.05); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;"></div>
+        <span style="font-size:12px; color:var(--text-muted);">Buscando sua frequencia...</span>
+      </div>
+    `;
+
+    try {
+      const alunoId = await carregarIdAlunoSessao();
+
+      if (!alunoId) {
+        container.innerHTML = `
+          <div class="freq-empty-card">
+            <div style="font-size:32px; margin-bottom:12px;">!</div>
+            <h3>Nao foi possivel identificar o aluno</h3>
+            <p>Atualize o acesso e tente novamente para consultar sua frequencia.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const dataCorte = new Date();
+      dataCorte.setDate(dataCorte.getDate() - 180);
+      const dataCorteIso = dataCorte.toISOString().split('T')[0];
+
+      const { data, error } = await supabaseClient
+        .from('frequencia')
+        .select('data, tipo, status, consolidado')
+        .eq('aluno_id', alunoId)
+        .eq('consolidado', true)
+        .gte('data', dataCorteIso)
+        .order('data', { ascending: false })
+        .limit(400);
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = `
+          <div class="freq-empty-card">
+            <div style="font-size:36px; margin-bottom:14px;">[]</div>
+            <h3>Nenhuma frequencia consolidada</h3>
+            <p>Assim que a escola consolidar a chamada, o percentual mensal e a semana letiva aparecerao aqui.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const diasMap = new Map();
+      data.forEach((item) => {
+        if (!diasMap.has(item.data)) {
+          diasMap.set(item.data, { data: item.data, entrada: null, saida: null });
+        }
+
+        if (item.tipo === 'entrada' || item.tipo === 'saida') {
+          diasMap.get(item.data)[item.tipo] = item.status;
+        }
+      });
+
+      const dias = Array.from(diasMap.values())
+        .sort((a, b) => b.data.localeCompare(a.data))
+        .map((dia) => {
+          const resumo = obterResumoFrequenciaDia(dia.entrada, dia.saida);
+          return { ...dia, ...resumo };
+        });
+
+      const diasUteis = dias.filter((dia) => isDiaUtilIso(dia.data));
+
+      if (diasUteis.length === 0) {
+        container.innerHTML = `
+          <div class="freq-empty-card">
+            <div style="font-size:36px; margin-bottom:14px;">[]</div>
+            <h3>Sem dados de segunda a sexta</h3>
+            <p>Nao encontramos chamadas consolidadas em dias uteis para montar o acompanhamento semanal e mensal.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const dataReferencia = criarDataLocal(diasUteis[0].data);
+      const mesReferencia = dataReferencia.getMonth();
+      const anoReferencia = dataReferencia.getFullYear();
+      const mesReferenciaLabel = formatarMesAnoFrequencia(dataReferencia);
+      const inicioSemana = obterInicioSemanaUtil(dataReferencia);
+      const fimSemana = obterFimSemanaUtil(dataReferencia);
+      const semanaLabel = formatarPeriodoFrequencia(inicioSemana, fimSemana);
+
+      const diasMes = diasUteis.filter((dia) => {
+        const dataDia = criarDataLocal(dia.data);
+        return dataDia.getMonth() === mesReferencia && dataDia.getFullYear() === anoReferencia;
+      });
+
+      const presencasMes = diasMes.filter((dia) => dia.status === 'P').length;
+      const faltasMes = diasMes.filter((dia) => dia.status === 'F').length;
+      const justificadasMes = diasMes.filter((dia) => dia.status === 'FJ').length;
+      const totalDiasMes = diasMes.length;
+      const percentualMes = totalDiasMes > 0 ? Math.round((presencasMes / totalDiasMes) * 100) : 0;
+
+      const semanaMap = new Map(diasUteis.map((dia) => [dia.data, dia]));
+      const semana = montarSemanaUtilFrequencia(inicioSemana, fimSemana, semanaMap);
+      const presencasSemana = semana.filter((dia) => dia.status === 'P').length;
+      const diasRegistradosSemana = semana.filter((dia) => dia.status !== 'N').length;
+
+      let html = `
+        <p class="freq-page-note">
+          Acompanhe abaixo o percentual do mes de referencia e somente os dias uteis da semana exibida, de segunda a sexta.
+        </p>
+
+        <div class="freq-overview-card">
+          <div class="freq-overview-title">Frequencia do mes</div>
+          <div class="freq-overview-sub">
+            Resumo de ${mesReferenciaLabel} com base apenas nas chamadas consolidadas em dias uteis.
+          </div>
+          <div class="freq-chip-row">
+            <span class="freq-chip">Mes de referencia: ${mesReferenciaLabel}</span>
+            <span class="freq-chip">Semana exibida: ${semanaLabel}</span>
+            <span class="freq-chip">Filtro: segunda a sexta</span>
+          </div>
+          <div class="freq-progress-track">
+            <div class="freq-progress-bar" style="width:${percentualMes}%;"></div>
+          </div>
+          <div class="freq-overview-meta">
+            <div class="freq-overview-main">Percentual mensal: ${percentualMes}%</div>
+            <div class="freq-overview-side">${totalDiasMes} dia(s) letivo(s) consolidado(s) no mes</div>
+          </div>
+        </div>
+
+        <div class="freq-summary-grid">
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Presencas no mes</div>
+            <div class="freq-metric-value" style="color:#16724a;">${presencasMes}</div>
+            <div class="freq-metric-sub">Dias uteis com presenca confirmada</div>
+          </div>
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Faltas no mes</div>
+            <div class="freq-metric-value" style="color:#b42345;">${faltasMes}</div>
+            <div class="freq-metric-sub">Ausencias registradas em dias uteis</div>
+          </div>
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Justificadas</div>
+            <div class="freq-metric-value" style="color:#9a6d00;">${justificadasMes}</div>
+            <div class="freq-metric-sub">Faltas com justificativa no mes</div>
+          </div>
+          <div class="freq-metric-card">
+            <div class="freq-metric-label">Semana exibida</div>
+            <div class="freq-metric-value" style="font-size:20px;">${presencasSemana}/5</div>
+            <div class="freq-metric-sub">${diasRegistradosSemana} dia(s) da semana ja consolidados</div>
+          </div>
+        </div>
+
+        <div class="freq-section-title">Semana letiva exibida</div>
+        <div class="freq-history">
+      `;
+
+      semana.forEach((dia) => {
+        const classeStatus = obterClasseStatusFrequencia(dia.status);
+        const rotuloEntrada = obterRotuloTurnoStatus(dia.entrada);
+        const rotuloSaida = obterRotuloTurnoStatus(dia.saida);
+        const badgeClass = dia.status === 'P'
+          ? 'freq-status-pill status-p'
+          : dia.status === 'F'
+            ? 'freq-status-pill status-f'
+            : dia.status === 'FJ'
+              ? 'freq-status-pill status-fj'
+              : 'freq-status-pill status-n';
+
+        html += `
+          <div class="freq-day-card ${classeStatus}">
+            <div class="freq-day-top">
+              <div>
+                <div class="freq-day-title">${formatarDataFrequencia(dia.data)}</div>
+                <div class="freq-day-meta">Acompanhamento semanal de segunda a sexta</div>
+              </div>
+              <span class="card-badge ${badgeClass}">${dia.titulo}</span>
+            </div>
+            <div class="freq-day-note">${dia.descricao}</div>
+            <div class="freq-day-slots">
+              <span class="freq-slot-pill ${obterClasseStatusFrequencia(dia.entrada)}">Entrada: ${rotuloEntrada}</span>
+              <span class="freq-slot-pill ${obterClasseStatusFrequencia(dia.saida)}">Saida: ${rotuloSaida}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        </div>
+      `;
+
+      container.innerHTML = html;
+    } catch (e) {
+      console.error('[abrirFrequencia] Exception:', e);
+      container.innerHTML = `
+        <div class="freq-empty-card">
+          <div style="font-size:32px; margin-bottom:12px;">!</div>
+          <h3>Nao foi possivel carregar sua frequencia</h3>
+          <p>Tente novamente em instantes. Se o problema continuar, confirme se a chamada ja foi consolidada pela escola.</p>
+        </div>
+      `;
+    }
   }
 
   // ==============================================================================
