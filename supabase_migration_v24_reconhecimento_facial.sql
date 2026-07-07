@@ -55,7 +55,7 @@ BEGIN
         a.id AS aluno_id,
         a.nome,
         a.foto_url,
-        t.nome AS turma_nome,
+        t.code AS turma_nome,
         (f.embedding <-> p_embedding) AS distancia
     FROM public.aluno_faces f
     JOIN public.alunos a ON a.id = f.aluno_id
