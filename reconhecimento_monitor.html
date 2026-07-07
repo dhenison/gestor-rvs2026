@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RVS Escolar - Monitor de Frequência Facial</title>
+  
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Fontes Premium -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --bg-dark: #070913;
+      --card-bg: rgba(15, 20, 42, 0.6);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-blue: #3b82f6;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #64748b;
+      
+      --shadow-glow-blue: 0 0 40px rgba(59, 130, 246, 0.25);
+      --shadow-glow-green: 0 0 50px rgba(16, 185, 129, 0.4);
+      --shadow-glow-red: 0 0 50px rgba(239, 68, 68, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Fundo dinâmico com gradientes animados */
+    .bg-gradient-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(0,0,0,0) 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+      pointer-events: none;
+      transition: background 1s ease;
+    }
+
+    /* Estrutura principal */
+    .container {
+      position: relative;
+      z-index: 2;
+      width: 90%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 40px;
+      height: 85vh;
+      align-items: center;
+    }
+
+    /* Lado Esquerdo: Câmera / Scanning */
+    .camera-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 30px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .camera-wrapper {
+      width: 100%;
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #camera-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Mirror effect */
+    }
+
+    .camera-placeholder {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 20px;
+    }
+
+    .camera-placeholder i {
+      font-size: 48px;
+      margin-bottom: 12px;
+      color: var(--accent-blue);
+      animation: pulse 2s infinite;
+    }
+
+    /* Scanner Grid Overlay */
+    .scanner-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 2px solid rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      pointer-events: none;
+      box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Linha de Scanner */
+    .scanner-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
+      box-shadow: 0 0 10px var(--accent-blue);
+      animation: scan 3s linear infinite;
+    }
+
+    /* Moldura de Foco Facial */
+    .face-bracket {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border: 2px dashed rgba(59, 130, 246, 0.6);
+      border-radius: 20px;
+      animation: rotate-bracket 10s linear infinite;
+    }
+
+    /* Lado Direito: Feedback Card */
+    .feedback-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-glow-blue);
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Cabeçalho do Monitor */
+    .monitor-header {
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      right: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 15px;
+    }
+
+    .monitor-title {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .clock {
+      font-size: 16px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Estado de Repouso (Aguardando) */
+    .state-waiting {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+    }
+
+    .waiting-ring {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      border: 3px solid rgba(59, 130, 246, 0.1);
+      border-top-color: var(--accent-blue);
+      animation: spin 1.5s linear infinite;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .waiting-ring i {
+      font-size: 40px;
+      color: var(--accent-blue);
+      animation: heartbeat 2s ease-in-out infinite;
+    }
+
+    .waiting-text h2 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .waiting-text p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Estado de Sucesso (Reconhecido) */
+    .state-success {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .status-badge {
+      padding: 8px 18px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--accent-green);
+    }
+
+    .avatar-wrapper {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      border: 6px solid var(--accent-green);
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+      overflow: hidden;
+      margin-bottom: 25px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .student-name {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      color: var(--text-main);
+    }
+
+    .student-details {
+      font-size: 16px;
+      color: var(--text-muted);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .detail-pill {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 6px 14px;
+      border-radius: 8px;
+    }
+
+    .timestamp-badge {
+      font-size: 18px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      color: var(--accent-green);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Estado de Erro (Não Autorizado / Não Reconhecido) */
+    .state-error {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .state-error .status-badge {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--accent-red);
+    }
+
+    .state-error .avatar-wrapper {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .state-error i.error-icon {
+      font-size: 80px;
+      color: var(--accent-red);
+      animation: shake 0.5s ease-in-out infinite alternate;
+    }
+
+    /* Animações CSS */
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.8; }
+    }
+    
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      14% { transform: scale(1.12); }
+      28% { transform: scale(1); }
+      42% { transform: scale(1.12); }
+      70% { transform: scale(1); }
+    }
+
+    @keyframes scan {
+      0% { top: 0%; }
+      50% { top: 100%; }
+      100% { top: 0%; }
+    }
+
+    @keyframes rotate-bracket {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes zoomIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes shake {
+      0% { transform: rotate(-5deg); }
+      100% { transform: rotate(5deg); }
+    }
+
+    /* Feedback de tela cheia (Flash de Cor) */
+    .screen-flash-green {
+      animation: flash-green 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .screen-flash-red {
+      animation: flash-red 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes flash-green {
+      0% { background-color: rgba(16, 185, 129, 0.15); }
+      100% { background-color: var(--bg-dark); }
+    }
+    @keyframes flash-red {
+      0% { background-color: rgba(239, 68, 68, 0.15); }
+      100% { background-color: var(--bg-dark); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Elemento de brilho do fundo -->
+  <div class="bg-gradient-glow" id="bg-glow"></div>
+
+  <div class="container">
+    
+    <!-- Painel Esquerdo: Câmera -->
+    <div class="camera-panel" id="cam-panel">
+      <div style="align-self: flex-start; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 700;">
+        🎥 Feed de Vídeo Local
+      </div>
+      
+      <div class="camera-wrapper">
+        <video id="camera-video" autoplay playsinline muted></video>
+        
+        <div class="camera-placeholder" id="cam-placeholder">
+          <i data-lucide="video"></i>
+          <p>Solicitando acesso à Webcam local...</p>
+        </div>
+        
+        <!-- Elementos de IA simulados no monitor -->
+        <div class="scanner-overlay">
+          <div class="scanner-line"></div>
+        </div>
+        <div class="face-bracket" id="face-bracket"></div>
+      </div>
+      
+      <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+        Assegure-se de que o rosto do aluno esteja centralizado e bem iluminado.
+      </div>
+    </div>
+
+    <!-- Painel Direito: Cartão de Status / Feedback -->
+    <div class="feedback-panel" id="feed-panel">
+      
+      <!-- Cabeçalho do Painel -->
+      <div class="monitor-header">
+        <div class="monitor-title" id="monitor-label">
+          <i data-lucide="scan"></i> Monitor de Acesso
+        </div>
+        <div class="clock" id="live-clock">00:00:00</div>
+      </div>
+
+      <!-- ESTADO 1: AGUARDANDO -->
+      <div class="state-waiting" id="panel-waiting">
+        <div class="waiting-ring">
+          <i data-lucide="user-check"></i>
+        </div>
+        <div class="waiting-text">
+          <h2>Aguardando Aproximação</h2>
+          <p>Posicione o rosto em frente à câmera para registrar a frequência</p>
+        </div>
+      </div>
+
+      <!-- ESTADO 2: SUCESSO -->
+      <div class="state-success" id="panel-success">
+        <div class="status-badge" id="success-badge">
+          <i data-lucide="check-circle-2"></i> Acesso Autorizado
+        </div>
+        <div class="avatar-wrapper">
+          <img src="" alt="Foto Aluno" class="avatar-img" id="student-photo">
+        </div>
+        <div class="student-name" id="student-display-name">Carregando Nome...</div>
+        <div class="student-details">
+          <span class="detail-pill" id="student-class">Turma</span>
+          <span class="detail-pill" id="student-transport">Sem Rota</span>
+        </div>
+        <div class="timestamp-badge">
+          <i data-lucide="clock"></i> registrado às <span id="register-time">00:00</span>
+        </div>
+      </div>
+
+      <!-- ESTADO 3: ERRO / ALERTA -->
+      <div class="state-error" id="panel-error">
+        <div class="status-badge">
+          <i data-lucide="x-circle"></i> Não Identificado
+        </div>
+        <div class="avatar-wrapper">
+          <i class="error-icon" data-lucide="user-x" style="width: 80px; height: 80px;"></i>
+        </div>
+        <div class="student-name" style="margin-top: 20px;" id="error-title">Acesso Negado</div>
+        <div class="student-details" style="margin-bottom: 0;">
+          <span class="detail-pill" id="error-desc" style="color: var(--accent-red); border-color: rgba(239,68,68,0.2);">Vetor facial não correspondente</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // Configurações do Supabase obtidas do app.js
+    const SUPABASE_URL = 'https://xjtluflzpkkbckkcwagf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdGx1Zmx6cGtrYmNra2N3YWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjMxNzMsImV4cCI6MjA5MzIzOTE3M30.3Fj_xCwTwx0MYWjFx3xM41BP8DQCsRMgGYmZJkHuidE';
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Variáveis Globais
+    let urlParams = new URLSearchParams(window.location.search);
+    let monitorId = urlParams.get('monitor') || '1'; // Default: Monitor 1
+    let monitorTipo = 'entrada'; // padrão
+    let monitorNome = `Monitor 0${monitorId} - Entrada Principal`;
+
+    // Mapeamento dos 4 monitores e webcams
+    const MONITORES_CONFIG = {
+      '1': { nome: 'Monitor 01 - Entrada A', tipo: 'entrada' },
+      '2': { nome: 'Monitor 02 - Entrada B', tipo: 'entrada' },
+      '3': { nome: 'Monitor 03 - Saída A', tipo: 'saida' },
+      '4': { nome: 'Monitor 04 - Saída B', tipo: 'saida' }
+    };
+
+    if (MONITORES_CONFIG[monitorId]) {
+      monitorNome = MONITORES_CONFIG[monitorId].nome;
+      monitorTipo = MONITORES_CONFIG[monitorId].tipo;
+    }
+
+    // Inicialização da UI
+    document.getElementById('monitor-label').innerHTML = `<i data-lucide="scan"></i> ${monitorNome}`;
+    lucide.createIcons();
+
+    // Atualiza relógio
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('live-clock').textContent = now.toLocaleTimeString('pt-BR');
+    }, 1000);
+
+    // Inicializa câmera de vídeo local
+    const video = document.getElementById('camera-video');
+    const placeholder = document.getElementById('cam-placeholder');
+    
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+      .then(stream => {
+        video.srcObject = stream;
+        placeholder.style.display = 'none';
+      })
+      .catch(err => {
+        console.error('Erro ao acessar webcam:', err);
+        placeholder.innerHTML = `<i data-lucide="alert-circle" style="color: var(--accent-red)"></i><p>Não foi possível iniciar a webcam local. O monitor funcionará apenas com os eventos do Supabase.</p>`;
+        lucide.createIcons();
+      });
+
+    // Sintetizador de Som (Bipes via Web Audio API)
+    // Dispensa a necessidade de arquivos MP3 locais!
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playBeep(success = true) {
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        if (success) {
+          // Bipe agudo de sucesso
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime); // nota Lá 5
+          gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+          osc.start(audioCtx.currentTime);
+          osc.stop(audioCtx.currentTime + 0.15);
+        } else {
+          // Alerta grave de erro
+          osc.frequency.setValueAtTime(220, audioCtx.currentTime); // nota Lá 3
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+          osc.start(audioCtx.currentTime);
+          osc.stop(audioCtx.currentTime + 0.4);
+        }
+      } catch (e) {
+        console.warn('Erro ao tocar áudio (interação do usuário necessária):', e);
+      }
+    }
+
+    // Gerenciador de Estados de Feedback
+    let resetTimeout = null;
+
+    function resetToWaiting() {
+      // Retorna para o estado "Aguardando"
+      document.getElementById('panel-waiting').style.display = 'flex';
+      document.getElementById('panel-success').style.display = 'none';
+      document.getElementById('panel-error').style.display = 'none';
+      
+      // Reseta brilho
+      document.getElementById('feed-panel').style.boxShadow = 'var(--shadow-glow-blue)';
+      document.getElementById('feed-panel').style.borderColor = 'var(--card-border)';
+      document.getElementById('bg-glow').style.background = 'radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(0,0,0,0) 70%)';
+      document.getElementById('face-bracket').style.borderColor = 'rgba(59, 130, 246, 0.6)';
+    }
+
+    async function exibirReconhecimentoSucesso(aluno, tipoAcesso) {
+      if (resetTimeout) clearTimeout(resetTimeout);
+
+      playBeep(true);
+
+      // Efeito de flash na tela
+      document.body.classList.remove('screen-flash-green', 'screen-flash-red');
+      void document.body.offsetWidth; // trigger reflow
+      document.body.classList.add('screen-flash-green');
+
+      // Altera a cor do painel de feedback
+      const panel = document.getElementById('feed-panel');
+      panel.style.boxShadow = 'var(--shadow-glow-green)';
+      panel.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      document.getElementById('bg-glow').style.background = 'radial-gradient(circle, rgba(16, 185, 129, 0.18) 0%, rgba(0,0,0,0) 70%)';
+      document.getElementById('face-bracket').style.borderColor = 'var(--accent-green)';
+
+      // Configura dados da UI
+      document.getElementById('success-badge').innerHTML = `<i data-lucide="check-circle-2"></i> ${tipoAcesso === 'entrada' ? 'Entrada Registrada' : 'Saída Registrada'}`;
+      document.getElementById('student-display-name').textContent = aluno.nome;
+      document.getElementById('student-class').textContent = aluno.turma_nome || 'Sem Turma';
+      document.getElementById('student-transport').textContent = aluno.rota || 'Sem transporte';
+      document.getElementById('student-photo').src = aluno.foto_url || 'https://lh3.googleusercontent.com/d/1_gqGvKCSsN9aL4j9b3l4e8s90j3L0tW4'; // placeholder
+      document.getElementById('register-time').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      // Troca os blocos
+      document.getElementById('panel-waiting').style.display = 'none';
+      document.getElementById('panel-success').style.display = 'flex';
+      document.getElementById('panel-error').style.display = 'none';
+
+      lucide.createIcons();
+
+      // Volta a aguardar depois de 4 segundos
+      resetTimeout = setTimeout(resetToWaiting, 4000);
+    }
+
+    function exibirReconhecimentoErro(titulo, desc) {
+      if (resetTimeout) clearTimeout(resetTimeout);
+
+      playBeep(false);
+
+      // Efeito de flash na tela
+      document.body.classList.remove('screen-flash-green', 'screen-flash-red');
+      void document.body.offsetWidth; // trigger reflow
+      document.body.classList.add('screen-flash-red');
+
+      // Altera a cor do painel de feedback
+      const panel = document.getElementById('feed-panel');
+      panel.style.boxShadow = 'var(--shadow-glow-red)';
+      panel.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+      document.getElementById('bg-glow').style.background = 'radial-gradient(circle, rgba(239, 68, 68, 0.18) 0%, rgba(0,0,0,0) 70%)';
+      document.getElementById('face-bracket').style.borderColor = 'var(--accent-red)';
+
+      // Configura erro
+      document.getElementById('error-title').textContent = titulo;
+      document.getElementById('error-desc').textContent = desc;
+
+      // Troca os blocos
+      document.getElementById('panel-waiting').style.display = 'none';
+      document.getElementById('panel-success').style.display = 'none';
+      document.getElementById('panel-error').style.display = 'flex';
+
+      lucide.createIcons();
+
+      // Volta a aguardar depois de 4 segundos
+      resetTimeout = setTimeout(resetToWaiting, 4000);
+    }
+
+    // Escutar eventos de novas inserções na tabela frequencia em tempo real
+    const hojeData = new Date().toISOString().split('T')[0];
+
+    console.log(`📡 Ouvindo frequências em tempo real para: ${monitorTipo} em ${hojeData}`);
+
+    supabaseClient
+      .channel('frequencia-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'frequencia'
+        },
+        async (payload) => {
+          const novaFreq = payload.new;
+          
+          // Verifica se o registro ocorreu hoje e corresponde ao tipo deste monitor
+          if (novaFreq.data === hojeData && novaFreq.tipo === monitorTipo) {
+            console.log('Frequência capturada pelo monitor:', novaFreq);
+
+            // Busca os detalhes do aluno
+            const { data: aluno, error } = await supabaseClient
+              .from('alunos')
+              .select('id, nome, foto_url, rota, turmas(nome)')
+              .eq('id', novaFreq.aluno_id)
+              .single();
+
+            if (error) {
+              console.error('Erro ao buscar dados do aluno:', error);
+              return;
+            }
+
+            if (aluno) {
+              const turmaNome = aluno.turmas ? aluno.turmas.nome : 'Sem turma';
+              exibirReconhecimentoSucesso({
+                nome: aluno.nome,
+                foto_url: aluno.foto_url,
+                rota: aluno.rota,
+                turma_nome: turmaNome
+              }, monitorTipo);
+            }
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Status da assinatura do Supabase Realtime:', status);
+      });
+
+    // Permitir testar simulando cliques de teclado
+    window.addEventListener('keydown', async (e) => {
+      // Pressionar 'S' simula Sucesso
+      if (e.key === 's' || e.key === 'S') {
+        exibirReconhecimentoSucesso({
+          nome: 'Aluno Teste Simulado',
+          foto_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=60',
+          rota: 'Rota 04 - Zona Norte',
+          turma_nome: '3º Ano B'
+        }, monitorTipo);
+      }
+      // Pressionar 'E' simula Erro
+      if (e.key === 'e' || e.key === 'E') {
+        exibirReconhecimentoErro('Acesso Recusado', 'Vetor facial não correspondente (Confiança < 55%)');
+      }
+    });
+
+  </script>
+</body>
+</html>
