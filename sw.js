@@ -7,7 +7,7 @@
 //  🔄 BG Sync       → Sincroniza fila offline automaticamente
 // ══════════════════════════════════════════════════════
 
-const CACHE_NAME    = 'rvs-gestor-v10';
+const CACHE_NAME    = 'rvs-gestor-v11';
 const SYNC_TAG_FREQ = 'rvs-sync-frequencias';
 
 // Arquivos estáticos que serão cacheados (carregados offline)
@@ -44,9 +44,20 @@ function isNetworkOnly(url) {
   return NETWORK_ONLY_PATTERNS.some(p => url.includes(p));
 }
 
+function isShellRequest(request) {
+  try {
+    const parsedUrl = new URL(request.url);
+    return request.mode === 'navigate'
+      || (parsedUrl.origin === self.location.origin
+        && (parsedUrl.pathname === '/' || parsedUrl.pathname === '/index.html' || parsedUrl.pathname === '/js/app.js'));
+  } catch (error) {
+    return false;
+  }
+}
+
 // ── INSTALL ──
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando RVS Gestor v2...');
+  console.log('[SW] Instalando RVS Gestor v3...');
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       cache.addAll(STATIC_ASSETS).catch(err =>
@@ -59,7 +70,7 @@ self.addEventListener('install', event => {
 
 // ── ACTIVATE ──
 self.addEventListener('activate', event => {
-  console.log('[SW] Ativando v2, limpando caches antigos...');
+  console.log('[SW] Ativando v3, limpando caches antigos...');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
@@ -81,6 +92,22 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   if (isNetworkOnly(url)) {
     event.respondWith(fetch(request));
+    return;
+  }
+
+  if (isShellRequest(request)) {
+    event.respondWith(
+      fetch(request)
+        .then(net => {
+          if (net && net.ok) {
+            caches.open(CACHE_NAME).then(c => c.put(request, net.clone()));
+          }
+          return net;
+        })
+        .catch(() =>
+          caches.match(request).then(cached => cached || caches.match('/index.html') || caches.match('/offline.html'))
+        )
+    );
     return;
   }
 
