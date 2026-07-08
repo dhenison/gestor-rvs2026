@@ -154,6 +154,7 @@
       <div class="nav-item" onclick="showPage('documentos-secretaria',this)"><i data-lucide="folder" class="nav-item-icon"></i>Documentos Secretaria</div>
       <div class="nav-item" onclick="showPage('permissoes',this)"><i data-lucide="lock" class="nav-item-icon"></i>Permissões</div>
       <div class="nav-item" id="nav-usuarios" onclick="showPage('usuarios',this)"><i data-lucide="user-cog" class="nav-item-icon"></i>Usuários</div>
+      <div class="nav-item" id="nav-escolas" onclick="showPage('escolas',this)"><i data-lucide="building-2" class="nav-item-icon"></i>Escolas</div>
 
       <div class="nav-item" onclick="showPage('perfil',this)"><i data-lucide="user-circle" class="nav-item-icon"></i>Meu Perfil</div>
     </div>
@@ -175,6 +176,11 @@
         <h2 id="page-title">Dashboard</h2>
       </div>
       <div class="topbar-filters">
+        <div id="school-switcher-shell" style="display:none;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--gray3);border-radius:999px;background:white;min-width:260px">
+          <i data-lucide="building-2" style="width:16px;height:16px;color:var(--blue)"></i>
+          <span id="school-current-label" style="font-size:12px;font-weight:700;color:var(--gray7);white-space:nowrap">Escola</span>
+          <select id="school-switcher-select" class="form-input form-select" style="margin:0;min-width:150px;padding:8px 30px 8px 10px" onchange="trocarEscolaAtiva(this.value)"></select>
+        </div>
         <div class="notif-bell-wrapper" id="notif-bell-wrapper">
           <button class="notif-bell-btn" id="notif-bell-btn" onclick="toggleNotifPanel()" title="Notificações">
             🔔
@@ -1494,6 +1500,21 @@
           </table>
           </div>
         </div>
+      </div>
+
+      <!-- ══════════════════ ESCOLAS ══════════════════ -->
+      <div class="page" id="page-escolas">
+        <div class="section-header">
+          <div>
+            <div class="section-title">🏫 Gestão de Escolas</div>
+            <div style="font-size:13px;color:var(--gray5);margin-top:4px">Cadastre novas escolas, escolha os módulos ativos e defina para qual escola cada usuário será direcionado.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="renderEscolasPage()">Atualizar Lista</button>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalEscola()">+ Nova Escola</button>
+          </div>
+        </div>
+        <div id="escolas-lista"></div>
       </div>
 
       <!-- ═══════════════════ USUÁRIOS ═══════════════════ -->
@@ -2837,6 +2858,18 @@
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label class="form-label">Escola Vinculada</label>
+        <select class="form-input form-select" id="usr-escola">
+          <option value="">Selecione a escola</option>
+        </select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-top:30px">
+        <input type="checkbox" id="usr-admin-global" style="width:16px;height:16px;">
+        <label class="form-label" style="margin:0;cursor:pointer;" for="usr-admin-global">Administrador global (pode trocar de escola no mesmo login)</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label class="form-label">Turma Responsável</label>
         <select class="form-input form-select" id="usr-turma">
           <option value="">Nenhuma (geral)</option>
@@ -2872,6 +2905,44 @@
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-usuario')">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar Usuário</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Escola -->
+<div class="modal-overlay" id="modal-escola" onclick="if(event.target===this)closeModal('modal-escola')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-escola-title">+ Nova Escola</span>
+      <button class="modal-close" onclick="closeModal('modal-escola')">✕</button>
+    </div>
+    <input type="hidden" id="esc-edit-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nome da Escola *</label>
+        <input class="form-input" id="esc-nome" placeholder="Ex: Escola Estadual Nova Esperança">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Identificador (slug)</label>
+        <input class="form-input" id="esc-slug" placeholder="Ex: nova-esperanca">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="esc-ativa" checked style="width:16px;height:16px;">
+        <label class="form-label" style="margin:0;cursor:pointer;" for="esc-ativa">Escola ativa no sistema</label>
+      </div>
+    </div>
+    <div style="padding:14px 16px;border:1px solid var(--gray3);border-radius:var(--radius2);background:var(--gray1);margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--gray7);margin-bottom:10px">Módulos habilitados para esta escola</div>
+      <div id="esc-modulos-lista" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px"></div>
+    </div>
+    <div style="padding:10px 12px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1d4ed8;margin-bottom:4px">
+      Os usuários dessa escola verão apenas os módulos marcados aqui, além do próprio perfil.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-escola')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEscola()">💾 Salvar Escola</button>
     </div>
   </div>
 </div>
@@ -2949,7 +3020,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/pdf.min.js"></script>
 <script src="js/pdf-lib.min.js"></script>
-<script src="js/app.js?v=2.1"></script>
+<script src="js/app.js?v=2.2"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->
 <script>
@@ -2960,9 +3031,9 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js?v=3')
+      navigator.serviceWorker.register('/sw.js?v=4')
         .then(reg => {
-          console.log('[PWA] Service Worker v3 registrado:', reg.scope);
+          console.log('[PWA] Service Worker v4 registrado:', reg.scope);
 
           // ── Escuta mensagens do SW (ex: RVS_SYNC_NOW do Background Sync) ──
           navigator.serviceWorker.addEventListener('message', event => {

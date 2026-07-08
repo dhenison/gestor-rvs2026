@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-//  RVS GESTOR — Service Worker v2
+//  RVS GESTOR — Service Worker v4
 //  ESTRATÉGIA DE CACHE:
 //  ✅ Cache-First    → Arquivos estáticos do sistema
 //  🌐 Network-Only  → Supabase, Google APIs (banco de dados)
@@ -7,7 +7,7 @@
 //  🔄 BG Sync       → Sincroniza fila offline automaticamente
 // ══════════════════════════════════════════════════════
 
-const CACHE_NAME    = 'rvs-gestor-v11';
+const CACHE_NAME    = 'rvs-gestor-v12';
 const SYNC_TAG_FREQ = 'rvs-sync-frequencias';
 
 // Arquivos estáticos que serão cacheados (carregados offline)
@@ -57,7 +57,7 @@ function isShellRequest(request) {
 
 // ── INSTALL ──
 self.addEventListener('install', event => {
-  console.log('[SW] Instalando RVS Gestor v3...');
+  console.log('[SW] Instalando RVS Gestor v4...');
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       cache.addAll(STATIC_ASSETS).catch(err =>
@@ -70,7 +70,7 @@ self.addEventListener('install', event => {
 
 // ── ACTIVATE ──
 self.addEventListener('activate', event => {
-  console.log('[SW] Ativando v3, limpando caches antigos...');
+  console.log('[SW] Ativando v4, limpando caches antigos...');
   event.waitUntil(
     caches.keys().then(keys =>
       Promise.all(

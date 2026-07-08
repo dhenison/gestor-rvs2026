@@ -234,6 +234,296 @@ let PERMS = [
   {func:'Reconhecimento Facial',    id:'page-reconhecimento-facial', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false}
 ];
 
+let ESCOLAS_DATA = [];
+let ESCOLA_ATUAL_ID = null;
+let ESCOLA_ATUAL = null;
+let MULTI_ESCOLA_ATIVO = false;
+let AUTO_SAVE_READY = false;
+
+const ESCOLA_CONTEXT_KEY = 'rvs_school_context';
+const TABELAS_COM_ESCOLA = new Set([
+  'alunos',
+  'automation_rules',
+  'boletins',
+  'boletins_turmas',
+  'cartoes_acesso_olimpiadas',
+  'comunicados',
+  'configuracoes',
+  'conselho_classe_alunos',
+  'conselhos_classe',
+  'documentos_secretaria',
+  'eventos',
+  'frequencia',
+  'livros_alunos',
+  'notas_bimestrais',
+  'obafog_equipes',
+  'ocorrencias',
+  'olimpiadas',
+  'responsaveis',
+  'rotas',
+  'solicitacoes',
+  'turmas',
+  'usuarios',
+  'whatsapp_envios'
+]);
+
+const MODULOS_ESCOLA_PADRAO = Object.freeze({
+  'page-dashboard': true,
+  'page-agenda': true,
+  'page-turmas': true,
+  'page-alunos': true,
+  'page-boletins': true,
+  'page-conselho-classe': true,
+  'page-frequencia': true,
+  'page-solicitacoes': true,
+  'page-rvs-agenda': true,
+  'page-horarios': true,
+  'page-topo-saber': true,
+  'page-transporte': true,
+  'page-ocorrencias': true,
+  'page-tratamento-ocorrencias': true,
+  'page-livros': true,
+  'page-relatorios': true,
+  'page-documentos-secretaria': true,
+  'page-reconhecimento-facial': true,
+  'page-usuarios': true,
+  'page-permissoes': true
+});
+
+const MODULO_LABELS = Object.freeze({
+  'page-dashboard': 'Dashboard',
+  'page-agenda': 'Agenda Pedagógica',
+  'page-turmas': 'Turmas',
+  'page-alunos': 'Alunos',
+  'page-boletins': 'Boletins',
+  'page-conselho-classe': 'Conselho de Classe',
+  'page-frequencia': 'Frequência',
+  'page-solicitacoes': 'Solicitações Pedagógicas',
+  'page-rvs-agenda': 'RVS Agenda',
+  'page-horarios': 'Horário de Aula',
+  'page-topo-saber': 'Topo do Saber',
+  'page-transporte': 'Transporte',
+  'page-ocorrencias': 'Ocorrências',
+  'page-tratamento-ocorrencias': 'Tratamento de Ocorrências',
+  'page-livros': 'Livros Didáticos',
+  'page-relatorios': 'Relatórios',
+  'page-documentos-secretaria': 'Documentos Secretaria',
+  'page-reconhecimento-facial': 'Reconhecimento Facial',
+  'page-usuarios': 'Usuários',
+  'page-permissoes': 'Permissões'
+});
+
+function cloneSchoolModules() {
+  return JSON.parse(JSON.stringify(MODULOS_ESCOLA_PADRAO));
+}
+
+function mergeSchoolModules(rawModules) {
+  const base = cloneSchoolModules();
+  if (!rawModules || typeof rawModules !== 'object') return base;
+  Object.keys(base).forEach((key) => {
+    if (rawModules[key] !== undefined) base[key] = !!rawModules[key];
+  });
+  return base;
+}
+
+function normalizeSchoolSlug(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .trim();
+}
+
+function isMissingRelationError(error) {
+  if (!error) return false;
+  return error.code === '42P01' || /does not exist/i.test(error.message || '');
+}
+
+function isAdminGlobal(user = null) {
+  const alvo = user || getCurrentUser?.();
+  return !!alvo?.admin_global;
+}
+
+function getActiveSchoolId(user = null) {
+  const alvo = user || getCurrentUser?.();
+  return ESCOLA_ATUAL_ID || alvo?.escola_id_ativa || alvo?.escola_id || null;
+}
+
+function getCurrentSchoolName() {
+  return ESCOLA_ATUAL?.nome || '';
+}
+
+function isSchoolScopedTable(tableName) {
+  return TABELAS_COM_ESCOLA.has(tableName);
+}
+
+function applySchoolScope(query, tableName, user = null) {
+  if (!MULTI_ESCOLA_ATIVO || !isSchoolScopedTable(tableName)) return query;
+  const escolaId = getActiveSchoolId(user);
+  if (!escolaId) return query;
+  return query.eq('escola_id', escolaId);
+}
+
+function attachSchoolId(payload, tableName, user = null) {
+  if (!MULTI_ESCOLA_ATIVO || !isSchoolScopedTable(tableName)) return payload;
+  const escolaId = getActiveSchoolId(user);
+  if (!escolaId) return payload;
+
+  if (Array.isArray(payload)) {
+    return payload.map((item) => {
+      if (!item || typeof item !== 'object' || item.escola_id) return item;
+      return { ...item, escola_id: escolaId };
+    });
+  }
+
+  if (!payload || typeof payload !== 'object' || payload.escola_id) return payload;
+  return { ...payload, escola_id: escolaId };
+}
+
+function getCurrentSchoolModules() {
+  return ESCOLA_ATUAL?.modulos_ativos || cloneSchoolModules();
+}
+
+function isSchoolModuleEnabled(pageId, user = null) {
+  const alvo = user || getCurrentUser?.();
+  const fullPageId = String(pageId || '').startsWith('page-') ? String(pageId) : `page-${pageId}`;
+  if (fullPageId === 'page-perfil') return true;
+  if (fullPageId === 'page-escolas') return isAdminGlobal(alvo);
+  if (!MULTI_ESCOLA_ATIVO) return true;
+  if (isAdminGlobal(alvo)) return true;
+  const modules = getCurrentSchoolModules();
+  return modules[fullPageId] !== false;
+}
+
+function getConfigUpsertOptions() {
+  return { onConflict: MULTI_ESCOLA_ATIVO ? 'escola_id,chave' : 'chave' };
+}
+
+function buildConfigPayload(chave, valor) {
+  return attachSchoolId({ chave, valor }, 'configuracoes');
+}
+
+function getSchoolNameById(escolaId) {
+  if (!escolaId) return 'Sem escola';
+  return ESCOLAS_DATA.find((item) => item.id === escolaId)?.nome || 'Escola não encontrada';
+}
+
+function popularEscolasUsuario(selectedId = '') {
+  const select = document.getElementById('usr-escola');
+  if (!select) return;
+  const options = ESCOLAS_DATA.map((escola) => `<option value="${escola.id}">${escola.nome}</option>`).join('');
+  select.innerHTML = '<option value="">Selecione a escola</option>' + options;
+  select.value = selectedId || getActiveSchoolId() || '';
+  select.disabled = !MULTI_ESCOLA_ATIVO || !ESCOLAS_DATA.length;
+}
+
+async function carregarContextoEscolas(user = null) {
+  const usuario = user || getCurrentUser?.();
+  if (!usuario) {
+    MULTI_ESCOLA_ATIVO = false;
+    ESCOLAS_DATA = [];
+    ESCOLA_ATUAL = null;
+    ESCOLA_ATUAL_ID = null;
+    return;
+  }
+
+  let query = supabaseClient
+    .from('escolas')
+    .select('id, nome, slug, ativa, modulos_ativos, created_at')
+    .order('nome');
+
+  if (!isAdminGlobal(usuario)) {
+    const escolaAlvo = usuario.escola_id_ativa || usuario.escola_id;
+    if (escolaAlvo) query = query.eq('id', escolaAlvo);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    if (isMissingRelationError(error)) {
+      MULTI_ESCOLA_ATIVO = false;
+      ESCOLAS_DATA = [];
+      ESCOLA_ATUAL = null;
+      ESCOLA_ATUAL_ID = null;
+      return;
+    }
+    console.error('[carregarContextoEscolas] Erro ao buscar escolas:', error);
+    return;
+  }
+
+  MULTI_ESCOLA_ATIVO = true;
+  ESCOLAS_DATA = (data || []).map((escola) => ({
+    ...escola,
+    modulos_ativos: mergeSchoolModules(escola.modulos_ativos)
+  }));
+
+  let escolaDesejada = '';
+  try { escolaDesejada = sessionStorage.getItem(ESCOLA_CONTEXT_KEY) || ''; } catch (_) {}
+  if (!escolaDesejada) escolaDesejada = usuario.escola_id_ativa || usuario.escola_id || '';
+  if (!ESCOLAS_DATA.some((escola) => escola.id === escolaDesejada)) {
+    escolaDesejada = ESCOLAS_DATA[0]?.id || usuario.escola_id_ativa || usuario.escola_id || null;
+  }
+
+  ESCOLA_ATUAL_ID = escolaDesejada || null;
+  ESCOLA_ATUAL = ESCOLAS_DATA.find((escola) => escola.id === ESCOLA_ATUAL_ID) || null;
+
+  try {
+    if (ESCOLA_ATUAL_ID) sessionStorage.setItem(ESCOLA_CONTEXT_KEY, ESCOLA_ATUAL_ID);
+  } catch (_) {}
+}
+
+function renderSchoolSwitcher() {
+  const shell = document.getElementById('school-switcher-shell');
+  const select = document.getElementById('school-switcher-select');
+  const label = document.getElementById('school-current-label');
+  if (!shell || !select || !label) return;
+
+  if (!MULTI_ESCOLA_ATIVO || !ESCOLAS_DATA.length) {
+    shell.style.display = 'none';
+    return;
+  }
+
+  label.textContent = ESCOLA_ATUAL?.nome || 'Escola';
+  select.innerHTML = ESCOLAS_DATA.map((escola) => `<option value="${escola.id}">${escola.nome}</option>`).join('');
+  select.value = ESCOLA_ATUAL_ID || ESCOLAS_DATA[0]?.id || '';
+  select.disabled = !isAdminGlobal() || ESCOLAS_DATA.length < 2;
+  shell.style.display = 'flex';
+}
+
+async function trocarEscolaAtiva(escolaId) {
+  const user = getCurrentUser?.();
+  if (!user || !MULTI_ESCOLA_ATIVO || !escolaId || escolaId === ESCOLA_ATUAL_ID) return;
+
+  if (!isAdminGlobal(user)) {
+    const select = document.getElementById('school-switcher-select');
+    if (select) select.value = ESCOLA_ATUAL_ID || '';
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from('usuarios')
+    .update({ escola_id_ativa: escolaId })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('[trocarEscolaAtiva] Erro ao trocar escola:', error);
+    showToast('Não foi possível trocar a escola ativa.', 'alerta');
+    renderSchoolSwitcher();
+    return;
+  }
+
+  const mergedUser = { ...user, escola_id_ativa: escolaId };
+  try { sessionStorage.setItem('rvs_user', JSON.stringify(mergedUser)); } catch (_) {}
+  ESCOLA_ATUAL_ID = escolaId;
+  ESCOLA_ATUAL = ESCOLAS_DATA.find((escola) => escola.id === escolaId) || null;
+  updateSidebarProfile();
+  renderSchoolSwitcher();
+  await initApp();
+  const activePage = document.querySelector('.page.active')?.id?.replace('page-', '') || 'dashboard';
+  showPage(activePage);
+  showToast(`Painel alterado para ${ESCOLA_ATUAL?.nome || 'a escola selecionada'}.`, 'sucesso');
+}
+
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
 const TIPO_LABEL = {letivo:'Dia Letivo', feriado:'Feriado', prova:'Prova', evento:'Evento', bimestre:'Início de Bimestre', fim_bimestre:'Fim de Bimestre', ferias:'Férias Escolares'};
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -250,6 +540,8 @@ function toggleAutoSave() {
 }
 
 function initAutoSave() {
+  if (AUTO_SAVE_READY) return;
+  AUTO_SAVE_READY = true;
   const isEnabled = localStorage.getItem('rvs_autosave_enabled') !== 'false';
   const toggle = document.getElementById('toggle-autosave');
   if(toggle) toggle.checked = isEnabled;
@@ -314,6 +606,7 @@ async function fetchAllRows(tableName, select = '*', builderFn = (q)=>q) {
   while(true) {
     let query = supabaseClient.from(tableName).select(select).range(from, from + step - 1);
     query = builderFn(query);
+    query = applySchoolScope(query, tableName);
     const { data, error } = await query;
     if(error) { console.error(`Erro ao buscar ${tableName}:`, error); break; }
     if(data) allData = allData.concat(data);
@@ -331,6 +624,7 @@ async function fetchOptionalRows(tableName, select = '*', builderFn = (q)=>q) {
   while (true) {
     let query = supabaseClient.from(tableName).select(select).range(from, from + step - 1);
     query = builderFn(query);
+    query = applySchoolScope(query, tableName);
     const { data, error } = await query;
 
     if (error) {
@@ -370,7 +664,10 @@ async function carregarDados(){
       fetchAllRows('ocorrencias'),
       fetchAllRows('eventos'),
       fetchAllRows('rotas'),
-      supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios']),
+      applySchoolScope(
+        supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios']),
+        'configuracoes'
+      ),
       fetchAllRows('obafog_equipes', '*', q => q.order('created_at', {ascending:false})),
       fetchOptionalRows('notas_bimestrais', '*', q => q.order('ano', { ascending: false }).order('periodo', { ascending: true })),
       fetchOptionalRows('conselhos_classe', '*', q => q.order('ano', { ascending: false }).order('periodo', { ascending: true })),
@@ -451,7 +748,7 @@ async function carregarDados(){
         if (needsSync) {
           supabaseClient
             .from('configuracoes')
-            .upsert({ chave: 'permissoes', valor: PERMS }, { onConflict: 'chave' })
+            .upsert(buildConfigPayload('permissoes', PERMS), getConfigUpsertOptions())
             .then(({ error }) => {
               if (!error) console.log('[Permissões] Banco de dados sincronizado com novas permissões');
             });
@@ -627,7 +924,10 @@ async function carregarDados(){
     }
 
     // ── Carregar Solicitações do Supabase ──
-    const {data: solicits} = await supabaseClient.from('solicitacoes').select('*').order('created_at', {ascending: false});
+    const {data: solicits} = await applySchoolScope(
+      supabaseClient.from('solicitacoes').select('*').order('created_at', {ascending: false}),
+      'solicitacoes'
+    );
     if (solicits) {
       SOLICIT_DATA = solicits.map(s => ({
         id: s.id,
@@ -646,7 +946,10 @@ async function carregarDados(){
     }
 
     // ── Carregar Livros Didáticos do Supabase ──
-    const {data: livrosDB} = await supabaseClient.from('livros_alunos').select('*');
+    const {data: livrosDB} = await applySchoolScope(
+      supabaseClient.from('livros_alunos').select('*'),
+      'livros_alunos'
+    );
     if (livrosDB) {
       livrosDB.forEach(l => {
         const al = ALUNOS_DATA.find(a => a.id === l.aluno_id);
@@ -717,7 +1020,7 @@ async function doLogin(){
     // Busca os dados adicionais do usuário na tabela pública
     const { data: userData, error: userErr } = await supabaseClient
       .from('usuarios')
-      .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo')
+      .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo, escola_id, escola_id_ativa, admin_global')
       .eq('id', authData.user.id)
       .maybeSingle();
 
@@ -762,6 +1065,7 @@ async function _entrarNoSistema(usuario){
   setTimeout(()=>ls.style.display='none', 500);
   document.getElementById('app').classList.add('visible');
   
+  await carregarContextoEscolas(usuario);
   updateSidebarProfile();
   await initApp(); // Agora espera carregar permissões do banco
   initPresenceRealtime();
@@ -785,7 +1089,8 @@ function updateSidebarProfile() {
   if(nameEl) nameEl.textContent = user.nome || 'Usuário';
   if(roleEl) {
     const pLabel = {admin:'Administrador',coordenador:'Coordenador',secretaria:'Secretaria',professor:'Professor'};
-    roleEl.textContent = pLabel[user.perfil] || 'Membro';
+    const roleText = pLabel[user.perfil] || 'Membro';
+    roleEl.textContent = getCurrentSchoolName() ? `${roleText} • ${getCurrentSchoolName()}` : roleText;
   }
   if(avatarEl) {
     if (user.foto_url) {
@@ -802,6 +1107,7 @@ function updateSidebarProfile() {
 
 async function doLogout(){
   try { sessionStorage.removeItem('rvs_user'); } catch(_){}
+  try { sessionStorage.removeItem(ESCOLA_CONTEXT_KEY); } catch(_){}
   await supabaseClient.auth.signOut();
   location.reload();
 }
@@ -813,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Rebusca dados adicionais na tabela pública
       supabaseClient
         .from('usuarios')
-        .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno')
+        .select('id, nome, perfil, email, foto_url, formacao, bio, whatsapp, cargo, turno, escola_id, escola_id_ativa, admin_global, ativo')
         .eq('id', session.user.id)
         .maybeSingle()
         .then(({ data }) => {
@@ -840,8 +1146,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function initApp(){
+  await carregarContextoEscolas();
   await carregarDados();
+  renderSchoolSwitcher();
   initAutoSave();
+  updateSidebarProfile();
   atualizarSelectTurmas();
   renderMetricasDash();
   renderTurmasTable();
@@ -853,6 +1162,7 @@ async function initApp(){
   renderOcorrencias();
   renderLivros();
   renderPermissoes();
+  renderEscolasPage();
   renderCalendar();
   setupSidebarDropdowns();
   
@@ -986,17 +1296,10 @@ function showPage(p, el) {
     showPage('dashboard');
     return;
   }
-  const user = getCurrentUser();
-  const rKey = user ? getRoleKey(user.perfil) : 'prof';
-
-  // Verificação de segurança — bloqueia acesso direto mesmo que o menu esteja oculto
-  if (rKey !== 'admin' && p !== 'perfil') {
-    const perm = PERMS.find(item => item.id === 'page-' + p);
-    if (perm && !perm[rKey]) {
-      console.warn(`[showPage] Acesso NEGADO: perfil="${user?.perfil}" rKey="${rKey}" página="${p}"`);
-      showToast('Você não tem permissão para acessar esta página.', 'alerta');
-      return;
-    }
+  if (p !== 'perfil' && !podeVer(p)) {
+    console.warn(`[showPage] Acesso NEGADO: página="${p}"`);
+    showToast('Você não tem permissão para acessar esta página.', 'alerta');
+    return;
   }
 
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
@@ -1007,7 +1310,7 @@ function showPage(p, el) {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', 'ficha-aluno': 'Ficha do Aluno', boletins: 'Boletins Escolares',
     'conselho-classe': 'Conselho de Classe', frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    horarios: 'Horário de Aula', obafog: 'OBAFOG RVS', 'tratamento-ocorrencias': 'Tratamento de Ocorrências', 'reconhecimento-facial': 'Reconhecimento Facial'
+    horarios: 'HorÃ¡rio de Aula', obafog: 'OBAFOG RVS', escolas: 'GestÃ£o de Escolas', 'tratamento-ocorrencias': 'Tratamento de OcorrÃªncias', 'reconhecimento-facial': 'Reconhecimento Facial'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
@@ -1031,6 +1334,7 @@ function showPage(p, el) {
   if(p==='conselho-classe') renderConselhoClassePage();
   if(p==='horarios') carregarLinksHorario();
   if(p==='permissoes') renderPermissoes();
+  if(p==='escolas') renderEscolasPage();
   if(p==='perfil') renderPerfil();
   if(p==='tratamento-ocorrencias') initTratamentoOcorrenciasPage();
   if(p==='documentos-secretaria') carregarDocumentosSecretaria();
@@ -4117,10 +4421,9 @@ async function togglePermissao(index, role) {
   renderPermissoes();
   aplicarPermissoesUI();
 
-  // onConflict:'chave' garante que faz UPDATE na linha existente
   const { error } = await supabaseClient
     .from('configuracoes')
-    .upsert({ chave: 'permissoes', valor: PERMS }, { onConflict: 'chave' });
+    .upsert(buildConfigPayload('permissoes', PERMS), getConfigUpsertOptions());
 
   if (error) {
     console.error('[togglePermissao] Erro:', error);
@@ -4161,14 +4464,16 @@ function getRoleKey(role) {
 function podeVer(pageId) {
   const user = getCurrentUser();
   if (!user) return false;
+  const fullPageId = String(pageId || '').startsWith('page-') ? String(pageId) : `page-${pageId}`;
+  if (fullPageId === 'page-perfil') return true;
+  if (fullPageId === 'page-escolas') return isAdminGlobal(user);
+  if (!isSchoolModuleEnabled(fullPageId, user)) return false;
   const rKey = getRoleKey(user.perfil);
   if (rKey === 'admin') return true;
 
-  const perm = PERMS.find(p => p.id === 'page-' + pageId);
+  const perm = PERMS.find(p => p.id === fullPageId);
   if (!perm) return false;
-  const val = perm[rKey];
-  console.log(`[podeVer] pageId=${pageId} rKey=${rKey} valor=${val}`);
-  return !!val;
+  return !!perm[rKey];
 }
 
 /**
@@ -4177,10 +4482,14 @@ function podeVer(pageId) {
 function podeEditar(pageId) {
   const user = getCurrentUser();
   if (!user) return false;
+  const fullPageId = String(pageId || '').startsWith('page-') ? String(pageId) : `page-${pageId}`;
+  if (fullPageId === 'page-perfil') return true;
+  if (fullPageId === 'page-escolas') return isAdminGlobal(user);
+  if (!isSchoolModuleEnabled(fullPageId, user)) return false;
   const rKey = getRoleKey(user.perfil);
   if (rKey === 'admin') return true;
 
-  const perm = PERMS.find(p => p.id === 'page-' + pageId);
+  const perm = PERMS.find(p => p.id === fullPageId);
   if (!perm) return false;
   return !!perm['editar_' + rKey];
 }
@@ -4204,19 +4513,21 @@ function aplicarPermissoesUI() {
     const match = nav.getAttribute('onclick').match(/showPage\(['"]([^'"]+)['"]/);
     if (!match) return;
     const pID = match[1];
+    const fullPageId = 'page-' + pID;
 
-    // 'perfil' sempre visível
     if (pID === 'perfil') {
       nav.style.display = '';
       return;
     }
 
-    let isAllowed = false;
-    if (rKey === 'admin') {
-      isAllowed = true;
+    let isAllowed;
+    if (pID === 'escolas') {
+      isAllowed = isAdminGlobal(user);
+    } else if (rKey === 'admin') {
+      isAllowed = isSchoolModuleEnabled(fullPageId, user);
     } else {
-      const perm = PERMS.find(p => p.id === 'page-' + pID);
-      isAllowed = perm ? !!perm[rKey] : false;
+      const perm = PERMS.find(p => p.id === fullPageId);
+      isAllowed = !!(perm && perm[rKey] && isSchoolModuleEnabled(fullPageId, user));
     }
 
     nav.style.display = isAllowed ? '' : 'none';
@@ -5695,10 +6006,9 @@ async function salvarLink(chave){
   HORARIOS_LINKS[chave] = val;
   
   // Salva no banco
-  const { error } = await supabaseClient.from('configuracoes').upsert({
-    chave: 'links_horarios',
-    valor: HORARIOS_LINKS
-  });
+  const { error } = await supabaseClient
+    .from('configuracoes')
+    .upsert(buildConfigPayload('links_horarios', HORARIOS_LINKS), getConfigUpsertOptions());
   
   if (error) {
     console.error('Erro ao salvar link:', error);
@@ -6596,17 +6906,25 @@ function obterFotoUsuario(usuario){
 }
 
 async function carregarUsuarios(){
-  const {data, error} = await supabaseClient.from('usuarios').select('*').order('nome');
+  const {data, error} = await applySchoolScope(
+    supabaseClient.from('usuarios').select('*').order('nome'),
+    'usuarios'
+  );
   if(error){ console.error('Erro ao carregar usuários:', error); return; }
   USUARIOS_DATA = data || [];
   renderUsuarios();
 }
 
 async function salvarUsuario(){
+  const currentUser = getCurrentUser();
+  const canManageGlobal = isAdminGlobal(currentUser);
   const id     = document.getElementById('usr-edit-id')?.value || '';
   const nome   = (document.getElementById('usr-nome')?.value||'').trim();
   const email  = (document.getElementById('usr-email')?.value||'').trim();
   const perfil = document.getElementById('usr-perfil')?.value || 'professor';
+  const selectedEscolaId = document.getElementById('usr-escola')?.value || '';
+  const escolaId = MULTI_ESCOLA_ATIVO ? (selectedEscolaId || getActiveSchoolId(currentUser) || '') : '';
+  const adminGlobal = canManageGlobal ? !!document.getElementById('usr-admin-global')?.checked : false;
   const turno  = document.getElementById('usr-turno')?.value || '';
   const turma  = document.getElementById('usr-turma')?.value || '';
   const cargo  = (document.getElementById('usr-cargo')?.value||'').trim();
@@ -6616,6 +6934,7 @@ async function salvarUsuario(){
   const senhaConfirm = (document.getElementById('usr-senha-confirm')?.value||'');
 
   if(!nome || !email){ showToast('Preencha Nome e E-mail!','alerta'); return; }
+  if (MULTI_ESCOLA_ATIVO && !escolaId) { showToast('Selecione a escola do usuário.','alerta'); return; }
 
   // Validação de senha
   if(!id){
@@ -6635,13 +6954,21 @@ async function salvarUsuario(){
       p_senha:  senha,
       p_perfil: perfil,
       p_turno:  turno,
-      p_cargo:  cargo
+      p_cargo:  cargo,
+      p_escola_id: escolaId || null,
+      p_admin_global: adminGlobal
     });
 
     if(!rpcErr && rpcResp?.status === 'success'){
-      // Se usuário for criado como inativo, precisamos dar update logo após a criação
-      if(!ativo && rpcResp.uid) {
-        await supabaseClient.from('usuarios').update({ ativo: false }).eq('id', rpcResp.uid);
+      if (rpcResp.uid) {
+        const updatePayload = {
+          ativo: ativo,
+          turma_responsavel: turma || null,
+          escola_id: escolaId || null,
+          escola_id_ativa: escolaId || null,
+          admin_global: adminGlobal
+        };
+        await supabaseClient.from('usuarios').update(updatePayload).eq('id', rpcResp.uid);
       }
       closeModal('modal-usuario');
       showToast('Usuário cadastrado com segurança!','sucesso');
@@ -6658,9 +6985,13 @@ async function salvarUsuario(){
       email: email,
       perfil: perfil,
       turno: turno,
+      turma_responsavel: turma || null,
       cargo: cargo,
       foto_url: avatar,
-      ativo: ativo
+      ativo: ativo,
+      escola_id: escolaId || null,
+      escola_id_ativa: escolaId || null,
+      admin_global: adminGlobal
     };
     
     // Se digitou uma nova senha, chama o RPC para atualizar a senha no Auth primeiro
@@ -6709,11 +7040,22 @@ async function excluirUsuario(id, nome){
 }
 
 function abrirModalUsuario(id){
+  const canManageGlobal = isAdminGlobal();
   document.getElementById('usr-edit-id').value = '';
   document.getElementById('usr-nome').value = '';
   document.getElementById('usr-email').value = '';
   document.getElementById('usr-perfil').value = 'professor';
   document.getElementById('usr-turno').value = '';
+  popularEscolasUsuario();
+  const escolaEl = document.getElementById('usr-escola');
+  if (escolaEl) escolaEl.value = getActiveSchoolId() || '';
+  const adminGlobalEl = document.getElementById('usr-admin-global');
+  const adminGlobalGroup = adminGlobalEl?.closest('.form-group');
+  if (adminGlobalEl) {
+    adminGlobalEl.checked = false;
+    adminGlobalEl.disabled = !canManageGlobal;
+  }
+  if (adminGlobalGroup) adminGlobalGroup.style.display = canManageGlobal ? '' : 'none';
   const cargoEl = document.getElementById('usr-cargo');
   if(cargoEl) cargoEl.value = '';
   document.getElementById('usr-avatar-data').value = '';
@@ -6739,6 +7081,9 @@ function abrirModalUsuario(id){
     document.getElementById('usr-email').value   = u.email||'';
     document.getElementById('usr-perfil').value  = u.perfil||'professor';
     document.getElementById('usr-turno').value   = u.turno||'';
+    popularEscolasUsuario(u.escola_id || u.escola_id_ativa || '');
+    if (escolaEl) escolaEl.value = u.escola_id || u.escola_id_ativa || '';
+    if (adminGlobalEl) adminGlobalEl.checked = canManageGlobal ? !!u.admin_global : false;
     if(cargoEl) cargoEl.value = u.cargo||'';
     if(ativoEl) ativoEl.checked = u.ativo !== false;
     popularTurmasUsuario();
@@ -6887,6 +7232,10 @@ function renderUsuarios(){
       const ativoBadge = u.ativo !== false
         ? '<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;margin-left:6px;vertical-align:middle;">Ativo</span>'
         : '<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;margin-left:6px;vertical-align:middle;">Inativo</span>';
+      const globalBadge = u.admin_global
+        ? '<span style="background:#ede9fe;color:#5b21b6;font-size:10px;font-weight:700;padding:2px 6px;border-radius:12px;margin-left:6px;vertical-align:middle;">Global</span>'
+        : '';
+      const escolaLabel = MULTI_ESCOLA_ATIVO ? getSchoolNameById(u.escola_id || u.escola_id_ativa) : '';
       const fotoUsuario = obterFotoUsuario(u);
       const avatarHtml = fotoUsuario
         ? '<img src="'+fotoUsuario+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid '+cor+'">'
@@ -6895,11 +7244,12 @@ function renderUsuarios(){
         '<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">'+
           avatarHtml+
           '<div style="flex:1;min-width:0">'+
-            '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u.nome+ativoBadge+'</div>'+
+            '<div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+u.nome+ativoBadge+globalBadge+'</div>'+
             '<div style="font-size:11.5px;color:#6b7280;margin-top:2px">'+u.email+'</div>'+
             '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+cor+'22;color:'+cor+';margin-top:4px;display:inline-block">'+
               (perfilIcon[u.perfil]||'👤')+' '+(perfilLabel[u.perfil]||u.perfil)+
             '</span>'+
+            (escolaLabel ? '<div style="font-size:11px;color:#4b5563;margin-top:6px">🏫 '+escolaLabel+'</div>' : '')+
           '</div>'+
         '</div>'+
         '<div style="font-size:11.5px;color:#6b7280;margin-bottom:10px">'+
@@ -6932,9 +7282,14 @@ function importarPlanilhaUsuarios(input){
     for(const line of lines){
       const [nome,email,perfil,turno,turma] = line.split(',').map(s=>s.trim());
       if(!nome||!email) continue;
-      const {error} = await supabaseClient.from('usuarios').upsert({
-        nome, email, perfil: perfil||'professor', turno: turno||'', turma_responsavel: turma||''
-      }, {onConflict:'email'});
+      const payload = attachSchoolId({
+        nome,
+        email,
+        perfil: perfil||'professor',
+        turno: turno||'',
+        turma_responsavel: turma||''
+      }, 'usuarios');
+      const {error} = await supabaseClient.from('usuarios').upsert(payload, { onConflict:'email' });
       if(error) erros++;
       else count++;
     }
@@ -6942,6 +7297,141 @@ function importarPlanilhaUsuarios(input){
     await carregarUsuarios();
   };
   reader.readAsText(file);
+}
+
+function coletarModulosEscolaFormulario() {
+  const modulos = cloneSchoolModules();
+  Object.keys(modulos).forEach((pageId) => {
+    const input = document.getElementById(`esc-mod-${pageId}`);
+    modulos[pageId] = input ? !!input.checked : modulos[pageId];
+  });
+  return modulos;
+}
+
+function preencherChecklistModulosEscola(modulos = null) {
+  const container = document.getElementById('esc-modulos-lista');
+  if (!container) return;
+  const ativos = mergeSchoolModules(modulos);
+  container.innerHTML = Object.entries(MODULO_LABELS).map(([pageId, label]) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--gray3);border-radius:12px;background:white;cursor:pointer">
+      <input type="checkbox" id="esc-mod-${pageId}" ${ativos[pageId] ? 'checked' : ''} style="width:16px;height:16px;">
+      <span style="font-size:13px;color:var(--gray7);font-weight:600">${label}</span>
+    </label>
+  `).join('');
+}
+
+function abrirModalEscola(id = '') {
+  document.getElementById('esc-edit-id').value = '';
+  document.getElementById('esc-nome').value = '';
+  document.getElementById('esc-slug').value = '';
+  document.getElementById('esc-ativa').checked = true;
+  document.getElementById('modal-escola-title').textContent = '+ Nova Escola';
+  preencherChecklistModulosEscola();
+
+  if (id) {
+    const escola = ESCOLAS_DATA.find((item) => item.id === id);
+    if (!escola) return;
+    document.getElementById('esc-edit-id').value = escola.id;
+    document.getElementById('esc-nome').value = escola.nome || '';
+    document.getElementById('esc-slug').value = escola.slug || '';
+    document.getElementById('esc-ativa').checked = escola.ativa !== false;
+    document.getElementById('modal-escola-title').textContent = '✏️ Editar Escola';
+    preencherChecklistModulosEscola(escola.modulos_ativos);
+  }
+
+  openModal('modal-escola');
+}
+
+async function salvarEscola() {
+  const id = document.getElementById('esc-edit-id')?.value || '';
+  const nome = (document.getElementById('esc-nome')?.value || '').trim();
+  const slugInput = (document.getElementById('esc-slug')?.value || '').trim();
+  const slug = normalizeSchoolSlug(slugInput || nome);
+  const ativa = !!document.getElementById('esc-ativa')?.checked;
+  const modulos = coletarModulosEscolaFormulario();
+
+  if (!nome) {
+    showToast('Informe o nome da escola.', 'alerta');
+    return;
+  }
+  if (!slug) {
+    showToast('Não foi possível gerar o identificador da escola.', 'alerta');
+    return;
+  }
+
+  const payload = {
+    nome,
+    slug,
+    ativa,
+    modulos_ativos: modulos
+  };
+
+  const query = id
+    ? supabaseClient.from('escolas').update(payload).eq('id', id)
+    : supabaseClient.from('escolas').insert(payload);
+
+  const { error } = await query;
+  if (error) {
+    console.error('[salvarEscola] Erro:', error);
+    showToast('Erro ao salvar escola: ' + error.message, 'alerta');
+    return;
+  }
+
+  await carregarContextoEscolas();
+  renderSchoolSwitcher();
+  renderEscolasPage();
+  popularEscolasUsuario();
+  updateSidebarProfile();
+  closeModal('modal-escola');
+  showToast('Escola salva com sucesso!', 'sucesso');
+}
+
+function renderEscolasPage() {
+  const container = document.getElementById('escolas-lista');
+  if (!container) return;
+
+  if (!MULTI_ESCOLA_ATIVO) {
+    container.innerHTML = '<div class="table-card" style="padding:24px;text-align:center;color:var(--gray5)">Execute a migração multi-escola no banco para habilitar o cadastro de escolas.</div>';
+    return;
+  }
+
+  if (!ESCOLAS_DATA.length) {
+    container.innerHTML = '<div class="table-card" style="padding:24px;text-align:center;color:var(--gray5)">Nenhuma escola cadastrada ainda.</div>';
+    return;
+  }
+
+  container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">' +
+    ESCOLAS_DATA.map((escola) => {
+      const modulos = mergeSchoolModules(escola.modulos_ativos);
+      const modulosAtivos = Object.keys(modulos).filter((key) => modulos[key]).length;
+      const badgeAtiva = escola.ativa !== false
+        ? '<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px">Ativa</span>'
+        : '<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px">Inativa</span>';
+      const badgeAtual = escola.id === ESCOLA_ATUAL_ID
+        ? '<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px">Painel atual</span>'
+        : '';
+      return '<div class="table-card" style="padding:18px;border-top:3px solid var(--blue)">'+
+        '<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px">'+
+          '<div>'+
+            '<div style="font-size:16px;font-weight:700;color:var(--gray7)">'+escola.nome+'</div>'+
+            '<div style="font-size:12px;color:var(--gray5);margin-top:4px">Slug: '+(escola.slug || '—')+'</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+badgeAtiva+badgeAtual+'</div>'+
+        '</div>'+
+        '<div style="font-size:12px;color:var(--gray5);margin-bottom:12px">'+modulosAtivos+' módulo(s) habilitado(s)</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">'+
+          Object.entries(modulos)
+            .filter(([, enabled]) => enabled)
+            .slice(0, 6)
+            .map(([pageId]) => '<span style="font-size:10px;padding:4px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700">'+MODULO_LABELS[pageId]+'</span>')
+            .join('')+
+        '</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px">'+
+          '<button class="btn btn-outline btn-xs" onclick="abrirModalEscola(\''+escola.id+'\')">✏️ Editar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('') +
+  '</div>';
 }
 
 
@@ -11506,7 +11996,7 @@ async function tryServidorLogin(email, pass) {
 
   const { data: userData, error: userErr } = await supabaseClient
     .from('usuarios')
-    .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo')
+    .select('id, nome, perfil, email, turno, cargo, foto_url, formacao, bio, whatsapp, ativo, escola_id, escola_id_ativa, admin_global')
     .eq('id', authData.user.id)
     .maybeSingle();
 
