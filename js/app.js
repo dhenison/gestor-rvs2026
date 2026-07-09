@@ -241,6 +241,7 @@ let MULTI_ESCOLA_ATIVO = false;
 let AUTO_SAVE_READY = false;
 
 const ESCOLA_CONTEXT_KEY = 'rvs_school_context';
+const ACTIVE_PAGE_CONTEXT_KEY = 'rvs_active_page';
 const TABELAS_COM_ESCOLA = new Set([
   'alunos',
   'automation_rules',
@@ -409,6 +410,31 @@ function getSchoolNameById(escolaId) {
   return ESCOLAS_DATA.find((item) => item.id === escolaId)?.nome || 'Escola não encontrada';
 }
 
+function persistActivePage(pageId) {
+  try {
+    if (pageId) sessionStorage.setItem(ACTIVE_PAGE_CONTEXT_KEY, pageId);
+  } catch (_) {}
+}
+
+function getPersistedActivePage() {
+  try {
+    return sessionStorage.getItem(ACTIVE_PAGE_CONTEXT_KEY) || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function restaurarPaginaAtiva() {
+  const storedPage = getPersistedActivePage();
+  const targetPage = storedPage || 'dashboard';
+  if (targetPage !== 'perfil' && !podeVer(targetPage)) {
+    persistActivePage('dashboard');
+    return;
+  }
+  const navItem = document.querySelector(`.nav-item[onclick*="showPage('${targetPage}'"]`);
+  showPage(targetPage, navItem || null);
+}
+
 function popularEscolasUsuario(selectedId = '') {
   const select = document.getElementById('usr-escola');
   if (!select) return;
@@ -500,6 +526,12 @@ async function trocarEscolaAtiva(escolaId) {
     return;
   }
 
+  const select = document.getElementById('school-switcher-select');
+  const currentPage = document.querySelector('.page.active')?.id?.replace('page-', '') || 'dashboard';
+  persistActivePage(currentPage);
+  showLoading(`Atualizando dados de ${getSchoolNameById(escolaId)}...`);
+  if (select) select.disabled = true;
+
   const { error } = await supabaseClient
     .from('usuarios')
     .update({ escola_id_ativa: escolaId })
@@ -508,20 +540,17 @@ async function trocarEscolaAtiva(escolaId) {
   if (error) {
     console.error('[trocarEscolaAtiva] Erro ao trocar escola:', error);
     showToast('Não foi possível trocar a escola ativa.', 'alerta');
+    hideLoading();
     renderSchoolSwitcher();
     return;
   }
 
   const mergedUser = { ...user, escola_id_ativa: escolaId };
   try { sessionStorage.setItem('rvs_user', JSON.stringify(mergedUser)); } catch (_) {}
+  try { sessionStorage.setItem(ESCOLA_CONTEXT_KEY, escolaId); } catch (_) {}
   ESCOLA_ATUAL_ID = escolaId;
   ESCOLA_ATUAL = ESCOLAS_DATA.find((escola) => escola.id === escolaId) || null;
-  updateSidebarProfile();
-  renderSchoolSwitcher();
-  await initApp();
-  const activePage = document.querySelector('.page.active')?.id?.replace('page-', '') || 'dashboard';
-  showPage(activePage);
-  showToast(`Painel alterado para ${ESCOLA_ATUAL?.nome || 'a escola selecionada'}.`, 'sucesso');
+  location.reload();
 }
 
 const TIPO_LETIVO_FLAG = {letivo:true, prova:true, evento:true, bimestre:true, fim_bimestre:true, feriado:false, ferias:false};
@@ -1068,6 +1097,7 @@ async function _entrarNoSistema(usuario){
   await carregarContextoEscolas(usuario);
   updateSidebarProfile();
   await initApp(); // Agora espera carregar permissões do banco
+  restaurarPaginaAtiva();
   initPresenceRealtime();
   initOcorrenciaRealtime(); // Notificações em tempo real de ocorrências
 }
@@ -1108,6 +1138,7 @@ function updateSidebarProfile() {
 async function doLogout(){
   try { sessionStorage.removeItem('rvs_user'); } catch(_){}
   try { sessionStorage.removeItem(ESCOLA_CONTEXT_KEY); } catch(_){}
+  try { sessionStorage.removeItem(ACTIVE_PAGE_CONTEXT_KEY); } catch(_){}
   await supabaseClient.auth.signOut();
   location.reload();
 }
@@ -1305,6 +1336,7 @@ function showPage(p, el) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
   document.getElementById('page-' + p)?.classList.add('active');
+  persistActivePage(p);
 
   const titles = {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', 'ficha-aluno': 'Ficha do Aluno', boletins: 'Boletins Escolares',
