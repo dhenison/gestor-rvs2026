@@ -1407,10 +1407,11 @@
               <input type="text" id="filtro-sec-aluno" placeholder="🔍 Buscar aluno..." oninput="filtrarSecDocumentos()" style="width:200px">
               <select id="filtro-sec-tipo" onchange="filtrarSecDocumentos()" style="width:220px">
                 <option value="">Todos os Tipos</option>
-                <option>Declaração de Matrícula</option>
-                <option>Declaração de Frequência (Bolsa Família)</option>
-                <option>Declaração de Escolaridade</option>
-                <option>Declaração de Transferência</option>
+               <option>Declaração de Matrícula</option>
+               <option>Declaração de Frequência (Bolsa Família)</option>
+               <option>Declaração de Escolaridade</option>
+               <option>Declaração de Vaga</option>
+               <option>Declaração de Transferência</option>
               </select>
               <input type="date" id="filtro-sec-data-ini" onchange="filtrarSecDocumentos()" title="Data Inicial" style="width:140px">
               <input type="date" id="filtro-sec-data-fim" onchange="filtrarSecDocumentos()" title="Data Final" style="width:140px">
@@ -2522,10 +2523,11 @@
         <select class="form-input form-select" id="sec-doc-tipo" onchange="mostrarCamposDinamicosSec()">
           <option value="">Selecione...</option>
           <optgroup label="Declarações">
-            <option value="Declaração de Matrícula">Declaração de Matrícula</option>
-            <option value="Declaração de Frequência (Bolsa Família)">Declaração de Frequência (Bolsa Família)</option>
-            <option value="Declaração de Escolaridade">Declaração de Escolaridade</option>
-            <option value="Declaração de Transferência">Declaração de Transferência</option>
+             <option value="Declaração de Matrícula">Declaração de Matrícula</option>
+             <option value="Declaração de Frequência (Bolsa Família)">Declaração de Frequência (Bolsa Família)</option>
+             <option value="Declaração de Escolaridade">Declaração de Escolaridade</option>
+             <option value="Declaração de Vaga">Declaração de Vaga</option>
+             <option value="Declaração de Transferência">Declaração de Transferência</option>
           </optgroup>
           <optgroup label="Requerimentos (Comprovantes)">
             <option value="Requerimento de 2ª Via de Diploma">Requerimento de 2ª Via de Diploma</option>
@@ -2587,6 +2589,31 @@
           <div class="form-group">
             <label class="form-label">Data de Nascimento</label>
             <input type="date" class="form-input" id="sec-doc-data-nasc">
+          </div>
+        </div>
+      </div>
+
+      <div id="sec-grupo-vaga" class="hidden">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Etapa / Modalidade com vaga</label>
+            <select class="form-input form-select" id="sec-doc-vaga-etapa">
+              <option value="">Selecione...</option>
+              <option value="Primeiro Ano">Primeiro Ano</option>
+              <option value="Segundo Ano">Segundo Ano</option>
+              <option value="Terceiro Ano">Terceiro Ano</option>
+              <option value="EJA">EJA</option>
+              <option value="Fluxo">Fluxo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Turno da vaga</label>
+            <select class="form-input form-select" id="sec-doc-vaga-turno">
+              <option value="">Selecione...</option>
+              <option value="Manhã">Manhã</option>
+              <option value="Tarde">Tarde</option>
+              <option value="Noite">Noite</option>
+            </select>
           </div>
         </div>
       </div>

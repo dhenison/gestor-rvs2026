@@ -10877,6 +10877,21 @@ function formatarSerieDocumento(serie) {
 
 let SEC_DOCUMENTOS = [];
 const DOCUMENTO_SECRETARIA_VALIDADE_DIAS = 30;
+const DOCUMENTO_SECRETARIA_TIPO_VAGA = 'Declaração de Vaga';
+
+function extrairMetaDocumentoSecretaria(obs, chave) {
+  if (!obs || !chave) return '';
+  const regex = new RegExp(`\\[${chave}:\\s*([^\\]]+)\\]`, 'i');
+  const match = String(obs).match(regex);
+  return match ? match[1].trim() : '';
+}
+
+function limparMetaDocumentoSecretaria(obs) {
+  return String(obs || '')
+    .replace(/\[(?:NASC|DT_NASC|VAGA_ETAPA|VAGA_TURNO):[^\]]*\]\s*/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
 
 function getDocumentoSecretariaValidationUrl(protocolo) {
   const protocoloLimpo = String(protocolo || '').trim();
@@ -11138,6 +11153,8 @@ function abrirModalNovoDocSecretaria() {
   const cidade = document.getElementById('sec-doc-cidade-nasc'); if (cidade) cidade.value = 'Ourilândia do Norte';
   const uf = document.getElementById('sec-doc-uf-nasc'); if (uf) uf.value = 'PA';
   const dtNasc = document.getElementById('sec-doc-data-nasc'); if (dtNasc) dtNasc.value = '';
+  const vagaEtapa = document.getElementById('sec-doc-vaga-etapa'); if (vagaEtapa) vagaEtapa.value = '';
+  const vagaTurno = document.getElementById('sec-doc-vaga-turno'); if (vagaTurno) vagaTurno.value = '';
   
   mostrarCamposDinamicosSec();
   openModal('modal-novo-documento-secretaria');
@@ -11166,10 +11183,12 @@ function mostrarCamposDinamicosSec() {
   const grupoFreq = document.getElementById('sec-grupo-frequencia');
   const grupoReq = document.getElementById('sec-grupo-requerimento');
   const grupoNasc = document.getElementById('sec-grupo-nascimento');
+  const grupoVaga = document.getElementById('sec-grupo-vaga');
   
   if (grupoFreq) grupoFreq.classList.add('hidden');
   if (grupoReq) grupoReq.classList.add('hidden');
   if (grupoNasc) grupoNasc.classList.add('hidden');
+  if (grupoVaga) grupoVaga.classList.add('hidden');
   
   if (tipo && !tipo.startsWith('Requerimento')) {
     if (grupoNasc) grupoNasc.classList.remove('hidden');
@@ -11177,6 +11196,8 @@ function mostrarCamposDinamicosSec() {
   
   if (tipo === 'Declaração de Frequência (Bolsa Família)') {
     if (grupoFreq) grupoFreq.classList.remove('hidden');
+  } else if (tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) {
+    if (grupoVaga) grupoVaga.classList.remove('hidden');
   } else if (tipo && tipo.startsWith('Requerimento')) {
     if (grupoReq) grupoReq.classList.remove('hidden');
   } else if (tipo === 'Declaração de Transferência') {
@@ -11228,12 +11249,22 @@ async function salvarDocumentoSecretaria() {
   const cidadeNasc = document.getElementById('sec-doc-cidade-nasc')?.value || '';
   const ufNasc = document.getElementById('sec-doc-uf-nasc')?.value || '';
   const dataNascInput = document.getElementById('sec-doc-data-nasc')?.value || '';
+  const vagaEtapa = document.getElementById('sec-doc-vaga-etapa')?.value || '';
+  const vagaTurno = document.getElementById('sec-doc-vaga-turno')?.value || '';
   
   if (!alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
   if (!tipo) { showToast('Selecione o tipo de emissão.', 'alerta'); return; }
   
   if (tipo === 'Declaração de Frequência (Bolsa Família)' && !frequencia) {
     showToast('Informe a frequência do aluno.', 'alerta');
+    return;
+  }
+  if (tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA && !vagaEtapa) {
+    showToast('Selecione a etapa/modalidade com vaga.', 'alerta');
+    return;
+  }
+  if (tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA && !vagaTurno) {
+    showToast('Selecione o turno da vaga.', 'alerta');
     return;
   }
   
@@ -11253,6 +11284,9 @@ async function salvarDocumentoSecretaria() {
     }
     if (tipo === 'Declaração de Frequência (Bolsa Família)') {
       obsCompleta = `Frequência de ${frequencia}%. ${obsCompleta}`.trim();
+    }
+    if (tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) {
+      obsCompleta = `[VAGA_ETAPA: ${vagaEtapa}] [VAGA_TURNO: ${vagaTurno}] ${obsCompleta}`.trim();
     }
     
     const payload = {
@@ -11428,6 +11462,10 @@ async function imprimirDocumentoHtml(id) {
     if (cidadeNasc) {
       cidadeNascText = `, natural de <b>${cidadeNasc} - ${ufNasc || 'PA'}</b>`;
     }
+    const vagaEtapa = extrairMetaDocumentoSecretaria(doc.obs, 'VAGA_ETAPA');
+    const vagaTurno = extrairMetaDocumentoSecretaria(doc.obs, 'VAGA_TURNO');
+    const vagaEtapaTexto = vagaEtapa ? formatarSerieDocumento(vagaEtapa) : '—';
+    const vagaTurnoTexto = vagaTurno || '—';
     
     let contentHtml = '';
     let titleHtml = doc.tipo;
@@ -11472,6 +11510,17 @@ async function imprimirDocumentoHtml(id) {
         </p>
         <p class="doc-text">
           O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.
+        </p>
+      `;
+    } else if (doc.tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) {
+      contentHtml = `
+        <p class="doc-text">
+          Declaramos, para os devidos fins, que esta unidade escolar dispõe de vaga para matrícula do(a) estudante <b>${aluno.nome}</b>,
+          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText},
+          no <b>${vagaEtapaTexto}</b>, no turno <b>${vagaTurnoTexto}</b>, para o ano letivo de <b>2026</b>.
+        </p>
+        <p class="doc-text">
+          A presente declaração confirma a disponibilidade de vaga nesta escola na etapa/modalidade e turno acima informados, servindo para instrução de matrícula ou transferência.
         </p>
       `;
     } else if (doc.tipo === 'Declaração de Transferência') {

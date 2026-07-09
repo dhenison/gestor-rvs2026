@@ -658,6 +658,20 @@
       return `<p class="doc-paragraph">${text}</p>`;
     }
 
+    function extractDocMeta(text, key) {
+      if (!text || !key) return '';
+      const regex = new RegExp(`\\[${key}:\\s*([^\\]]+)\\]`, 'i');
+      const match = String(text).match(regex);
+      return match ? match[1].trim() : '';
+    }
+
+    function stripDocMeta(text) {
+      return String(text || '')
+        .replace(/\[(?:NASC|DT_NASC|VAGA_ETAPA|VAGA_TURNO):[^\]]*\]\s*/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    }
+
     function buildDocumentVisualization(data) {
       const aluno = data.aluno || {};
       const nome = escapeHtml(aluno.nome || 'Não informado');
@@ -670,6 +684,8 @@
       const localNasc = cidade ? `, natural de <strong>${cidade} - ${uf}</strong>` : '';
       const emissaoExtenso = escapeHtml(formatDateLong(data.data_emissao));
       const tipo = data.tipo || '';
+      const vagaEtapa = escapeHtml(extractDocMeta(data.observacoes || '', 'VAGA_ETAPA') || '—');
+      const vagaTurno = escapeHtml(extractDocMeta(data.observacoes || '', 'VAGA_TURNO') || '—');
 
       let bodyHtml = '';
 
@@ -689,6 +705,11 @@
         bodyHtml = [
           paragraph(`Declaramos, para os devidos fins de direito, que o(a) estudante <strong>${nome}</strong>, inscrito(a) sob o CPF <strong>${cpf}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <strong>${turma}</strong> sob regime letivo ordinário.`),
           paragraph('O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.')
+        ].join('');
+      } else if (tipo === 'Declaração de Vaga') {
+        bodyHtml = [
+          paragraph(`Declaramos, para os devidos fins, que esta unidade escolar dispõe de vaga para matrícula do(a) estudante <strong>${nome}</strong>, inscrito(a) sob o CPF <strong>${cpf}</strong>, nascido(a) em <strong>${dataNasc}</strong>${localNasc}, no <strong>${vagaEtapa}</strong>, no turno <strong>${vagaTurno}</strong>, para o ano letivo de <strong>2026</strong>.`),
+          paragraph('A presente declaração confirma a disponibilidade de vaga nesta escola na etapa/modalidade e turno acima informados, servindo para instrução de matrícula ou transferência.')
         ].join('');
       } else if (tipo === 'Declaração de Transferência') {
         bodyHtml = [
@@ -729,6 +750,8 @@
 
     function fillDetails(data) {
       const aluno = data.aluno || {};
+      const vagaEtapa = extractDocMeta(data.observacoes || '', 'VAGA_ETAPA');
+      const vagaTurno = extractDocMeta(data.observacoes || '', 'VAGA_TURNO');
       refs.protocolCode.textContent = data.protocolo || 'Protocolo não informado';
       refs.metaTipo.textContent = data.tipo || '—';
       refs.metaEmissao.textContent = formatDateBr(data.data_emissao);
@@ -736,10 +759,12 @@
       refs.metaSituacao.textContent = data.documento_valido ? 'Válido no momento da consulta' : 'Documento fora do prazo';
       refs.detailAluno.textContent = aluno.nome || '—';
       refs.detailMatricula.textContent = formatCpf(aluno.cpf || aluno.matricula || '—');
-      refs.detailTurma.textContent = `${aluno.turma || '—'} / ${aluno.turno || '—'}`;
+      refs.detailTurma.textContent = data.tipo === 'Declaração de Vaga'
+        ? `${vagaEtapa || '—'} / ${vagaTurno || '—'}`
+        : `${aluno.turma || '—'} / ${aluno.turno || '—'}`;
       refs.detailResponsavel.textContent = data.responsavel || 'Secretaria';
       refs.detailSolicitante.textContent = data.solicitante || 'O próprio aluno';
-      refs.detailObservacao.textContent = data.motivo || data.observacoes || 'Sem observações adicionais.';
+      refs.detailObservacao.textContent = data.motivo || stripDocMeta(data.observacoes) || 'Sem observações adicionais.';
       refs.documentShell.innerHTML = buildDocumentVisualization(data);
       refs.documentCard.classList.remove('hidden');
     }
