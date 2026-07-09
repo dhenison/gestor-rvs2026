@@ -489,6 +489,27 @@ function getSchoolNameById(escolaId) {
   return ESCOLAS_DATA.find((item) => item.id === escolaId)?.nome || 'Escola não encontrada';
 }
 
+function getDocumentoSecretariaSchoolInfo(doc = null, aluno = null, turma = null) {
+  const escolaId = doc?.escola_id || aluno?.escola_id || turma?.escola_id || getActiveSchoolId();
+  const escolaAtual = ESCOLAS_DATA.find((item) => item.id === escolaId)
+    || (ESCOLA_ATUAL?.id === escolaId ? ESCOLA_ATUAL : null);
+  const rawName = escolaAtual?.nome || (escolaId ? getSchoolNameById(escolaId) : getCurrentSchoolName()) || 'Escola n\u00e3o identificada';
+  const normalized = normalizarTexto(rawName);
+
+  let nomeDocumento = rawName;
+  if (normalized.includes('romildo') && normalized.includes('veloso')) {
+    nomeDocumento = 'Escola Estadual Dr. Romildo Veloso e Silva';
+  } else if (normalized.includes('rural') && normalized.includes('ourilandia')) {
+    nomeDocumento = 'Escola Estadual Rural de Ouril\u00e2ndia do Norte';
+  }
+
+  return {
+    id: escolaId || escolaAtual?.id || null,
+    nome: nomeDocumento,
+    localEmissao: 'Ouril\u00e2ndia do Norte - PA'
+  };
+}
+
 function persistActivePage(pageId) {
   try {
     if (pageId) sessionStorage.setItem(ACTIVE_PAGE_CONTEXT_KEY, pageId);
@@ -11662,6 +11683,9 @@ async function imprimirDocumentoHtml(id) {
     const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
     if (!aluno) throw new Error('Dados do aluno não encontrados.');
     const turmaAluno = TURMAS_DATA.find(t => t.id === aluno.turma_id) || TURMAS_DATA.find(t => t.code === aluno.turma);
+    const escolaDocumento = getDocumentoSecretariaSchoolInfo(doc, aluno, turmaAluno);
+    const escolaNomeDocumento = escolaDocumento.nome;
+    const localEmissaoDocumento = escolaDocumento.localEmissao;
     const turmaTexto = aluno.turma || turmaAluno?.code || '—';
     const turnoTexto = aluno.turno || turmaAluno?.turno || '—';
     const serieTexto = formatarSerieDocumento(aluno.serie || turmaAluno?.serie || '');
@@ -11724,7 +11748,7 @@ async function imprimirDocumentoHtml(id) {
         <p class="doc-text">
           Declaramos, para os devidos fins, que o(a) estudante <b>${aluno.nome}</b>, 
           inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
-          está regularmente matriculado(a) e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, 
+          está regularmente matriculado(a) e frequentando as aulas na <b>${escolaNomeDocumento}</b> no ano letivo de <b>2026</b>, 
           cursando a turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
@@ -11742,7 +11766,7 @@ async function imprimirDocumentoHtml(id) {
           Declaramos, para os devidos fins de comprovação de condicionalidade do Programa Bolsa Família, 
           que o(a) estudante <b>${aluno.nome}</b>, inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, 
           nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, está regularmente matriculado(a) 
-          e frequentando as aulas nesta instituição de ensino no ano letivo de <b>2026</b>, na turma <b>${turmaTexto}</b>, 
+          e frequentando as aulas na <b>${escolaNomeDocumento}</b> no ano letivo de <b>2026</b>, na turma <b>${turmaTexto}</b>, 
           correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
@@ -11754,17 +11778,17 @@ async function imprimirDocumentoHtml(id) {
         <p class="doc-text">
           Declaramos, para os devidos fins de direito, que o(a) estudante <b>${aluno.nome}</b>, 
           inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
-          frequentou regularmente as aulas correspondentes ao Ensino nesta unidade de ensino na turma <b>${turmaTexto}</b>, 
+          frequentou regularmente as aulas correspondentes ao Ensino na <b>${escolaNomeDocumento}</b>, na turma <b>${turmaTexto}</b>, 
           correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>, sob regime letivo ordinário.
         </p>
         <p class="doc-text">
-          O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria desta unidade.
+          O referido estudante possui histórico de rendimento escolar e frequência arquivados em pasta individual sob responsabilidade da secretaria da <b>${escolaNomeDocumento}</b>.
         </p>
       `;
     } else if (doc.tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) {
       contentHtml = `
         <p class="doc-text">
-          Declaramos, para os devidos fins, que esta unidade escolar dispõe de vaga para matrícula do(a) estudante <b>${aluno.nome}</b>,
+          Declaramos, para os devidos fins, que a <b>${escolaNomeDocumento}</b> dispõe de vaga para matrícula do(a) estudante <b>${aluno.nome}</b>,
           inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText},
           no <b>${vagaEtapaTexto}</b>, no turno <b>${vagaTurnoTexto}</b>, para o ano letivo de <b>2026</b>.
         </p>
@@ -11777,7 +11801,7 @@ async function imprimirDocumentoHtml(id) {
         <p class="doc-text">
           Declaramos, para os devidos fins, que foi solicitada nesta data a transferência escolar do(a) estudante <b>${aluno.nome}</b>, 
           inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText}, 
-          que se encontrava devidamente matriculado(a) na turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
+          que se encontrava devidamente matriculado(a) na <b>${escolaNomeDocumento}</b>, na turma <b>${turmaTexto}</b>, correspondente ao <b>${serieTexto}</b>, no turno <b>${turnoTexto}</b>.
         </p>
         <p class="doc-text">
           Esta declaração atesta que a vaga de origem está liberada e o processo de transferência ativo. O presente documento 
@@ -11789,7 +11813,7 @@ async function imprimirDocumentoHtml(id) {
       titleHtml = 'Comprovante de Requerimento';
       contentHtml = `
         <p style="text-align:justify;margin-bottom:20px;font-size:12pt">
-          A secretaria escolar atesta e emite o presente comprovante de solicitação para fins de controle e protocolo do pedido. 
+          A secretaria escolar da <b>${escolaNomeDocumento}</b> atesta e emite o presente comprovante de solicitação para fins de controle e protocolo do pedido. 
           O documento requerido encontra-se em fase de processamento, devendo ser observados os prazos regimentais desta instituição.
         </p>
         
@@ -11800,6 +11824,10 @@ async function imprimirDocumentoHtml(id) {
           <div class="receipt-row">
             <span class="receipt-label">Protocolo de Abertura:</span>
             <span style="font-family:monospace;font-size:12pt;font-weight:bold;color:#1d4ed8">${doc.protocolo}</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Unidade Emissora:</span>
+            <span>${escolaNomeDocumento}</span>
           </div>
           <div class="receipt-row">
             <span class="receipt-label">Estudante:</span>
@@ -11897,6 +11925,15 @@ async function imprimirDocumentoHtml(id) {
             color: #333;
             text-align: right;
             margin-bottom: 10px;
+          }
+          .school-name {
+            text-align: center;
+            font-size: 12.5pt;
+            font-weight: 700;
+            color: #111827;
+            margin: -4px 0 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.35px;
           }
           .content-body {
             margin-top: 10px;
@@ -12029,6 +12066,7 @@ async function imprimirDocumentoHtml(id) {
           
           <div class="content-header">
             <img class="header-logo" src="assets/cabecalho_logo.png" alt="Cabeçalho Oficial">
+            <div class="school-name">${escolaNomeDocumento}</div>
             <div class="protocol-tag">Protocolo: <b>${doc.protocolo}</b></div>
           </div>
           
@@ -12039,13 +12077,13 @@ async function imprimirDocumentoHtml(id) {
             
             ${!doc.tipo.startsWith('Requerimento') ? `
               <div class="doc-date">
-                Ourilândia do Norte - PA, ${dataPorExtenso}.
+                ${localEmissaoDocumento}, ${dataPorExtenso}.
               </div>
               
               <div class="signature-area">
                 <div class="signature-box" style="width:50%">
                   <div class="signature-line"></div>
-                  <span class="signature-desc"><b>Assinatura Autorizada</b><br>Secretaria / Direção Escolar</span>
+                  <span class="signature-desc"><b>Assinatura Autorizada</b><br>${escolaNomeDocumento}<br>Secretaria / Direção Escolar</span>
                 </div>
               </div>
             ` : `
@@ -12076,7 +12114,7 @@ async function imprimirDocumentoHtml(id) {
 
           <div class="footer">
             <div class="footer-main">
-              RVS Escolar Gestão Inteligente — Responsável: <b>${doc.responsavel || 'Secretaria'}</b><br>
+              ${escolaNomeDocumento} — Responsável: <b>${doc.responsavel || 'Secretaria'}</b><br>
               Ficha gerada eletronicamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} | Protocolo: ${doc.protocolo}<br>
               ${dataValidade ? `Validade eletrônica: ${dataValidadeBr} | Status da consulta: ${documentoValido ? 'válido' : 'expirado'}` : 'Consulta eletrônica disponível por protocolo.'}
             </div>
