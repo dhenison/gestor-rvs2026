@@ -140,6 +140,7 @@ let OCORR_DATA   = [];
 let ROTAS_DATA   = [];
 let CALENDARIO   = {};
 let HORARIOS_LINKS = {};
+let TURMAS_LOCALIDADES = {};
 let OBAFOG_DATA = [];
 let NOTAS_BIMESTRAIS_DATA = [];
 let CONSELHOS_CLASSE_DATA = [];
@@ -255,6 +256,14 @@ const TURMA_SERIES_RURAL_EXTRA = [
   'SOME',
   'SOMEI',
   'CEMEP'
+];
+const TURMA_LOCALIDADES_RURAL = [
+  'FOGAO QUEIMADO',
+  'COMUNIDADE SANTA RITA',
+  'CAMPINHO',
+  'ALDEIA TUREDJAN',
+  'ALDEIA AUKRE',
+  'ALDEIA KRANHKRO'
 ];
 const TABELAS_COM_ESCOLA = new Set([
   'alunos',
@@ -464,6 +473,10 @@ function getTurmaSerieOptions() {
     : [...TURMA_SERIES_BASE];
 }
 
+function getTurmaLocalidadeOptions() {
+  return isRuralOurilandiaSchool() ? [...TURMA_LOCALIDADES_RURAL] : [];
+}
+
 function popularSelectSerieTurma(selectId, selectedValue = '') {
   const select = document.getElementById(selectId);
   if (!select) return;
@@ -473,9 +486,44 @@ function popularSelectSerieTurma(selectId, selectedValue = '') {
   select.value = options.includes(selectedValue) ? selectedValue : options[0] || '';
 }
 
+function popularSelectLocalidadeTurma(selectId, selectedValue = '') {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const options = getTurmaLocalidadeOptions();
+  if (selectedValue && !options.includes(selectedValue)) options.push(selectedValue);
+  select.innerHTML = '<option value="">Selecione a localidade</option>' +
+    options.map((option) => `<option value="${option}">${option}</option>`).join('');
+  select.value = options.includes(selectedValue) ? selectedValue : '';
+}
+
 function sincronizarSelectsSerieTurma(createValue = '', editValue = '') {
   popularSelectSerieTurma('input-turma-serie', createValue);
   popularSelectSerieTurma('edit-turma-serie', editValue);
+}
+
+function sincronizarSelectsLocalidadeTurma(createValue = '', editValue = '') {
+  const showLocalidade = isRuralOurilandiaSchool();
+  const rowCreate = document.getElementById('row-turma-localidade');
+  const rowEdit = document.getElementById('row-edit-turma-localidade');
+  if (rowCreate) rowCreate.classList.toggle('hidden', !showLocalidade);
+  if (rowEdit) rowEdit.classList.toggle('hidden', !showLocalidade);
+  if (!showLocalidade) {
+    const createSelect = document.getElementById('input-turma-localidade');
+    const editSelect = document.getElementById('edit-turma-localidade');
+    if (createSelect) createSelect.innerHTML = '<option value="">Selecione a localidade</option>';
+    if (editSelect) editSelect.innerHTML = '<option value="">Selecione a localidade</option>';
+    return;
+  }
+  popularSelectLocalidadeTurma('input-turma-localidade', createValue);
+  popularSelectLocalidadeTurma('edit-turma-localidade', editValue);
+}
+
+async function salvarConfigTurmasLocalidades() {
+  const payload = buildConfigPayload('turmas_localidades', TURMAS_LOCALIDADES);
+  const { error } = await supabaseClient
+    .from('configuracoes')
+    .upsert(payload, getConfigUpsertOptions());
+  if (error) throw error;
 }
 
 function popularEscolasUsuario(selectedId = '') {
@@ -737,7 +785,7 @@ async function carregarDados(){
       fetchAllRows('eventos'),
       fetchAllRows('rotas'),
       applySchoolScope(
-        supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios']),
+        supabaseClient.from('configuracoes').select('*').in('chave', ['permissoes', 'links_horarios', 'turmas_localidades']),
         'configuracoes'
       ),
       fetchAllRows('obafog_equipes', '*', q => q.order('created_at', {ascending:false})),
@@ -831,13 +879,24 @@ async function carregarDados(){
       
       const linksObj = configData.find(c => c.chave === 'links_horarios');
       if (linksObj && linksObj.valor) HORARIOS_LINKS = linksObj.valor;
+      const localObj = configData.find(c => c.chave === 'turmas_localidades');
+      TURMAS_LOCALIDADES = localObj && localObj.valor && typeof localObj.valor === 'object'
+        ? localObj.valor
+        : {};
     } else {
       console.warn('[carregarDados] configData é nulo ou inválido:', configData);
+      TURMAS_LOCALIDADES = {};
     }
 
     if (turmas) {
       TURMAS_DATA = turmas.map(t => ({
-        id: t.id, code: t.code, serie: t.serie, turno: t.turno, professor: t.professor, presentes: 0
+        id: t.id,
+        code: t.code,
+        serie: t.serie,
+        turno: t.turno,
+        professor: t.professor,
+        localidade: TURMAS_LOCALIDADES[t.id] || TURMAS_LOCALIDADES[t.code] || '',
+        presentes: 0
       }));
     }
     
@@ -1223,6 +1282,7 @@ async function initApp(){
   await carregarContextoEscolas();
   await carregarDados();
   sincronizarSelectsSerieTurma();
+  sincronizarSelectsLocalidadeTurma();
   renderSchoolSwitcher();
   initAutoSave();
   updateSidebarProfile();
@@ -2098,7 +2158,9 @@ function renderTurmaGrid(){
 
 function abrirModalNovaTurma(){
   const currentValue = document.getElementById('input-turma-serie')?.value || '';
+  const currentLocalidade = document.getElementById('input-turma-localidade')?.value || '';
   popularSelectSerieTurma('input-turma-serie', currentValue);
+  sincronizarSelectsLocalidadeTurma(currentLocalidade);
   openModal('modal-turma');
 }
 
@@ -2108,6 +2170,7 @@ function abrirEditarTurma(id){
   document.getElementById('edit-turma-code').value=t.code;
   document.getElementById('edit-turma-turno').value=t.turno||'Manhã';
   popularSelectSerieTurma('edit-turma-serie', t.serie || '');
+  sincronizarSelectsLocalidadeTurma('', t.localidade || '');
   document.getElementById('edit-turma-professor').value=t.professor||'';
   openModal('modal-editar-turma');
 }
@@ -2117,10 +2180,22 @@ async function salvarEdicaoTurma(){
   const code=(document.getElementById('edit-turma-code')?.value||'').trim().toUpperCase();
   const turno=document.getElementById('edit-turma-turno')?.value||'Manhã';
   const serie=document.getElementById('edit-turma-serie')?.value||'';
+  const localidade=document.getElementById('edit-turma-localidade')?.value||'';
   const professor=(document.getElementById('edit-turma-professor')?.value||'').trim();
+  if(isRuralOurilandiaSchool() && !localidade){showToast('Selecione a localidade da turma.','alerta');return;}
   if(!id||!code){showToast('Preencha o código da turma','alerta');return;}
   const {error}=await supabaseClient.from('turmas').update({code,turno,serie,professor}).eq('id',id);
   if(error){showToast('Erro ao salvar: '+error.message,'evasao');return;}
+  if(isRuralOurilandiaSchool()){
+    TURMAS_LOCALIDADES[id]=localidade;
+    TURMAS_LOCALIDADES[code]=localidade;
+    try {
+      await salvarConfigTurmasLocalidades();
+    } catch(err){
+      console.error('[salvarEdicaoTurma] Erro ao salvar localidade:', err);
+      showToast('A turma foi atualizada, mas houve erro ao salvar a localidade.','alerta');
+    }
+  }
   closeModal('modal-editar-turma');
   showToast('Turma atualizada com sucesso!','sucesso');
   await carregarDados();
@@ -2132,18 +2207,30 @@ async function saveTurma(){
   const code  = document.getElementById('input-turma-code')?.value.trim().toUpperCase();
   const turno = document.getElementById('input-turma-turno')?.value;
   const serie = document.getElementById('input-turma-serie')?.value;
+  const localidade = document.getElementById('input-turma-localidade')?.value || '';
   if(!code){ showToast('Informe o código da turma!','alerta'); return; }
   if(TURMAS_DATA.find(t=>t.code===code)){ showToast('Turma '+code+' já existe!','alerta'); return; }
+  if(isRuralOurilandiaSchool() && !localidade){ showToast('Selecione a localidade da turma!','alerta'); return; }
   
-  const {error} = await supabaseClient.from('turmas').insert({
+  const {data: turmaInserida, error} = await supabaseClient.from('turmas').insert({
       code: code,
       serie: serie || code,
       turno: turno || 'Manhã',
       professor: 'A Definir'
-  });
+  }).select().single();
   
   if (error) {
      console.error(error); showToast('Erro no banco de dados', 'evasao'); return;
+  }
+  if (isRuralOurilandiaSchool() && turmaInserida) {
+    TURMAS_LOCALIDADES[turmaInserida.id]=localidade;
+    TURMAS_LOCALIDADES[code]=localidade;
+    try {
+      await salvarConfigTurmasLocalidades();
+    } catch(err){
+      console.error('[saveTurma] Erro ao salvar localidade:', err);
+      showToast('A turma foi criada, mas houve erro ao salvar a localidade.','alerta');
+    }
   }
   
   closeModal('modal-turma');
