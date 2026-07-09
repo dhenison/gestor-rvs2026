@@ -242,6 +242,20 @@ let AUTO_SAVE_READY = false;
 
 const ESCOLA_CONTEXT_KEY = 'rvs_school_context';
 const ACTIVE_PAGE_CONTEXT_KEY = 'rvs_active_page';
+const TURMA_SERIES_BASE = [
+  '1º Ano — Ensino Médio',
+  '2º Ano — Ensino Médio',
+  '3º Ano — Ensino Médio',
+  'EJA — Primeira Etapa',
+  'EJA — Segunda Etapa',
+  'Fluxo'
+];
+const TURMA_SERIES_RURAL_EXTRA = [
+  'Educação Indígena',
+  'SOME',
+  'SOMEI',
+  'CEMEP'
+];
 const TABELAS_COM_ESCOLA = new Set([
   'alunos',
   'automation_rules',
@@ -433,6 +447,35 @@ function restaurarPaginaAtiva() {
   }
   const navItem = document.querySelector(`.nav-item[onclick*="showPage('${targetPage}'"]`);
   showPage(targetPage, navItem || null);
+}
+
+function isRuralOurilandiaSchool() {
+  const nome = normalizarTexto(ESCOLA_ATUAL?.nome || '');
+  const slug = normalizarTexto(ESCOLA_ATUAL?.slug || '');
+  return (
+    (nome.includes('rural') && nome.includes('ourilandia do norte')) ||
+    (slug.includes('rural') && slug.includes('ourilandia'))
+  );
+}
+
+function getTurmaSerieOptions() {
+  return isRuralOurilandiaSchool()
+    ? [...TURMA_SERIES_BASE, ...TURMA_SERIES_RURAL_EXTRA]
+    : [...TURMA_SERIES_BASE];
+}
+
+function popularSelectSerieTurma(selectId, selectedValue = '') {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const options = getTurmaSerieOptions();
+  if (selectedValue && !options.includes(selectedValue)) options.push(selectedValue);
+  select.innerHTML = options.map((option) => `<option value="${option}">${option}</option>`).join('');
+  select.value = options.includes(selectedValue) ? selectedValue : options[0] || '';
+}
+
+function sincronizarSelectsSerieTurma(createValue = '', editValue = '') {
+  popularSelectSerieTurma('input-turma-serie', createValue);
+  popularSelectSerieTurma('edit-turma-serie', editValue);
 }
 
 function popularEscolasUsuario(selectedId = '') {
@@ -1179,6 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp(){
   await carregarContextoEscolas();
   await carregarDados();
+  sincronizarSelectsSerieTurma();
   renderSchoolSwitcher();
   initAutoSave();
   updateSidebarProfile();
@@ -2052,17 +2096,18 @@ function renderTurmaGrid(){
   }).join('');
 }
 
+function abrirModalNovaTurma(){
+  const currentValue = document.getElementById('input-turma-serie')?.value || '';
+  popularSelectSerieTurma('input-turma-serie', currentValue);
+  openModal('modal-turma');
+}
+
 function abrirEditarTurma(id){
   const t=TURMAS_DATA.find(x=>x.id===id); if(!t)return;
   document.getElementById('edit-turma-id').value=t.id;
   document.getElementById('edit-turma-code').value=t.code;
   document.getElementById('edit-turma-turno').value=t.turno||'Manhã';
-  // Tenta setar a série corretamente
-  const serieEl=document.getElementById('edit-turma-serie');
-  if(serieEl){
-    const opts=Array.from(serieEl.options).map(o=>o.value);
-    serieEl.value=opts.find(o=>o===t.serie)||opts[0];
-  }
+  popularSelectSerieTurma('edit-turma-serie', t.serie || '');
   document.getElementById('edit-turma-professor').value=t.professor||'';
   openModal('modal-editar-turma');
 }
