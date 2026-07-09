@@ -364,6 +364,38 @@ function isMissingRelationError(error) {
   return error.code === '42P01' || /does not exist/i.test(error.message || '');
 }
 
+function isUniqueConstraintError(error, fieldName = '') {
+  if (!error) return false;
+  const message = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+  const field = String(fieldName || '').toLowerCase();
+  return error.code === '23505' && (!field || message.includes(field));
+}
+
+function isSchoolIntegrationError(error) {
+  if (!error) return false;
+  const message = `${error.message || ''} ${error.details || ''} ${error.hint || ''}`.toLowerCase();
+  return (
+    error.code === '42501' ||
+    message.includes('row-level security') ||
+    message.includes('get_current_escola_id') ||
+    message.includes('escola_id')
+  );
+}
+
+function getDocumentoSecretariaErrorMessage(error) {
+  if (!error) return 'Erro ao registrar documento no banco de dados.';
+  if (isUniqueConstraintError(error, 'protocolo')) {
+    return 'Nao foi possivel reservar um protocolo unico para este documento. Tente novamente.';
+  }
+  if (isMissingRelationError(error)) {
+    return 'A tabela de Documentos da Secretaria ainda nao foi criada nesta base.';
+  }
+  if (isSchoolIntegrationError(error)) {
+    return 'A base desta escola ainda nao foi integrada ao modulo de Documentos da Secretaria.';
+  }
+  return error.message || 'Erro ao registrar documento no banco de dados.';
+}
+
 function isAdminGlobal(user = null) {
   const alvo = user || getCurrentUser?.();
   return !!alvo?.admin_global;
@@ -376,6 +408,30 @@ function getActiveSchoolId(user = null) {
 
 function getCurrentSchoolName() {
   return ESCOLA_ATUAL?.nome || '';
+}
+
+function getDocumentoSecretariaProtocolToken(user = null) {
+  if (!MULTI_ESCOLA_ATIVO) return '';
+  const escolaId = getActiveSchoolId(user);
+  const escolaAtual = ESCOLA_ATUAL?.id === escolaId
+    ? ESCOLA_ATUAL
+    : ESCOLAS_DATA.find((item) => item.id === escolaId);
+  const source = escolaAtual?.slug || escolaAtual?.nome || escolaId || 'esc';
+  const token = normalizeSchoolSlug(source).replace(/[^a-z0-9]/g, '').slice(0, 6).toUpperCase();
+  return token || 'ESC';
+}
+
+function extractDocumentoSecretariaProtocolSeq(protocolo, schoolToken = '') {
+  const partes = String(protocolo || '').split('-');
+  const seqRaw = String(partes[partes.length - 1] || '');
+  if (!seqRaw) return null;
+
+  const token = String(schoolToken || '').toUpperCase();
+  const seqOnly = token && seqRaw.toUpperCase().startsWith(token)
+    ? seqRaw.slice(token.length)
+    : seqRaw;
+  const seqNum = parseInt(seqOnly, 10);
+  return Number.isNaN(seqNum) ? null : seqNum;
 }
 
 function isSchoolScopedTable(tableName) {
@@ -11142,10 +11198,12 @@ function switchSecSubTab(tab, el) {
 async function carregarDocumentosSecretaria() {
   showLoading('Carregando documentos...');
   try {
-    const { data, error } = await supabaseClient
+    let query = supabaseClient
       .from('documentos_secretaria')
       .select('*')
       .order('created_at', { ascending: false });
+    query = applySchoolScope(query, 'documentos_secretaria');
+    const { data, error } = await query;
       
     if (error) throw error;
     
@@ -11372,11 +11430,15 @@ function mostrarCamposDinamicosSec() {
 async function gerarProtocoloSec(tipoDoc) {
   const prefix = tipoDoc.startsWith('Requerimento') ? 'REQ' : 'DEC';
   const ano = new Date().getFullYear();
+  const schoolToken = getDocumentoSecretariaProtocolToken();
+  const seqPrefix = schoolToken || '';
   try {
-    const { data, error } = await supabaseClient
+    let query = supabaseClient
       .from('documentos_secretaria')
       .select('protocolo')
-      .like('protocolo', `SEC-${prefix}-${ano}-%`);
+      .like('protocolo', `SEC-${prefix}-${ano}-${seqPrefix}%`);
+    query = applySchoolScope(query, 'documentos_secretaria');
+    const { data, error } = await query;
       
     if (error) throw error;
     
@@ -11384,22 +11446,20 @@ async function gerarProtocoloSec(tipoDoc) {
     let maxSeq = 0;
     if (data && data.length > 0) {
       data.forEach(d => {
-        const partes = d.protocolo.split('-');
-        const seqStr = partes[partes.length - 1];
-        const seqNum = parseInt(seqStr, 10);
-        if (!isNaN(seqNum) && seqNum > maxSeq) {
+        const seqNum = extractDocumentoSecretariaProtocolSeq(d.protocolo, schoolToken);
+        if (seqNum && seqNum > maxSeq) {
           maxSeq = seqNum;
         }
       });
     }
     
     const nextSeq = maxSeq + 1;
-    return `SEC-${prefix}-${ano}-${nextSeq.toString().padStart(4, '0')}`;
+    return `SEC-${prefix}-${ano}-${seqPrefix}${nextSeq.toString().padStart(4, '0')}`;
   } catch (err) {
     console.error('[gerarProtocoloSec] Erro:', err);
     // Fallback randômico para não travar o processo
     const rand = Math.floor(1000 + Math.random() * 9000);
-    return `SEC-${prefix}-${ano}-${rand}`;
+    return `SEC-${prefix}-${ano}-${seqPrefix}${rand}`;
   }
 }
 
@@ -11415,6 +11475,10 @@ async function salvarDocumentoSecretaria() {
   const dataNascInput = document.getElementById('sec-doc-data-nasc')?.value || '';
   const vagaEtapa = document.getElementById('sec-doc-vaga-etapa')?.value || '';
   const vagaTurno = document.getElementById('sec-doc-vaga-turno')?.value || '';
+  if (MULTI_ESCOLA_ATIVO && !getActiveSchoolId()) {
+    showToast('Selecione a escola ativa antes de registrar o documento.', 'alerta');
+    return;
+  }
   
   if (!alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
   if (!tipo) { showToast('Selecione o tipo de emissão.', 'alerta'); return; }
@@ -11435,7 +11499,6 @@ async function salvarDocumentoSecretaria() {
   showLoading('Gerando documento...');
   try {
     const responsavel = getCurrentUser()?.nome || 'Secretaria';
-    const protocolo = await gerarProtocoloSec(tipo);
     
     let obsCompleta = obs || '';
     if (tipo && !tipo.startsWith('Requerimento')) {
@@ -11453,8 +11516,7 @@ async function salvarDocumentoSecretaria() {
       obsCompleta = `[VAGA_ETAPA: ${vagaEtapa}] [VAGA_TURNO: ${vagaTurno}] ${obsCompleta}`.trim();
     }
     
-    const payload = {
-      protocolo,
+    const payloadBase = {
       aluno_id: alunoId,
       tipo,
       data_emissao: new Date().toISOString().split('T')[0],
@@ -11467,18 +11529,36 @@ async function salvarDocumentoSecretaria() {
       uf_nascimento: tipo.startsWith('Requerimento') ? null : (ufNasc || null)
     };
     
-    const { data, error } = await supabaseClient
-      .from('documentos_secretaria')
-      .insert(payload)
-      .select()
-      .single();
+    let data = null;
+    let lastError = null;
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      const protocolo = await gerarProtocoloSec(tipo);
+      const payload = attachSchoolId({
+        ...payloadBase,
+        protocolo
+      }, 'documentos_secretaria');
+      const result = await supabaseClient
+        .from('documentos_secretaria')
+        .insert(payload)
+        .select()
+        .single();
+      if (!result.error) {
+        data = result.data;
+        lastError = null;
+        break;
+      }
+      lastError = result.error;
+      if (!isUniqueConstraintError(result.error, 'protocolo')) {
+        throw result.error;
+      }
+    }
       
-    if (error) throw error;
+    if (lastError) throw lastError;
     
     // Se for declaração de transferência, gera automaticamente um requerimento de transferência pendente
     if (tipo === 'Declaração de Transferência') {
       const reqProtocolo = await gerarProtocoloSec('Requerimento de Transferência');
-      const reqPayload = {
+      const reqPayload = attachSchoolId({
         protocolo: reqProtocolo,
         aluno_id: alunoId,
         tipo: 'Requerimento de Transferência',
@@ -11488,7 +11568,7 @@ async function salvarDocumentoSecretaria() {
         motivo: motivo || 'Declaração de transferência emitida',
         obs: 'Gerado automaticamente por emissão de declaração.',
         responsavel
-      };
+      }, 'documentos_secretaria');
       
       const { error: reqError } = await supabaseClient
         .from('documentos_secretaria')
@@ -11510,7 +11590,7 @@ async function salvarDocumentoSecretaria() {
     
   } catch (err) {
     console.error('[salvarDocumentoSecretaria] Erro:', err);
-    showToast('Erro ao registrar documento no banco de dados.', 'erro');
+    showToast(getDocumentoSecretariaErrorMessage(err), 'erro');
   } finally {
     hideLoading();
   }
@@ -11519,10 +11599,12 @@ async function salvarDocumentoSecretaria() {
 async function alterarStatusRequerimento(id, novoStatus) {
   showLoading('Atualizando status...');
   try {
-    const { error } = await supabaseClient
+    let query = supabaseClient
       .from('documentos_secretaria')
       .update({ status: novoStatus })
       .eq('id', id);
+    query = applySchoolScope(query, 'documentos_secretaria');
+    const { error } = await query;
       
     if (error) throw error;
     showToast('Status do requerimento atualizado!', 'sucesso');
@@ -11540,10 +11622,12 @@ async function excluirDocumentoSec(id) {
   
   showLoading('Excluindo...');
   try {
-    const { error } = await supabaseClient
+    let query = supabaseClient
       .from('documentos_secretaria')
       .delete()
       .eq('id', id);
+    query = applySchoolScope(query, 'documentos_secretaria');
+    const { error } = await query;
       
     if (error) throw error;
     showToast('Registro excluído!', 'sucesso');
@@ -11565,11 +11649,12 @@ async function imprimirDocumentoHtml(id) {
   try {
     let doc = SEC_DOCUMENTOS.find(d => d.id === id);
     if (!doc) {
-      const { data, error } = await supabaseClient
+      let query = supabaseClient
         .from('documentos_secretaria')
         .select('*')
-        .eq('id', id)
-        .single();
+        .eq('id', id);
+      query = applySchoolScope(query, 'documentos_secretaria');
+      const { data, error } = await query.single();
       if (error || !data) throw new Error('Documento não encontrado');
       doc = data;
     }
