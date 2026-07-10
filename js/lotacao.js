@@ -607,6 +607,8 @@ async function renderLotacaoPage(force = false) {
   renderLotacaoProfessores();
   renderLotacaoMapa();
   renderLotacaoDesistencias();
+  popularFiltrosRelatoriosLotacao();
+  renderRelatorioFiltradoLotacao();
   switchLotacaoTab(LOTACAO_TAB_ATUAL);
   if (window.lucide) window.lucide.createIcons();
 }
@@ -614,7 +616,7 @@ async function renderLotacaoPage(force = false) {
 function switchLotacaoTab(tab, element = null) {
   LOTACAO_TAB_ATUAL = tab;
   const tabs = Array.from(document.querySelectorAll('#page-lotacao-professores .tabs .tab'));
-  const tabIndexMap = { resumo: 0, professores: 1, mapa: 2, desistencias: 3 };
+  const tabIndexMap = { resumo: 0, professores: 1, mapa: 2, desistencias: 3, relatorios: 4 };
   if (!element && Number.isInteger(tabIndexMap[tab])) {
     element = tabs[tabIndexMap[tab]] || null;
   }
@@ -622,7 +624,7 @@ function switchLotacaoTab(tab, element = null) {
   tabs.forEach((item) => item.classList.remove('active'));
   if (element) element.classList.add('active');
 
-  ['resumo', 'professores', 'mapa', 'desistencias'].forEach((item) => {
+  ['resumo', 'professores', 'mapa', 'desistencias', 'relatorios'].forEach((item) => {
     document.getElementById(`lotacao-tab-${item}`)?.classList.toggle('hidden', item !== tab);
   });
 }
@@ -1300,6 +1302,300 @@ function imprimirFichaLotacaoProfessor(professorId) {
             <div class="sign"><div>Direção / Responsável pela Lotação</div></div>
           </div>
         </div>
+      </body>
+    </html>
+  `);
+  popup.document.close();
+  popup.focus();
+  setTimeout(() => popup.print(), 250);
+}
+
+// ─── RELATÓRIOS REFINADOS DA LOTAÇÃO ──────────────────────────────────────────
+
+function popularFiltrosRelatoriosLotacao() {
+  const profSelect = document.getElementById('lot-rel-filtro-prof');
+  const turmaSelect = document.getElementById('lot-rel-filtro-turma');
+  const discSelect = document.getElementById('lot-rel-filtro-disciplina');
+  if (!profSelect || !turmaSelect || !discSelect) return;
+
+  const currentProf = profSelect.value;
+  const currentTurma = turmaSelect.value;
+  const currentDisc = discSelect.value;
+
+  // 1. Popula Professor
+  profSelect.innerHTML = '<option value="">Todos os professores</option>' +
+    LOTACAO_PROFESSORES_DATA
+      .filter(p => p.ativo !== false)
+      .slice()
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map(p => `<option value="${p.id}" ${currentProf === p.id ? 'selected' : ''}>${lotacaoEscape(p.nome)}</option>`)
+      .join('');
+
+  // 2. Popula Turma
+  turmaSelect.innerHTML = '<option value="">Todas as turmas</option>' +
+    TURMAS_DATA
+      .slice()
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .map(t => `<option value="${t.code}" ${currentTurma === t.code ? 'selected' : ''}>${lotacaoEscape(t.code)}</option>`)
+      .join('');
+
+  // 3. Popula Disciplinas do mapa
+  const disciplinas = [...new Set(LOTACAO_COMPONENTES_DATA.map(c => c.disciplina).filter(Boolean))].sort();
+  discSelect.innerHTML = '<option value="">Todas as disciplinas</option>' +
+    disciplinas
+      .map(d => `<option value="${d}" ${currentDisc === d ? 'selected' : ''}>${lotacaoEscape(d)}</option>`)
+      .join('');
+}
+
+function renderRelatorioFiltradoLotacao() {
+  const tbody = document.getElementById('lotacao-relatorios-tbody');
+  const totalChEl = document.getElementById('lot-rel-total-ch');
+  const totalRegEl = document.getElementById('lot-rel-total-registros');
+  if (!tbody || !totalChEl || !totalRegEl) return;
+
+  if (!lotacaoSchemaReady()) {
+    tbody.innerHTML = emptyTr('🧩', 'Base pendente', 'Aplique a migration do módulo para liberar os relatórios.', 7);
+    return;
+  }
+
+  const profId = document.getElementById('lot-rel-filtro-prof')?.value || '';
+  const turmaCode = document.getElementById('lot-rel-filtro-turma')?.value || '';
+  const disciplina = document.getElementById('lot-rel-filtro-disciplina')?.value || '';
+  const turno = document.getElementById('lot-rel-filtro-turno')?.value || '';
+  const statusFiltro = document.getElementById('lot-rel-filtro-status')?.value || '';
+
+  // Cruza alocações com professores e componentes
+  let relatorioDados = [];
+
+  LOTACAO_ALOCACOES_DATA.forEach(aloc => {
+    // Apenas alocações ativas entram no relatório
+    if (aloc.status !== 'ativa') return;
+
+    const professor = getLotacaoProfessorById(aloc.professor_id);
+    const componente = getLotacaoComponenteById(aloc.componente_id);
+    if (!componente) return;
+
+    // Aplica filtros que dependem da alocação/professor/componente
+    if (profId && String(aloc.professor_id) !== String(profId)) return;
+    if (turmaCode && componente.turma_codigo !== turmaCode) return;
+    if (disciplina && componente.disciplina !== disciplina) return;
+    if (turno && componente.turno !== turno) return;
+
+    const compStatus = getLotacaoComponenteStatus(componente).key;
+    if (statusFiltro && compStatus !== statusFiltro) return;
+
+    relatorioDados.push({
+      aloc,
+      professor,
+      componente,
+      statusKey: compStatus
+    });
+  });
+
+  // Se o filtro de status for "sem_lotacao", também precisamos buscar os componentes que não têm NENHUMA alocação
+  if (statusFiltro === 'sem_lotacao' || !statusFiltro) {
+    LOTACAO_COMPONENTES_DATA.forEach(comp => {
+      if (comp.ativo === false) return;
+      
+      const alocacoes = getLotacaoActiveAllocationsByComponente(comp.id);
+      if (alocacoes.length === 0) {
+        // Aplica filtros restantes
+        if (profId) return; // Se filtou por professor específico, componente sem lotação não aparece
+        if (turmaCode && comp.turma_codigo !== turmaCode) return;
+        if (disciplina && comp.disciplina !== disciplina) return;
+        if (turno && comp.turno !== turno) return;
+
+        relatorioDados.push({
+          aloc: null,
+          professor: null,
+          componente: comp,
+          statusKey: 'sem_lotacao'
+        });
+      }
+    });
+  }
+
+  // Ordena por professor e depois por turma
+  relatorioDados.sort((a, b) => {
+    const nomeA = a.professor?.nome || '— Sem Lotação —';
+    const nomeB = b.professor?.nome || '— Sem Lotação —';
+    const compProf = nomeA.localeCompare(nomeB);
+    if (compProf !== 0) return compProf;
+    return (a.componente?.turma_codigo || '').localeCompare(b.componente?.turma_codigo || '');
+  });
+
+  let totalCarga = 0;
+
+  if (!relatorioDados.length) {
+    tbody.innerHTML = emptyTr('🔍', 'Nenhum registro encontrado', 'Modifique os filtros para buscar outros dados.', 7);
+    totalChEl.textContent = '0h';
+    totalRegEl.textContent = '0 registros';
+    return;
+  }
+
+  tbody.innerHTML = relatorioDados.map(d => {
+    const ch = d.aloc ? lotacaoNumber(d.aloc.carga_horaria_semanal) : 0;
+    totalCarga += ch;
+    
+    return `
+      <tr>
+        <td><strong>${d.professor ? lotacaoEscape(d.professor.nome) : '<span style="color:var(--gray5)">A Definir / Sem Lotação</span>'}</strong></td>
+        <td>${d.professor ? `${lotacaoEscape(d.professor.cargo || '—')}<br><span style="font-size:12px;color:var(--gray5)">${lotacaoEscape(d.professor.tipo_vinculo || '')}</span>` : '—'}</td>
+        <td><strong>${lotacaoEscape(d.componente.turma_codigo)}</strong></td>
+        <td>${lotacaoEscape(d.componente.turno || '—')}</td>
+        <td>${lotacaoEscape(d.componente.disciplina)}</td>
+        <td><strong>${d.aloc ? lotacaoFormatCarga(ch) : '<span style="color:var(--red-dark)">0h</span>'}</strong><br><span style="font-size:12px;color:var(--gray5)">Prevista: ${lotacaoFormatCarga(d.componente.carga_horaria_semanal)}</span></td>
+        <td>${lotacaoStatusChip(d.statusKey)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  totalChEl.textContent = lotacaoFormatCarga(totalCarga);
+  totalRegEl.textContent = `${relatorioDados.length} registro(s)`;
+}
+
+function imprimirRelatorioFiltradoLotacao() {
+  if (!lotacaoEnsureSchema()) return;
+
+  const profId = document.getElementById('lot-rel-filtro-prof')?.value || '';
+  const turmaCode = document.getElementById('lot-rel-filtro-turma')?.value || '';
+  const disciplina = document.getElementById('lot-rel-filtro-disciplina')?.value || '';
+  const turno = document.getElementById('lot-rel-filtro-turno')?.value || '';
+  const statusFiltro = document.getElementById('lot-rel-filtro-status')?.value || '';
+
+  // Captura os mesmos dados que estão sendo exibidos
+  let relatorioDados = [];
+
+  LOTACAO_ALOCACOES_DATA.forEach(aloc => {
+    if (aloc.status !== 'ativa') return;
+    const professor = getLotacaoProfessorById(aloc.professor_id);
+    const componente = getLotacaoComponenteById(aloc.componente_id);
+    if (!componente) return;
+
+    if (profId && String(aloc.professor_id) !== String(profId)) return;
+    if (turmaCode && componente.turma_codigo !== turmaCode) return;
+    if (disciplina && componente.disciplina !== disciplina) return;
+    if (turno && componente.turno !== turno) return;
+
+    const compStatus = getLotacaoComponenteStatus(componente).key;
+    if (statusFiltro && compStatus !== statusFiltro) return;
+
+    relatorioDados.push({ aloc, professor, componente, statusKey: compStatus });
+  });
+
+  if (statusFiltro === 'sem_lotacao' || !statusFiltro) {
+    LOTACAO_COMPONENTES_DATA.forEach(comp => {
+      if (comp.ativo === false) return;
+      const alocacoes = getLotacaoActiveAllocationsByComponente(comp.id);
+      if (alocacoes.length === 0) {
+        if (profId) return;
+        if (turmaCode && comp.turma_codigo !== turmaCode) return;
+        if (disciplina && comp.disciplina !== disciplina) return;
+        if (turno && comp.turno !== turno) return;
+
+        relatorioDados.push({ aloc: null, professor: null, componente: comp, statusKey: 'sem_lotacao' });
+      }
+    });
+  }
+
+  relatorioDados.sort((a, b) => {
+    const nomeA = a.professor?.nome || '— Sem Lotação —';
+    const nomeB = b.professor?.nome || '— Sem Lotação —';
+    const compProf = nomeA.localeCompare(nomeB);
+    if (compProf !== 0) return compProf;
+    return (a.componente?.turma_codigo || '').localeCompare(b.componente?.turma_codigo || '');
+  });
+
+  let totalCarga = 0;
+  const linhasTabela = relatorioDados.map((d, index) => {
+    const ch = d.aloc ? lotacaoNumber(d.aloc.carga_horaria_semanal) : 0;
+    totalCarga += ch;
+    const statusMeta = LOTACAO_STATUS_META[d.statusKey] || { label: 'Inativo' };
+
+    return `
+      <tr>
+        <td>${index + 1}</td>
+        <td><strong>${d.professor ? lotacaoEscape(d.professor.nome) : 'A Definir / Sem Lotação'}</strong></td>
+        <td>${d.professor ? lotacaoEscape(d.professor.cargo || '—') : '—'}</td>
+        <td>${lotacaoEscape(d.componente.turma_codigo)}</td>
+        <td>${lotacaoEscape(d.componente.turno || '—')}</td>
+        <td>${lotacaoEscape(d.componente.disciplina)}</td>
+        <td><strong>${d.aloc ? lotacaoFormatCarga(ch) : '0h'}</strong> (Prevista: ${lotacaoFormatCarga(d.componente.carga_horaria_semanal)})</td>
+        <td>${lotacaoEscape(statusMeta.label)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Define subtítulo com base nos filtros ativos
+  let descricaoFiltros = [];
+  if (profId) {
+    const p = getLotacaoProfessorById(profId);
+    if (p) descricaoFiltros.push(`Professor: ${p.nome}`);
+  }
+  if (turmaCode) descricaoFiltros.push(`Turma: ${turmaCode}`);
+  if (disciplina) descricaoFiltros.push(`Disciplina: ${disciplina}`);
+  if (turno) descricaoFiltros.push(`Turno: ${turno}`);
+  if (statusFiltro) {
+    const s = LOTACAO_STATUS_META[statusFiltro];
+    if (s) descricaoFiltros.push(`Status: ${s.label}`);
+  }
+  const stringFiltros = descricaoFiltros.length ? `Filtros aplicados — ${descricaoFiltros.join(' | ')}` : 'Relatório Geral (Sem filtros ativos)';
+
+  const popup = window.open('', '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    showToast('Libere o pop-up para emitir o relatório.', 'alerta');
+    return;
+  }
+
+  popup.document.write(`
+    <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8">
+        <title>Relatório Refinado de Lotação</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #111827; margin: 24px; }
+          h1, h2, p { margin: 0; }
+          .topo { margin-bottom: 20px; border-bottom: 2px solid #111; padding-bottom: 12px; }
+          .topo h1 { font-size: 20px; margin-bottom: 6px; }
+          .topo p { font-size: 12px; color: #4b5563; line-height: 1.5; }
+          table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+          th, td { border: 1px solid #111; padding: 6px 8px; font-size: 11px; vertical-align: middle; text-align: left; }
+          th { background: #f3f4f6; text-transform: uppercase; font-size: 10px; }
+          tfoot tr { background: #f9fafb; font-weight: bold; }
+          .summary-text { font-size: 12px; font-weight: bold; margin-top: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="topo">
+          <h1>Relatório Refinado de Lotação de Professores</h1>
+          <p><strong>Escola:</strong> ${lotacaoEscape(getCurrentSchoolName() || 'E.E. Dr. Romildo Veloso e Silva')}</p>
+          <p><strong>Parâmetros:</strong> ${lotacaoEscape(stringFiltros)}</p>
+          <p><strong>Emissão:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 5%">Seq</th>
+              <th style="width: 25%">Professor</th>
+              <th style="width: 15%">Cargo</th>
+              <th style="width: 10%">Turma</th>
+              <th style="width: 10%">Turno</th>
+              <th style="width: 15%">Disciplina</th>
+              <th style="width: 12%">CH Semanal</th>
+              <th style="width: 8%">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${linhasTabela || `<tr><td colspan="8">Nenhum registro encontrado.</td></tr>`}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="6" style="text-align: right">Total de Horas Alocadas:</td>
+              <td>${lotacaoFormatCarga(totalCarga)}</td>
+              <td>${relatorioDados.length} reg.</td>
+            </tr>
+          </tfoot>
+        </table>
       </body>
     </html>
   `);
