@@ -1408,7 +1408,6 @@
           <div class="tab" onclick="switchLotacaoTab('professores', this)">Professores</div>
           <div class="tab" onclick="switchLotacaoTab('mapa', this)">Mapa de Lotação</div>
           <div class="tab" onclick="switchLotacaoTab('desistencias', this)">Desistências</div>
-          <div class="tab" onclick="switchLotacaoTab('relatorios', this)">Relatórios</div>
         </div>
 
         <div id="lotacao-tab-resumo">
@@ -1519,72 +1518,6 @@
                   </tr>
                 </thead>
                 <tbody id="lotacao-desistencias-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div id="lotacao-tab-relatorios" class="hidden">
-          <div class="table-card" style="margin-bottom:16px">
-            <div class="table-filters" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-              <div class="form-group" style="margin:0">
-                <label class="form-label" style="font-size:11px;margin-bottom:4px">Professor</label>
-                <select id="lot-rel-filtro-prof" class="form-input form-select" style="width:200px;margin:0"></select>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label" style="font-size:11px;margin-bottom:4px">Turma</label>
-                <select id="lot-rel-filtro-turma" class="form-input form-select" style="width:160px;margin:0"></select>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label" style="font-size:11px;margin-bottom:4px">Disciplina</label>
-                <select id="lot-rel-filtro-disciplina" class="form-input form-select" style="width:180px;margin:0"></select>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label" style="font-size:11px;margin-bottom:4px">Turno</label>
-                <select id="lot-rel-filtro-turno" class="form-input form-select" style="width:130px;margin:0">
-                  <option value="">Todos</option>
-                  <option>Manhã</option>
-                  <option>Tarde</option>
-                  <option>Noite</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin:0">
-                <label class="form-label" style="font-size:11px;margin-bottom:4px">Status</label>
-                <select id="lot-rel-filtro-status" class="form-input form-select" style="width:140px;margin:0">
-                  <option value="">Todos</option>
-                  <option value="sem_lotacao">Sem lotação</option>
-                  <option value="parcial">Parcial</option>
-                  <option value="lotado">Lotado</option>
-                  <option value="excedente">Excedente</option>
-                </select>
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="renderRelatorioFiltradoLotacao()" style="height:38px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="search" style="width:14px;height:14px"></i> Filtrar</button>
-              <button class="btn btn-outline btn-sm" onclick="imprimirRelatorioFiltradoLotacao()" style="height:38px;display:inline-flex;align-items:center;gap:6px"><i data-lucide="printer" style="width:14px;height:14px"></i> Imprimir / PDF</button>
-            </div>
-          </div>
-
-          <div class="table-card">
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Professor</th>
-                    <th>Vínculo / Cargo</th>
-                    <th>Turma</th>
-                    <th>Turno</th>
-                    <th>Disciplina</th>
-                    <th>CH Alocada</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="lotacao-relatorios-tbody"></tbody>
-                <tfoot>
-                  <tr style="background:var(--gray1);font-weight:bold">
-                    <td colspan="5" style="text-align:right">Total de Horas Alocadas:</td>
-                    <td id="lot-rel-total-ch">0h</td>
-                    <td id="lot-rel-total-registros" style="font-size:11.5px;color:var(--gray5)">0 registros</td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
           </div>
@@ -2721,7 +2654,7 @@
       <button class="modal-close" onclick="closeModal('modal-novo-documento-secretaria')">✕</button>
     </div>
     <div class="form-row">
-      <div class="form-group">
+      <div class="form-group" id="sec-grupo-aluno">
         <label class="form-label">Aluno</label>
         <select class="form-input form-select" id="sec-doc-aluno-id" onchange="atualizarDataNascAoSelecionarAluno()">
           <!-- JS popula -->
@@ -2819,6 +2752,7 @@
             <label class="form-label">Turno da vaga</label>
             <select class="form-input form-select" id="sec-doc-vaga-turno">
               <option value="">Selecione...</option>
+              <option value="Todos os Turnos">Todos os Turnos</option>
               <option value="Manhã">Manhã</option>
               <option value="Tarde">Tarde</option>
               <option value="Noite">Noite</option>

@@ -11276,14 +11276,15 @@ function renderSecDocumentos() {
     } else {
       tbodyHist.innerHTML = declFiltradas.map(doc => {
         const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
+        const isVaga = doc.tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA;
         const dataFormatada = doc.data_emissao ? new Date(`${doc.data_emissao}T00:00:00`).toLocaleDateString('pt-BR') : '—';
         const deleteBtn = canDelete ? `<button class="btn btn-xs btn-outline" style="color:var(--red);margin-left:5px" onclick="excluirDocumentoSec('${doc.id}')" title="Excluir">🗑️</button>` : '';
         const validarBtn = `<button class="btn btn-xs btn-outline" style="margin-left:5px" onclick="abrirValidacaoDocumentoSec('${doc.protocolo}')" title="Conferir autenticidade">Conferir</button>`;
         return `
           <tr>
             <td><strong style="color:var(--primary);font-family:monospace">${doc.protocolo}</strong></td>
-            <td>${aluno ? aluno.nome : '<span style="color:var(--red)">Aluno não encontrado</span>'}</td>
-            <td>${aluno ? aluno.turma : '—'}</td>
+            <td>${isVaga ? '<span style="color:var(--gray5)">Não se aplica</span>' : (aluno ? aluno.nome : '<span style="color:var(--red)">Aluno não encontrado</span>')}</td>
+            <td>${isVaga ? '—' : (aluno ? aluno.turma : '—')}</td>
             <td><span class="badge" style="background:var(--gray2);color:var(--gray7);font-weight:600">${doc.tipo}</span></td>
             <td>${dataFormatada}</td>
             <td style="font-size:12px;color:var(--gray5)">${doc.responsavel || '—'}</td>
@@ -11432,23 +11433,26 @@ function atualizarDataNascAoSelecionarAluno() {
 
 function mostrarCamposDinamicosSec() {
   const tipo = document.getElementById('sec-doc-tipo')?.value;
+  const grupoAluno = document.getElementById('sec-grupo-aluno');
   const grupoFreq = document.getElementById('sec-grupo-frequencia');
   const grupoReq = document.getElementById('sec-grupo-requerimento');
   const grupoNasc = document.getElementById('sec-grupo-nascimento');
   const grupoVaga = document.getElementById('sec-grupo-vaga');
   
+  if (grupoAluno) grupoAluno.classList.remove('hidden');
   if (grupoFreq) grupoFreq.classList.add('hidden');
   if (grupoReq) grupoReq.classList.add('hidden');
   if (grupoNasc) grupoNasc.classList.add('hidden');
   if (grupoVaga) grupoVaga.classList.add('hidden');
   
-  if (tipo && !tipo.startsWith('Requerimento')) {
+  if (tipo && !tipo.startsWith('Requerimento') && tipo !== DOCUMENTO_SECRETARIA_TIPO_VAGA) {
     if (grupoNasc) grupoNasc.classList.remove('hidden');
   }
   
   if (tipo === 'Declaração de Frequência (Bolsa Família)') {
     if (grupoFreq) grupoFreq.classList.remove('hidden');
   } else if (tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) {
+    if (grupoAluno) grupoAluno.classList.add('hidden');
     if (grupoVaga) grupoVaga.classList.remove('hidden');
   } else if (tipo && tipo.startsWith('Requerimento')) {
     if (grupoReq) grupoReq.classList.remove('hidden');
@@ -11510,8 +11514,8 @@ async function salvarDocumentoSecretaria() {
     return;
   }
   
-  if (!alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
   if (!tipo) { showToast('Selecione o tipo de emissão.', 'alerta'); return; }
+  if (tipo !== DOCUMENTO_SECRETARIA_TIPO_VAGA && !alunoId) { showToast('Selecione um aluno.', 'alerta'); return; }
   
   if (tipo === 'Declaração de Frequência (Bolsa Família)' && !frequencia) {
     showToast('Informe a frequência do aluno.', 'alerta');
@@ -11531,7 +11535,7 @@ async function salvarDocumentoSecretaria() {
     const responsavel = getCurrentUser()?.nome || 'Secretaria';
     
     let obsCompleta = obs || '';
-    if (tipo && !tipo.startsWith('Requerimento')) {
+    if (tipo && !tipo.startsWith('Requerimento') && tipo !== DOCUMENTO_SECRETARIA_TIPO_VAGA) {
       if (cidadeNasc) {
         obsCompleta = `[NASC: ${cidadeNasc} - ${ufNasc}] ${obsCompleta}`.trim();
       }
@@ -11547,7 +11551,7 @@ async function salvarDocumentoSecretaria() {
     }
     
     const payloadBase = {
-      aluno_id: alunoId,
+      aluno_id: tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA ? null : alunoId,
       tipo,
       data_emissao: new Date().toISOString().split('T')[0],
       status: tipo.startsWith('Requerimento') ? 'pendente' : 'concluido',
@@ -11555,8 +11559,8 @@ async function salvarDocumentoSecretaria() {
       motivo: motivo || null,
       obs: obsCompleta || null,
       responsavel,
-      cidade_nascimento: tipo.startsWith('Requerimento') ? null : (cidadeNasc || null),
-      uf_nascimento: tipo.startsWith('Requerimento') ? null : (ufNasc || null)
+      cidade_nascimento: (tipo.startsWith('Requerimento') || tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) ? null : (cidadeNasc || null),
+      uf_nascimento: (tipo.startsWith('Requerimento') || tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) ? null : (ufNasc || null)
     };
     
     let data = null;
@@ -11690,14 +11694,15 @@ async function imprimirDocumentoHtml(id) {
     }
     
     const aluno = ALUNOS_DATA.find(a => a.id === doc.aluno_id);
-    if (!aluno) throw new Error('Dados do aluno não encontrados.');
-    const turmaAluno = TURMAS_DATA.find(t => t.id === aluno.turma_id) || TURMAS_DATA.find(t => t.code === aluno.turma);
+    const isDeclaracaoVaga = doc.tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA;
+    if (!aluno && !isDeclaracaoVaga) throw new Error('Dados do aluno não encontrados.');
+    const turmaAluno = aluno ? (TURMAS_DATA.find(t => t.id === aluno.turma_id) || TURMAS_DATA.find(t => t.code === aluno.turma)) : null;
     const escolaDocumento = getDocumentoSecretariaSchoolInfo(doc, aluno, turmaAluno);
     const escolaNomeDocumento = escolaDocumento.nome;
     const localEmissaoDocumento = escolaDocumento.localEmissao;
-    const turmaTexto = aluno.turma || turmaAluno?.code || '—';
-    const turnoTexto = aluno.turno || turmaAluno?.turno || '—';
-    const serieTexto = formatarSerieDocumento(aluno.serie || turmaAluno?.serie || '');
+    const turmaTexto = aluno?.turma || turmaAluno?.code || '—';
+    const turnoTexto = aluno?.turno || turmaAluno?.turno || '—';
+    const serieTexto = formatarSerieDocumento(aluno?.serie || turmaAluno?.serie || '');
     
     const dataPorExtenso = formatarDataPorExtenso(doc.data_emissao);
     const dataBr = doc.data_emissao ? new Date(doc.data_emissao + 'T00:00:00').toLocaleDateString('pt-BR') : '';
@@ -11726,7 +11731,7 @@ async function imprimirDocumentoHtml(id) {
       }
     }
     if (!dataNasc) {
-      dataNasc = aluno.nasc || '';
+      dataNasc = aluno?.nasc || '';
     }
 
     const formatarDataNasc = (dt) => {
@@ -11797,12 +11802,12 @@ async function imprimirDocumentoHtml(id) {
     } else if (doc.tipo === DOCUMENTO_SECRETARIA_TIPO_VAGA) {
       contentHtml = `
         <p class="doc-text">
-          Declaramos, para os devidos fins, que a <b>${escolaNomeDocumento}</b> dispõe de vaga para matrícula do(a) estudante <b>${aluno.nome}</b>,
-          inscrito(a) sob o CPF <b>${formatarCPF(aluno.cpf || '—')}</b>, nascido(a) em <b>${formatarDataNasc(dataNasc)}</b>${cidadeNascText},
-          no <b>${vagaEtapaTexto}</b>, no turno <b>${vagaTurnoTexto}</b>, para o ano letivo de <b>2026</b>.
+          Declaramos, para os devidos fins, que a <b>${escolaNomeDocumento}</b> dispõe de vaga para matrícula
+          na etapa/modalidade <b>${vagaEtapaTexto}</b>, no turno <b>${vagaTurnoTexto}</b>, para o ano letivo de <b>2026</b>.
         </p>
         <p class="doc-text">
-          A presente declaração confirma a disponibilidade de vaga nesta escola na etapa/modalidade e turno acima informados, servindo para instrução de matrícula ou transferência.
+          A presente declaração confirma a disponibilidade de vaga nesta escola na etapa/modalidade e turno acima informados,
+          servindo para instrução de matrícula, transferência ou demais fins legais cabíveis.
         </p>
       `;
     } else if (doc.tipo === 'Declaração de Transferência') {
