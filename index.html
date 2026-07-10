@@ -151,6 +151,7 @@
       <div class="nav-section-title">Gestão</div>
       <div class="nav-item" onclick="showPage('livros',this)"><i data-lucide="book-open" class="nav-item-icon"></i>Livros Didáticos</div>
       <div class="nav-item" onclick="showPage('relatorios',this)"><i data-lucide="bar-chart-2" class="nav-item-icon"></i>Relatórios</div>
+      <div class="nav-item" onclick="showPage('lotacao-professores',this)"><i data-lucide="briefcase-business" class="nav-item-icon"></i>Lotação</div>
       <div class="nav-item" onclick="showPage('documentos-secretaria',this)"><i data-lucide="folder" class="nav-item-icon"></i>Documentos Secretaria</div>
       <div class="nav-item" onclick="showPage('permissoes',this)"><i data-lucide="lock" class="nav-item-icon"></i>Permissões</div>
       <div class="nav-item" id="nav-usuarios" onclick="showPage('usuarios',this)"><i data-lucide="user-cog" class="nav-item-icon"></i>Usuários</div>
@@ -1384,6 +1385,141 @@
           <div id="rel-livros-actions" class="hidden" style="margin-top:12px;display:flex;gap:8px">
             <button class="btn btn-outline" onclick="downloadRelPDF('rel-livros-resultado','relatorio_livros')">⬇ PDF</button>
             <button class="btn btn-outline" onclick="downloadRelXLSX('livros')">⬇ Excel (.xlsx)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ LOTAÇÃO DE PROFESSORES ══════════════════ -->
+      <div class="page" id="page-lotacao-professores">
+        <div class="section-header">
+          <div class="section-title">📋 Lotação de Professores</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="imprimirRelatorioLotacaoGeral()"><i data-lucide="printer" style="width:14px;height:14px"></i> Emitir Relatório</button>
+            <button class="btn btn-primary" onclick="abrirModalComponenteLotacao()"><i data-lucide="library-big" style="width:14px;height:14px"></i> + Componente / Turma</button>
+            <button class="btn btn-primary" onclick="abrirModalLotacaoProfessor()"><i data-lucide="user-plus" style="width:14px;height:14px"></i> + Professor</button>
+          </div>
+        </div>
+
+        <div id="lotacao-setup-alert" class="hidden" style="margin-bottom:16px"></div>
+        <div id="lotacao-resumo-cards" class="metric-grid" style="margin-bottom:18px"></div>
+
+        <div class="tabs">
+          <div class="tab active" onclick="switchLotacaoTab('resumo', this)">Visão Geral</div>
+          <div class="tab" onclick="switchLotacaoTab('professores', this)">Professores</div>
+          <div class="tab" onclick="switchLotacaoTab('mapa', this)">Mapa de Lotação</div>
+          <div class="tab" onclick="switchLotacaoTab('desistencias', this)">Desistências</div>
+        </div>
+
+        <div id="lotacao-tab-resumo">
+          <div class="grid cols-2" style="display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:start">
+            <div class="table-card">
+              <div class="section-header" style="margin-bottom:12px">
+                <div class="section-title" style="font-size:16px">Pendências de Lotação</div>
+                <button class="btn btn-outline btn-sm" onclick="switchLotacaoTab('mapa')">Abrir mapa</button>
+              </div>
+              <div id="lotacao-pendencias-lista"></div>
+            </div>
+            <div class="table-card">
+              <div class="section-header" style="margin-bottom:12px">
+                <div class="section-title" style="font-size:16px">Carga por Professor</div>
+                <button class="btn btn-outline btn-sm" onclick="switchLotacaoTab('professores')">Ver todos</button>
+              </div>
+              <div id="lotacao-carga-professores"></div>
+            </div>
+          </div>
+          <div class="table-card" style="margin-top:16px">
+            <div class="section-header" style="margin-bottom:12px">
+              <div class="section-title" style="font-size:16px">Resumo do Mapa</div>
+            </div>
+            <div id="lotacao-resumo-mapa"></div>
+          </div>
+        </div>
+
+        <div id="lotacao-tab-professores" class="hidden">
+          <div class="table-card">
+            <div class="table-filters">
+              <input type="text" id="lotacao-prof-filtro-busca" class="form-input" placeholder="🔍 Buscar professor, matrícula ou cargo..." oninput="renderLotacaoProfessores()" style="width:280px">
+              <select id="lotacao-prof-filtro-status" class="form-input form-select" onchange="renderLotacaoProfessores()" style="width:180px">
+                <option value="">Todos os status</option>
+                <option value="ativo">Ativos</option>
+                <option value="inativo">Inativos</option>
+                <option value="com-pendencia">Com pendência</option>
+                <option value="com-carga">Com carga lançada</option>
+              </select>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Professor</th>
+                    <th>Matrícula</th>
+                    <th>Cargo / Vínculo</th>
+                    <th>Carga Atual</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="lotacao-professores-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="lotacao-tab-mapa" class="hidden">
+          <div class="table-card">
+            <div class="table-filters">
+              <input type="text" id="lotacao-mapa-filtro-busca" class="form-input" placeholder="🔍 Buscar turma, disciplina ou professor..." oninput="renderLotacaoMapa()" style="width:280px">
+              <select id="lotacao-mapa-filtro-turno" class="form-input form-select" onchange="renderLotacaoMapa()" style="width:150px">
+                <option value="">Todos os turnos</option>
+              </select>
+              <select id="lotacao-mapa-filtro-status" class="form-input form-select" onchange="renderLotacaoMapa()" style="width:180px">
+                <option value="">Todos os status</option>
+                <option value="sem_lotacao">Sem lotação</option>
+                <option value="parcial">Parcial</option>
+                <option value="lotado">Lotado</option>
+                <option value="excedente">Excedente</option>
+              </select>
+              <button class="btn btn-outline btn-sm" onclick="renderLotacaoMapa(true)">Limpar Filtros</button>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Turma</th>
+                    <th>Disciplina</th>
+                    <th>Turno</th>
+                    <th>CH Prevista</th>
+                    <th>Professor(es)</th>
+                    <th>Status</th>
+                    <th style="text-align:right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="lotacao-mapa-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="lotacao-tab-desistencias" class="hidden">
+          <div class="section-header" style="margin-bottom:12px">
+            <div class="section-title" style="font-size:16px">Histórico de Desistências</div>
+            <button class="btn btn-red" onclick="abrirModalDesistenciaLotacao()"><i data-lucide="user-minus" style="width:14px;height:14px"></i> Registrar Desistência</button>
+          </div>
+          <div class="table-card">
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Professor</th>
+                    <th>Turma / Disciplina</th>
+                    <th>Data</th>
+                    <th>Motivo</th>
+                    <th>Registrado em</th>
+                  </tr>
+                </thead>
+                <tbody id="lotacao-desistencias-tbody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -2830,6 +2966,198 @@
 </div>
 
 
+<!-- Modal: Professor Lotação -->
+<div class="modal-overlay" id="modal-lotacao-professor" onclick="if(event.target===this)closeModal('modal-lotacao-professor')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-lotacao-professor-title">+ Novo Professor</span>
+      <button class="modal-close" onclick="closeModal('modal-lotacao-professor')">✕</button>
+    </div>
+    <input type="hidden" id="lot-prof-edit-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nome do Professor *</label>
+        <input class="form-input" id="lot-prof-nome" placeholder="Ex: Maria de Nazaré Silva">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Matrícula</label>
+        <input class="form-input" id="lot-prof-matricula" placeholder="Ex: 1234567">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Cargo</label>
+        <input class="form-input" id="lot-prof-cargo" placeholder="Ex: Professora de Matemática">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de Vínculo</label>
+        <input class="form-input" id="lot-prof-tipo-vinculo" placeholder="Ex: Efetivo, Temporário">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Vínculo / Campo V</label>
+        <input class="form-input" id="lot-prof-vinculo" placeholder="Ex: SEDUC">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Carga Horária Máxima</label>
+        <input class="form-input" type="number" id="lot-prof-carga-maxima" min="0" step="1" value="200">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observações</label>
+      <textarea class="form-input" id="lot-prof-observacoes" rows="4" placeholder="Informações complementares da lotação"></textarea>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="lot-prof-ativo" checked style="width:16px;height:16px">
+      <label class="form-label" for="lot-prof-ativo" style="margin:0;cursor:pointer">Professor ativo para lotação</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-lotacao-professor')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarProfessorLotacao()">💾 Salvar Professor</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Componente / Turma -->
+<div class="modal-overlay" id="modal-lotacao-componente" onclick="if(event.target===this)closeModal('modal-lotacao-componente')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-lotacao-componente-title">+ Novo Componente / Turma</span>
+      <button class="modal-close" onclick="closeModal('modal-lotacao-componente')">✕</button>
+    </div>
+    <input type="hidden" id="lot-comp-edit-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Turma *</label>
+        <select class="form-input form-select" id="lot-comp-turma-id" onchange="preencherMetadadosTurmaLotacao()"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Disciplina *</label>
+        <input class="form-input" id="lot-comp-disciplina" placeholder="Ex: Matemática">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Ano</label>
+        <input class="form-input" type="number" id="lot-comp-ano" min="2024" step="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Oferta</label>
+        <input class="form-input" id="lot-comp-oferta" placeholder="Ex: Regular">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Modalidade</label>
+        <input class="form-input" id="lot-comp-modalidade" placeholder="Ex: Ensino Médio, EJA, Fluxo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Série / Modalidade</label>
+        <input class="form-input" id="lot-comp-serie-modalidade" placeholder="Ex: 1º Ano — Ensino Médio">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Turno</label>
+        <input class="form-input" id="lot-comp-turno" placeholder="Ex: Manhã">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Localidade</label>
+        <input class="form-input" id="lot-comp-localidade" placeholder="Ex: FOGAO QUEIMADO">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Carga Horária Semanal *</label>
+        <input class="form-input" type="number" id="lot-comp-ch-semanal" min="0" step="1" value="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quantidade de Aulas</label>
+        <input class="form-input" type="number" id="lot-comp-qtd-aulas" min="0" step="1" value="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observações</label>
+      <textarea class="form-input" id="lot-comp-observacoes" rows="4" placeholder="Observações sobre a turma ou o componente"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-lotacao-componente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarComponenteLotacao()">💾 Salvar Componente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Lotar Professor -->
+<div class="modal-overlay" id="modal-lotacao-alocacao" onclick="if(event.target===this)closeModal('modal-lotacao-alocacao')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-lotacao-alocacao-title">Lotar Professor</span>
+      <button class="modal-close" onclick="closeModal('modal-lotacao-alocacao')">✕</button>
+    </div>
+    <input type="hidden" id="lot-aloc-edit-id">
+    <div class="form-group">
+      <label class="form-label">Professor *</label>
+      <select class="form-input form-select" id="lot-aloc-professor-id"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Componente / Turma *</label>
+      <select class="form-input form-select" id="lot-aloc-componente-id" onchange="sincronizarCargaAlocacaoLotacao()"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Carga Horária Semanal *</label>
+        <input class="form-input" type="number" id="lot-aloc-ch-semanal" min="0" step="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Data Inicial *</label>
+        <input class="form-input" type="date" id="lot-aloc-data-inicio">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observações</label>
+      <textarea class="form-input" id="lot-aloc-observacoes" rows="4" placeholder="Ex: redistribuição, substituição, carga complementar"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-lotacao-alocacao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarAlocacaoLotacao()">💾 Confirmar Lotação</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Desistência -->
+<div class="modal-overlay" id="modal-lotacao-desistencia" onclick="if(event.target===this)closeModal('modal-lotacao-desistencia')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Registrar Desistência</span>
+      <button class="modal-close" onclick="closeModal('modal-lotacao-desistencia')">✕</button>
+    </div>
+    <input type="hidden" id="lot-des-edit-id">
+    <div class="form-group">
+      <label class="form-label">Lotação ativa *</label>
+      <select class="form-input form-select" id="lot-des-alocacao-id"></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Data da Desistência *</label>
+        <input class="form-input" type="date" id="lot-des-data">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Motivo *</label>
+        <input class="form-input" id="lot-des-motivo" placeholder="Ex: pedido de desligamento">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observações</label>
+      <textarea class="form-input" id="lot-des-observacoes" rows="4" placeholder="Detalhes complementares da desistência"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-lotacao-desistencia')">Cancelar</button>
+      <button class="btn btn-red" onclick="salvarDesistenciaLotacao()">Confirmar Desistência</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Usuário -->
 <div class="modal-overlay" id="modal-usuario" onclick="if(event.target===this)closeModal('modal-usuario')">
   <div class="modal modal-lg">
@@ -3053,7 +3381,8 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/pdf.min.js"></script>
 <script src="js/pdf-lib.min.js"></script>
-<script src="js/app.js?v=2.2"></script>
+<script src="js/app.js?v=2.3"></script>
+<script src="js/lotacao.js?v=1.0"></script>
 
 <!-- ── INITIALIZE LUCIDE ICONS ──────────────────────────────── -->
 <script>

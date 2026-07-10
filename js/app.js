@@ -226,6 +226,7 @@ let PERMS = [
   {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
   {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
   {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+  {func:'LotaÃ§Ã£o de Professores',   id:'page-lotacao-professores', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false},
   {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
   {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
   {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
@@ -279,6 +280,10 @@ const TABELAS_COM_ESCOLA = new Set([
   'eventos',
   'frequencia',
   'livros_alunos',
+  'lotacao_alocacoes',
+  'lotacao_componentes_turma',
+  'lotacao_desistencias',
+  'lotacao_professores',
   'notas_bimestrais',
   'obafog_equipes',
   'ocorrencias',
@@ -308,6 +313,7 @@ const MODULOS_ESCOLA_PADRAO = Object.freeze({
   'page-tratamento-ocorrencias': true,
   'page-livros': true,
   'page-relatorios': true,
+  'page-lotacao-professores': true,
   'page-documentos-secretaria': true,
   'page-reconhecimento-facial': true,
   'page-usuarios': true,
@@ -331,6 +337,7 @@ const MODULO_LABELS = Object.freeze({
   'page-tratamento-ocorrencias': 'Tratamento de Ocorrências',
   'page-livros': 'Livros Didáticos',
   'page-relatorios': 'Relatórios',
+  'page-lotacao-professores': 'LotaÃ§Ã£o de Professores',
   'page-documentos-secretaria': 'Documentos Secretaria',
   'page-reconhecimento-facial': 'Reconhecimento Facial',
   'page-usuarios': 'Usuários',
@@ -901,6 +908,7 @@ async function carregarDados(){
           {func:'Ocorrências',              id:'page-ocorrencias',  coord:true, sec:false, prof:true,  editar_coord:true,  editar_sec:false, editar_prof:true},
           {func:'Livros Didáticos',          id:'page-livros',       coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
           {func:'Relatórios',               id:'page-relatorios',   coord:true, sec:true,  prof:false, editar_coord:true,  editar_sec:true,  editar_prof:false},
+          {func:'LotaÃ§Ã£o de Professores',   id:'page-lotacao-professores', coord:true, sec:true, prof:false, editar_coord:true, editar_sec:true, editar_prof:false},
           {func:'Tratamento Ocorr.',        id:'page-tratamento-ocorrencias', coord:true, sec:false, prof:false, editar_coord:true,  editar_sec:false, editar_prof:false},
           {func:'Permissões',               id:'page-permissoes',   coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
           {func:'Usuários',                 id:'page-usuarios',     coord:false,sec:false, prof:false, editar_coord:false, editar_sec:false, editar_prof:false},
@@ -1523,7 +1531,7 @@ function showPage(p, el) {
     dashboard: 'Dashboard', agenda: 'Agenda Pedagógica', turmas: 'Turmas', alunos: 'Alunos', 'ficha-aluno': 'Ficha do Aluno', boletins: 'Boletins Escolares',
     'conselho-classe': 'Conselho de Classe', frequencia: 'Frequência Escolar', solicitacoes: 'Solicitações Pedagógicas', transporte: 'Transporte Escolar', ocorrencias: 'Ocorrências',
     livros: 'Livros Didáticos', chat: 'Chat RVS', permissoes: 'Permissões', usuarios: 'Usuários do Sistema', perfil: 'Meu Perfil',
-    horarios: 'HorÃ¡rio de Aula', obafog: 'OBAFOG RVS', escolas: 'GestÃ£o de Escolas', 'tratamento-ocorrencias': 'Tratamento de OcorrÃªncias', 'reconhecimento-facial': 'Reconhecimento Facial'
+    horarios: 'HorÃ¡rio de Aula', obafog: 'OBAFOG RVS', escolas: 'GestÃ£o de Escolas', 'tratamento-ocorrencias': 'Tratamento de OcorrÃªncias', 'reconhecimento-facial': 'Reconhecimento Facial', 'lotacao-professores': 'LotaÃ§Ã£o de Professores'
   };
   document.getElementById('page-title').textContent = titles[p] || p;
   
@@ -1550,6 +1558,7 @@ function showPage(p, el) {
   if(p==='escolas') renderEscolasPage();
   if(p==='perfil') renderPerfil();
   if(p==='tratamento-ocorrencias') initTratamentoOcorrenciasPage();
+  if(p==='lotacao-professores') renderLotacaoPage();
   if(p==='documentos-secretaria') carregarDocumentosSecretaria();
   if(p==='reconhecimento-facial') carregarReconhecimentoFacial();
   if(p==='frequencia'){

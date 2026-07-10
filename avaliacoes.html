@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Banco de Questões e Provas — RVS Gestor</title>
+  <meta name="description" content="Banco de questões, montagem de provas, impressão e correção por câmera — E.E. Dr. Romildo Veloso e Silva.">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+
+  <!-- Typography & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* ── Reset & Variables (Fase 0 — mesmos tokens de aluno.html / topodosaber.html) ── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary:      #171513;
+      --primary-glow: rgba(244, 207, 77, 0.18);
+      --accent:       #f4cf4d;
+      --accent-glow:  rgba(221, 178, 45, 0.18);
+      --success:      #10b981;
+      --danger:       #f43f5e;
+      --warning:      #b68400;
+      --dark-bg:      #f6efe8;
+      --card-bg:      rgba(255, 255, 255, 0.84);
+      --surface-soft: #fffdfa;
+      --border-color: rgba(216, 199, 183, 0.82);
+      --text-muted:   #6f655d;
+
+      --radius:  10px;
+      --radius2: 16px;
+      --radius3: 24px;
+      --shadow:  0 16px 44px rgba(70,48,28,.08), 0 4px 14px rgba(70,48,28,.05);
+      --shadow3: 0 28px 68px rgba(55,39,24,.14), 0 10px 24px rgba(55,39,24,.08);
+    }
+
+    html, body {
+      min-height: 100vh;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--dark-bg);
+      color: #f3f4f6;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(circle 800px at 10% -10%, rgba(99, 102, 241, 0.22) 0%, transparent 60%),
+        radial-gradient(circle 600px at 90% 110%, rgba(6, 182, 212, 0.18) 0%, transparent 60%),
+        radial-gradient(circle 450px at 50% 50%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+        linear-gradient(180deg, #0b0f19 0%, #030712 100%);
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-size: 40px 40px;
+      background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(12px);
+      background: rgba(11, 15, 25, 0.75);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-inner {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .header-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      object-fit: contain;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .header-info h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      letter-spacing: -0.02em;
+    }
+
+    .header-info p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .header-user {
+      margin-left: auto;
+      font-size: 12px;
+      color: #cbd5e1;
+      text-align: right;
+      line-height: 1.3;
+    }
+    .header-user strong { color: white; font-weight: 700; }
+
+    .header-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 7px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+    }
+    .header-back:hover {
+      color: white;
+      border-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      transform: translateX(-2px);
+    }
+
+    /* ── Module shell ── */
+    .module-shell {
+      flex: 1;
+      max-width: 1180px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    .module-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 4px;
+    }
+    .module-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .module-banner {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      background: var(--accent-glow);
+      border: 1px solid rgba(244, 207, 77, 0.35);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 12.5px;
+      color: #f3e7c2;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+
+    .module-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 14px;
+    }
+
+    .module-tab {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: all .18s ease;
+    }
+    .module-tab:hover { color: white; border-color: rgba(255,255,255,.2); }
+    .module-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #1a1508;
+    }
+    .module-tab[hidden] { display: none; }
+
+    .tab-panel { display: none; animation: fade-slide-in .3s cubic-bezier(.34,1.56,.64,1) both; }
+    .tab-panel.active { display: block; }
+    @keyframes fade-slide-in { from { opacity:0; transform: translateY(10px);} to {opacity:1; transform:translateY(0);} }
+
+    .panel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius2);
+      padding: 22px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.02), 0 20px 50px rgba(0,0,0,.35);
+      color: #2a2420;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+    .panel-header h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: var(--radius);
+      padding: 9px 16px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all .18s ease;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-outline { background: transparent; border-color: var(--border-color); color: var(--primary); }
+    .btn-outline:hover { background: rgba(0,0,0,.04); }
+    .btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+    .filters-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .filters-row select, .filters-row input {
+      font-family: inherit;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-color);
+      background: var(--surface-soft);
+      color: var(--primary);
+      min-width: 150px;
+    }
+    .filters-row select[disabled], .filters-row input[disabled] { opacity: .55; }
+
+    .empty-state {
+      text-align: center;
+      padding: 46px 20px;
+      border: 1.5px dashed var(--border-color);
+      border-radius: var(--radius2);
+      color: var(--text-muted);
+    }
+    .empty-state .empty-icon {
+      width: 46px; height: 46px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      background: var(--accent-glow);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--warning);
+    }
+    .empty-state h3 { font-size: 14px; color: var(--primary); margin-bottom: 6px; }
+    .empty-state p { font-size: 12.5px; max-width: 420px; margin: 0 auto; line-height: 1.5; }
+
+    .access-blocked {
+      text-align: center;
+      padding: 60px 20px;
+      color: #cbd5e1;
+    }
+
+    @media (max-width: 720px) {
+      .header-user { display: none; }
+      .module-tabs { gap: 6px; }
+      .module-tab { padding: 7px 12px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+  <!-- HEADER -->
+  <header>
+    <div class="header-inner">
+      <img src="assets/logo.png" class="header-logo" alt="Logo Escola RVS">
+      <div class="header-info">
+        <h1>E.E. Dr. Romildo Veloso e Silva</h1>
+        <p>Pedagógico · Banco de Questões e Provas</p>
+      </div>
+      <div class="header-user" id="header-user"></div>
+      <a href="index.html" class="header-back"><span>← Voltar ao Dashboard</span></a>
+    </div>
+  </header>
+
+  <div class="module-shell">
+    <div class="module-title">Banco de Questões e Provas</div>
+    <div class="module-subtitle">Cadastre questões, monte provas a partir do banco e gere a impressão. Turmas e alunos usados aqui são os mesmos já cadastrados no RVS Gestor.</div>
+
+    <div class="module-banner">
+      <i data-lucide="construction" style="width:16px;height:16px;flex-shrink:0;margin-top:1px"></i>
+      <span>Este módulo está em implementação por etapas. A navegação e as permissões já estão ativas; o cadastro no banco de dados (Supabase) entra na próxima etapa — por enquanto as telas abaixo mostram a estrutura prevista.</span>
+    </div>
+
+    <div id="acesso-negado" class="access-blocked" hidden>
+      <i data-lucide="lock" style="width:32px;height:32px;color:var(--text-muted)"></i>
+      <p style="margin-top:10px">Seu perfil não tem acesso a este módulo.</p>
+    </div>
+
+    <div id="modulo-conteudo">
+      <div class="module-tabs" id="module-tabs">
+        <button class="module-tab active" data-tab="disciplinas" data-perm="page-disciplinas"><i data-lucide="grid-2x2" style="width:14px;height:14px"></i>Disciplinas</button>
+        <button class="module-tab" data-tab="banco" data-perm="page-banco-questoes"><i data-lucide="book-open" style="width:14px;height:14px"></i>Banco de Questões</button>
+        <button class="module-tab" data-tab="provas" data-perm="page-avaliacoes"><i data-lucide="file-text" style="width:14px;height:14px"></i>Montar Prova</button>
+        <button class="module-tab" data-tab="imprimir" data-perm="page-avaliacoes"><i data-lucide="printer" style="width:14px;height:14px"></i>Imprimir</button>
+        <button class="module-tab" data-tab="correcao" data-perm="page-correcao"><i data-lucide="camera" style="width:14px;height:14px"></i>Correção (Câmera)</button>
+      </div>
+
+      <!-- DISCIPLINAS -->
+      <section class="tab-panel active" id="tab-disciplinas">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Disciplinas</h2>
+            <button class="btn btn-primary" disabled title="Disponível após a criação da tabela no banco de dados">+ Nova Disciplina</button>
+          </div>
+          <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="grid-2x2" style="width:20px;height:20px"></i></div>
+            <h3>Nenhuma disciplina cadastrada ainda</h3>
+            <p>Aqui entrarão as disciplinas usadas para organizar o banco de questões (nome, área do conhecimento, etapa). Conectado ao banco de dados na próxima etapa.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- BANCO DE QUESTÕES -->
+      <section class="tab-panel" id="tab-banco">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Banco de Questões</h2>
+            <button class="btn btn-primary" disabled title="Disponível após a criação da tabela no banco de dados">+ Nova Questão</button>
+          </div>
+          <div class="filters-row">
+            <input type="text" placeholder="🔍 Buscar por enunciado, tag ou assunto..." disabled>
+            <select disabled><option>Disciplina</option></select>
+            <select disabled><option>Etapa</option></select>
+            <select disabled><option>Dificuldade</option></select>
+            <select disabled><option>Tipo</option></select>
+            <select disabled><option>Status</option></select>
+          </div>
+          <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="book-open" style="width:20px;height:20px"></i></div>
+            <h3>Banco de questões vazio</h3>
+            <p>Questões objetivas (gabarito A–E) e discursivas cadastradas aqui ficam disponíveis para montar provas. Compartilhado entre professores da escola; cada um edita só as próprias questões.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- MONTAR PROVA -->
+      <section class="tab-panel" id="tab-provas">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Montar Prova</h2>
+            <button class="btn btn-primary" disabled title="Disponível após a criação da tabela no banco de dados">+ Nova Prova</button>
+          </div>
+          <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="file-text" style="width:20px;height:20px"></i></div>
+            <h3>Nenhuma prova montada ainda</h3>
+            <p>Selecione questões do banco, vincule a uma turma e disciplina já existentes no RVS Gestor e defina o gabarito. Sem versões embaralhadas nesta primeira etapa.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- IMPRIMIR -->
+      <section class="tab-panel" id="tab-imprimir">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Imprimir</h2>
+            <button class="btn btn-outline" disabled title="Disponível após montar uma prova">📄 Gerar PDF da Prova</button>
+          </div>
+          <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="printer" style="width:20px;height:20px"></i></div>
+            <h3>Nada para imprimir ainda</h3>
+            <p>Depois de montar uma prova, gere aqui o PDF da prova (com espaço para nome/turma) e o PDF do gabarito do professor — usando o mesmo gerador de PDF já presente no RVS Gestor.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- CORREÇÃO (CÂMERA) -->
+      <section class="tab-panel" id="tab-correcao">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h2>Correção por Câmera</h2>
+            <button class="btn btn-outline" disabled title="Disponível após a modelagem do banco de dados">📷 Enviar Foto do Cartão</button>
+          </div>
+          <div class="empty-state">
+            <div class="empty-icon"><i data-lucide="camera" style="width:20px;height:20px"></i></div>
+            <h3>Correção por câmera ainda não disponível</h3>
+            <p>Fotografe o cartão-resposta preenchido pelo aluno; o sistema vai ler as marcações e sempre pedir sua confirmação antes de calcular a nota. Depende da prova impressa por este módulo (marcadores de alinhamento) e da conexão com o banco de dados.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── Sessão (mesmo padrão do RVS Gestor: sessionStorage['rvs_user']) ───────────
+  function getCurrentUser() {
+    try {
+      const raw = sessionStorage.getItem('rvs_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function normalizeRole(role) {
+    if (!role) return '';
+    return String(role).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  }
+
+  function getRoleKey(role) {
+    const n = normalizeRole(role);
+    if (n === 'admin') return 'admin';
+    if (n === 'coordenador') return 'coord';
+    if (n === 'secretaria' || n === 'secretario') return 'sec';
+    if (n === 'professor') return 'prof';
+    return 'prof';
+  }
+
+  const usuarioAtual = getCurrentUser();
+  if (!usuarioAtual) {
+    window.location.href = 'index.html';
+  }
+
+  // ─── Supabase (mesmo projeto/anon key usado no restante do RVS Gestor) ────────
+  const SUPABASE_URL = 'https://xjtluflzpkkbckkcwagf.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqdGx1Zmx6cGtrYmNra2N3YWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NjMxNzMsImV4cCI6MjA5MzIzOTE3M30.3Fj_xCwTwx0MYWjFx3xM41BP8DQCsRMgGYmZJkHuidE';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ─── Permissões — mesma estrutura do array PERMS de js/app.js, com valores
+  // padrão locais até a tabela `configuracoes` trazer os dados reais/editados
+  // pela tela de Permissões do sistema principal. ──────────────────────────────
+  let PERMS_MODULO = [
+    { id: 'page-disciplinas',     coord: true, sec: false, prof: false },
+    { id: 'page-banco-questoes',  coord: true, sec: false, prof: true  },
+    { id: 'page-avaliacoes',      coord: true, sec: false, prof: true  },
+    { id: 'page-correcao',        coord: true, sec: false, prof: true  }
+  ];
+
+  async function carregarPermissoesModulo() {
+    try {
+      const { data, error } = await sb
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', 'permissoes')
+        .maybeSingle();
+      if (!error && data && Array.isArray(data.valor)) {
+        PERMS_MODULO = PERMS_MODULO.map(def => {
+          const found = data.valor.find(p => p.id === def.id);
+          return found ? { ...def, ...found } : def;
+        });
+      }
+    } catch (e) {
+      console.warn('[avaliacoes] Não foi possível carregar permissões do banco, usando padrão local.', e);
+    }
+    aplicarPermissoesAbas();
+  }
+
+  function aplicarPermissoesAbas() {
+    if (!usuarioAtual) return;
+    const rKey = getRoleKey(usuarioAtual.perfil);
+    const tabs = Array.from(document.querySelectorAll('.module-tab'));
+    let algumaVisivel = false;
+    let primeiraVisivel = null;
+
+    tabs.forEach(btn => {
+      const permId = btn.dataset.perm;
+      const perm = PERMS_MODULO.find(p => p.id === permId);
+      const permitido = rKey === 'admin' || (perm && perm[rKey]);
+      btn.hidden = !permitido;
+      if (permitido) {
+        algumaVisivel = true;
+        if (!primeiraVisivel) primeiraVisivel = btn;
+      }
+    });
+
+    document.getElementById('modulo-conteudo').hidden = !algumaVisivel;
+    document.getElementById('acesso-negado').hidden = algumaVisivel;
+
+    const abaAtivaOculta = !tabs.find(b => b.classList.contains('active') && !b.hidden);
+    if (algumaVisivel && abaAtivaOculta && primeiraVisivel) {
+      mostrarAba(primeiraVisivel.dataset.tab);
+    }
+  }
+
+  function mostrarAba(tab) {
+    document.querySelectorAll('.module-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+  }
+
+  document.querySelectorAll('.module-tab').forEach(btn => {
+    btn.addEventListener('click', () => mostrarAba(btn.dataset.tab));
+  });
+
+  // ─── Init ───────────────────────────────────────────────────────────────────
+  if (usuarioAtual) {
+    const labelPerfil = { admin: 'Administrador', coordenador: 'Coordenador', secretaria: 'Secretaria', professor: 'Professor' };
+    document.getElementById('header-user').innerHTML =
+      `<strong>${usuarioAtual.nome || 'Usuário'}</strong><br>${labelPerfil[usuarioAtual.perfil] || ''}`;
+    carregarPermissoesModulo();
+  }
+
+  if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>
